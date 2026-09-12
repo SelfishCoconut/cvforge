@@ -1,0 +1,38 @@
+# --- personal data: NEVER commit (public repo) ---
+data/
+*.db
+*.db-wal
+*.db-shm
+cv_out/
+.env
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+*.egg-info/
+
+# --- node / frontend ---
+node_modules/
+frontend/dist/
+
+# --- docs / latex ---
+site/
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# --- local ---
+scratchpad/
+.claude/settings.local.json
