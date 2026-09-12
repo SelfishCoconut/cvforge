@@ -24,10 +24,26 @@ Not done yet — all of M0.
 
 ## Next action
 
-Write the M0 + M1 implementation plan (the `superpowers:writing-plans` skill),
-then execute M0.
+**Execute the M0 plan: `docs/superpowers/plans/2026-09-12-m0-foundations.md`.**
+It is written task-by-task with full code — use
+`superpowers:subagent-driven-development` or `superpowers:executing-plans`.
 
-M0 in order:
+M0's thirteen tasks, in order:
+1. Python toolchain, quality gates, package skeleton
+2. Public GitHub repo, labels, milestones, bootstrap issue
+3. Settings, app factory, `/api/health`
+4. Golden-snapshot harness + OpenAPI contract gate
+5. React SPA shell served by the backend
+6. CI workflow
+7. Security + sanity workflows, Dependabot, templates
+8. SRS (FR-01..FR-40, NFR-01..NFR-10) + one issue per FR
+9. Docs site, architecture diagrams, ADR-0001..0003
+10. Claude settings + six ported skills
+11. Five new CVForge-specific skills
+12. Four agents + four hooks
+13. Branch protection + M0 close-out
+
+Original M0 checklist (now superseded by the plan above):
 1. `pyproject.toml` (uv, Python 3.12+, ruff/mypy/pytest/coverage config),
    `.gitignore` (**`data/`, `*.db`, `cv_out/` first**), `.pre-commit-config.yaml`,
    `Makefile`.
