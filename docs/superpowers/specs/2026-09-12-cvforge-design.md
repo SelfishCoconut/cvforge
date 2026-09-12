@@ -89,7 +89,7 @@ entity(id, kind, name, normalized_name, summary, state, first_seen_at, updated_a
   ├─ project(id→entity, started_at, ended_at, context)
   ├─ organization(id→entity, org_type, industry, size)   # employer|client|institution
   ├─ role(id→entity, title, seniority, started_at, ended_at, employment_type)
-  ├─ education(id→entity, institution_id, degree, field, started_at, ended_at, grade)
+  ├─ education(id→entity, degree, field, started_at, ended_at, grade)
   ├─ credential(id→entity, credential_type, issuer, issued_at, expires_at,
   │             credential_id, url)        # certification|course|bootcamp
   ├─ achievement(id→entity, metric, value, occurred_at)
@@ -99,6 +99,11 @@ entity(id, kind, name, normalized_name, summary, state, first_seen_at, updated_a
 Deliberate collapses: a *technology* is a `skill` with a category (a separate kind
 splits every query and buys nothing); *certification* and *course* are one
 `credential` kind discriminated by `credential_type`.
+
+No entity table carries a foreign key to another entity. An `education`'s
+institution, a `role`'s employer and a `credential`'s issuing organization are all
+`at_organization` **edges** — relationships live in exactly one place (§4.2), so
+there is one way to traverse them and one way to evidence them.
 
 ### 4.2 Relationships
 
@@ -178,6 +183,19 @@ form_fill_session(id, application_id, url, fields_json, status, created_at)
 
 `cv_claim` is what makes claim-level traceability and CV validation possible, and
 `application` is the job ↔ CV ↔ date linkage.
+
+**The four verdicts, defined precisely** (they are ordered, and the boundaries must
+not blur):
+
+| Verdict | Means | Requires |
+|---|---|---|
+| `satisfied` | The requirement maps to a `confirmed` entity that is itself evidenced as *used* | A matching entity plus ≥1 `used_in` / `demonstrates` edge, each backed by an assertion |
+| `evidenced` | Not directly recorded, but strongly implied by what is recorded | Supporting assertions on adjacent entities (e.g. a framework used implies its language), with the inference stated in `rationale` |
+| `undocumented` | Plausibly true of Álvaro but absent from the knowledge base | No supporting entity; similarity to his recorded profile above threshold. Triggers a discovery question (FR-30), never a CV claim |
+| `gap` | Genuinely absent | No entity, no supporting evidence, no plausible inference. Feeds the learning planner (FR-33) |
+
+`undocumented` and `gap` may **never** produce a CV claim in automatic mode —
+that is NFR-05 restated at the matching layer.
 
 ### 4.7 Semantic search
 
