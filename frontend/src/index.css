@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --color-surface: oklch(98.5% 0.004 260);
+  --color-ink: oklch(22% 0.02 260);
+  --color-ink-muted: oklch(52% 0.02 260);
+  --color-danger: oklch(55% 0.19 25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: oklch(18% 0.012 260);
+    --color-ink: oklch(95% 0.006 260);
+    --color-ink-muted: oklch(68% 0.014 260);
+    --color-danger: oklch(68% 0.17 25);
+  }
+}

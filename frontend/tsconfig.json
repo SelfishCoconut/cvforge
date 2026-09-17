@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
+    // vitest@2.1.9's vite-node dependency pins "vite": "^5.0.0", so npm installs a
+    // nested vite@5 copy for vitest's internal use alongside our top-level vite@6
+    // (per package.json's "vite": "^6.0.5"). The `/// <reference types="vitest/config" />`
+    // augmentation of `UserConfig` in vite.config.ts binds to whichever "vite" module
+    // identity vitest's own d.ts resolves — the nested v5 copy — not the top-level v6
+    // one our `import { defineConfig } from "vite"` resolves to, so `test` is reported
+    // as an unknown property. This path alias forces both resolutions to the same
+    // physical module for type-checking only; it has no effect on the runtime bundler.
+    "paths": { "vite": ["./node_modules/vite"] }
+  },
+  "include": ["src", "vite.config.ts"]
+}
