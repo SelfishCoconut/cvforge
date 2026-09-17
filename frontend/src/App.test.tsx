@@ -11,10 +11,10 @@ describe("App", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the product name immediately", () => {
+  it("shows the product name immediately", async () => {
     stubFetch({ ok: true, json: async () => ({ status: "ok", version: "0.1.0" }) });
     render(<App />);
-    expect(screen.getByRole("heading", { name: /cvforge/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /cvforge/i })).toBeInTheDocument();
   });
 
   it("reports the backend version once health resolves", async () => {
