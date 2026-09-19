@@ -30,12 +30,12 @@ dev = [
     "pylint>=3.3",
     # Documentation site.
     "mkdocs-material>=9.5",
-    "mkdocstrings[python]>=0.27",
+    "mkdocstrings[python]>=1.0.6",
     "mkdocs-mermaid2-plugin>=1.2",
 ]
 
 [build-system]
-requires = ["uv_build>=0.5,<1"]
+requires = ["uv_build>=0.12.15,<1"]
 build-backend = "uv_build"
 
 # ---------------------------------------------------------------- ruff
