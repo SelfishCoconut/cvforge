@@ -5,6 +5,8 @@ per decision. A decision without an ADR does not exist — these are the durable
 record of *why*, and the context that survives a cleared conversation.
 
 Supersede, never rewrite: a changed decision gets a new ADR linking back.
+Never edit an accepted ADR's decision after the fact — the record of what
+was decided, and when, is the whole point.
 
 | # | Title | Status | Date |
 |---|---|---|---|

@@ -10,6 +10,15 @@ edit_uri: ""
 exclude_docs: |
   superpowers/
 
+# An ADR or page missing from `nav` is unreachable from the site, and mkdocs
+# reports that at INFO by default, so --strict does NOT catch it. Adding an ADR
+# is a three-file change (the file, the README index row, this nav) and half-doing
+# it has to fail the build, not pass quietly. Link validation is already `warn`
+# by default, which is what makes --strict catch broken links.
+validation:
+  nav:
+    omitted_files: warn
+
 theme:
   name: material
   features:

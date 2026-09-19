@@ -60,7 +60,8 @@ label or milestone, apply them explicitly and immediately:
 gh issue edit <n> --add-label req:FR-xx --milestone "M1 Knowledge spine"
 ```
 
-Then update the FR's `Traces to: issue #N` line via the `requirements` skill.
+Then, in this same session, replace the `#TBD` in that FR's `Traces to` line
+with the number `gh issue create` just returned, via the `requirements` skill.
 
 ## 4. Optional — start the branch
 

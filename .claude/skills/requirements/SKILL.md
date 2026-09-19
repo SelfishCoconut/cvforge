@@ -18,8 +18,14 @@ requirement maps 1:1 to a GitHub issue labelled `req:FR-xx`.
 - **Description**: The system shall …  (one testable behaviour)
 - **Acceptance criteria**:
   - [ ] concrete, executable check
-- **Traces to**: issue #N, tests `tests/…`
+- **Traces to**: issue #TBD, tests `tests/…`
 ```
+
+`#TBD` is deliberate, and deliberately non-numeric. Replace it with the real
+number in the same session that `gh issue create` returns one. The sync step
+matches `issue #<digits>`, so a forgotten backfill makes the sync abort loudly
+instead of freezing a placeholder into a published issue body — which is exactly
+how the string `issue #N` once reached all 40 of them.
 
 NFRs use `NFR-xx` with a measurable target ("p95 proposal round-trip < 30 s on
 qwen3.6:27b", never "fast").
