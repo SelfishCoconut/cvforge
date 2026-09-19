@@ -7,6 +7,9 @@ on:
   pull_request:
   schedule:
     - cron: "0 6 * * 1" # weekly Monday 06:00 UTC
+  # On demand, and the only way to get a full-history secret scan without
+  # waiting for Monday — see the comment on the `secrets` job below.
+  workflow_dispatch:
 
 jobs:
   audit-dependencies:
@@ -35,6 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # Needed by the FULL-history scan only. gitleaks-action decides its
+          # own scan range from the event: `schedule` and `workflow_dispatch`
+          # scan the whole history, while `push` and `pull_request` pass
+          # --log-opts and scan only the incoming commits. So the job name is
+          # accurate for the weekly and on-demand runs; on a PR it is a fast
+          # incremental check, which is the behaviour you want gating merges.
           fetch-depth: 0
       # The only THIRD-PARTY action here that receives a token, so it is pinned
       # by commit digest rather than by tag: a tag can be re-pointed by its
