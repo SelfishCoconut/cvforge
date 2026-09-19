@@ -102,3 +102,16 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:coverage
+
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      # --strict is the point: a broken link or an unresolved mkdocstrings
+      # reference fails the build before merge, not after.
+      - run: make docs

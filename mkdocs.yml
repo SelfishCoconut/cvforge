@@ -1,0 +1,63 @@
+site_name: CVForge
+site_description: Local-first personal professional knowledge system that generates tailored, evidence-backed CVs
+repo_url: https://github.com/SelfishCoconut/cvforge
+edit_uri: ""
+
+# The superpowers plan and spec live under docs/ but are working documents, not
+# site pages. They carry relative links written for the files they describe, which
+# would resolve against docs/superpowers/plans/ and fail --strict. not_in_nav is
+# NOT enough: it still builds and link-checks them.
+exclude_docs: |
+  superpowers/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/weather-night, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/weather-sunny, name: Switch to light mode }
+
+plugins:
+  - search
+  - mermaid2
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid_custom
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Roadmap: roadmap.md
+  - Requirements: requirements/srs.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Knowledge model: architecture/knowledge-model.md
+  - Decisions:
+      - Index: adr/README.md
+      - 0001 SQLite knowledge store: adr/0001-sqlite-knowledge-store.md
+      - 0002 Single process for API and SPA: adr/0002-single-process-api-and-spa.md
+      - 0003 Changeset review pipeline: adr/0003-changeset-review-pipeline.md
+  - API reference: reference/api.md
