@@ -1,0 +1,30 @@
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dev-dependencies:
+        dependency-type: development
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      dev-dependencies:
+        dependency-type: development
+    ignore:
+      # typescript-eslint still caps its peer range below TypeScript 7, so a
+      # TS 7 bump fails `npm ci` with ERESOLVE and takes the whole
+      # dev-dependencies group down with it. Version-scoped on purpose: DELETE
+      # this entry — do not widen it — once typescript-eslint supports TS 7.
+      - dependency-name: typescript
+        versions: ["7.x"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,0 +1,23 @@
+# .github/ISSUE_TEMPLATE/bug.yml
+name: Bug
+description: Something behaves incorrectly
+labels: ["bug"]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed vs expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Exact commands or inputs — synthetic data only, never a real CV
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Affected requirement (if known)
+      placeholder: FR-03

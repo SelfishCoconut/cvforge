@@ -1,0 +1,20 @@
+# .github/ISSUE_TEMPLATE/infra.yml
+name: Infrastructure / tooling
+description: CI, build, developer environment or automation work with no requirement
+title: "<scope>: <title>"
+labels: ["infra"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What needs to change, and why
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
