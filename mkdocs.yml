@@ -60,4 +60,6 @@ nav:
       - 0001 SQLite knowledge store: adr/0001-sqlite-knowledge-store.md
       - 0002 Single process for API and SPA: adr/0002-single-process-api-and-spa.md
       - 0003 Changeset review pipeline: adr/0003-changeset-review-pipeline.md
+      - 0004 SRS is the source of requirement text: adr/0004-srs-is-the-source-of-requirement-text.md
+      - 0005 Action pinning policy: adr/0005-action-pinning-policy.md
   - API reference: reference/api.md
