@@ -174,7 +174,7 @@ description = "Local-first personal professional knowledge system that generates
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
-authors = [{ name = "Álvaro Navarro", email = "alvaronavaqui@proton.me" }]
+authors = [{ name = "Álvaro Navarro", email = "182025519+SelfishCoconut@users.noreply.github.com" }]
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115",
