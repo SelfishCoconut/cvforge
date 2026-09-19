@@ -2418,7 +2418,7 @@ C4Container
     Container(spa, "React SPA", "React 19, TypeScript, Tailwind v4", "Chat, proposal review, jobs, CV versions, settings")
     Container(api, "FastAPI", "Python 3.13", "JSON API under /api")
     Container(agents, "Agent layer", "Pydantic AI", "Read-only tools, structured output")
-    Container(kb, "Knowledge layer", "SQLAlchemy", "queries.py reads; apply.py is the only writer")
+    Container(kb, "Knowledge layer", "Python 3.13", "queries.py reads; apply.py is the only writer")
   }
   ContainerDb(db, "cvforge.db", "SQLite + sqlite-vec", "Entities, edges, assertions, proposals, jobs, CVs")
   Rel(alvaro, spa, "Uses", "HTTPS on 127.0.0.1")

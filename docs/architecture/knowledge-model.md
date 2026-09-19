@@ -9,7 +9,7 @@ erDiagram
   ASSERTION }o--|| ENTITY : "targets (target_kind=entity)"
   ASSERTION }o--|| EDGE : "targets (target_kind=edge)"
   PROPOSAL ||--o{ OPERATION : contains
-  PROPOSAL ||--|| SOURCE : "derived from"
+  PROPOSAL }o--|| SOURCE : "derived from"
 
   ENTITY { string id string kind string name string normalized_name string state }
   EDGE { string id string src_id string rel string dst_id float confidence }
