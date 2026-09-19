@@ -98,7 +98,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] Given a query embedding, `find_similar` returns entities ranked by similarity above a configurable threshold
   - [ ] Querying an empty entity table returns no matches rather than raising
   - [ ] Unit tests inject deterministic fake vectors; no unit or integration test triggers a real embedding model call
-  - [ ] Swapping the `EmbeddingProvider` implementation does not change any calling code, verified against the interface, not the implementation
+  - [ ] A candidate scoring below the configured similarity threshold is not returned as a match
 - **Traces to**: issue #9, tests `tests/unit/test_embeddings.py`
 
 ### FR-06 — Single write path for the knowledge base
@@ -213,7 +213,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] A frontend test asserts the UI renders partial content as chunks arrive, not only on completion
   - [ ] A mid-stream interruption surfaces an error state rather than silently truncating with no indication
   - [ ] Streaming is exercised via a fake/`FunctionModel` streaming stand-in; no test opens a live model connection
-- **Traces to**: issue #17, tests `tests/unit/test_chat_stream.py`, `frontend/tests`
+- **Traces to**: issue #17, tests `tests/unit/test_chat_stream.py`, `frontend/src/**/*.test.tsx`
 
 ## Document ingestion
 
@@ -439,8 +439,9 @@ Each requirement below is a subsection with six fields, in this order:
 - **Acceptance criteria**:
   - [ ] `cv/validate.py` rejects a CV containing a bullet with no backing `cv_claim`
   - [ ] `cv/validate.py` flags an internal contradiction (e.g. overlapping full-time role dates) rather than presenting it silently
-  - [ ] A CV omitting a `Must`-priority requirement the candidate is `satisfied` on is flagged as incomplete coverage
+  - [ ] A CV omitting a `required`-kind requirement the candidate is `satisfied` on is flagged as incomplete coverage
   - [ ] Only a CV that passes every check can be marked `final` via the API
+  - [ ] `cv/validate.py` flags a technology claim inconsistent with the backing entity's recorded period (e.g. a framework claimed for a role that predates its release)
 - **Traces to**: issue #33, tests `tests/unit/test_cv_validate.py`
 
 ## Collaborative mode
@@ -511,7 +512,7 @@ Each requirement below is a subsection with six fields, in this order:
   completed.
 - **Acceptance criteria**:
   - [ ] Marking a plan's steps complete transitions the linked entity's state via an approved `set_state` operation
-  - [ ] The transition only ever moves forward (`gap → learning → confirmed`); skipping or reversing without an explicit operation is rejected
+  - [ ] A plan with incomplete steps produces no state-change operation
   - [ ] Progress tracking against an entity that was never recorded as `learning` raises rather than silently creating one
   - [ ] Completed-plan state changes go through the same review/commit pipeline as any other mutation (FR-06, FR-10)
 - **Traces to**: issue #38, tests `tests/unit/test_learning_progress.py`
@@ -596,7 +597,7 @@ Each requirement below is a subsection with six fields, in this order:
   interface.
 - **Acceptance criteria**:
   - [ ] A fake `EmbeddingProvider` substituted in tests produces deterministic vectors of the expected dimension
-  - [ ] Swapping the configured embedding provider requires no change to calling code, since it depends only on the interface
+  - [ ] A fake provider returning a different vector dimension is accepted without editing `kb/embeddings.py`, and a provider missing a protocol method fails at construction
   - [ ] No unit, integration or golden test calls a live embedding model
   - [ ] An embedding-provider failure is handled and surfaced to the caller rather than crashing the request
 - **Traces to**: issue #44, tests `tests/unit/test_embedding_provider.py`
@@ -668,7 +669,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] A golden test feeds a knowledge base with deliberately sparse coverage and asserts the generated CV contains no claim beyond what is stored
   - [ ] A `FunctionModel` designed to try to hallucinate a claim is caught and blocked by the validator before presentation
   - [ ] The "mark CV final" API action refuses when validation has not passed
-- **Traces to**: issue #1, tests `tests/unit/test_cv_validate.py`, `tests/golden/test_cv_generation.py`
+- **Traces to**: issue #45, tests `tests/unit/test_cv_validate.py`, `tests/golden/test_cv_generation.py`
 
 ### NFR-06 — Personal data is never committed
 - **Priority**: Must
@@ -682,11 +683,11 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] Staging a file under `data/`, or a CV-shaped file outside `tests/data/`, is blocked by the `guard-private-data` hook with a non-zero exit
   - [ ] A full-history secret/data scan finds no real personal data across repository history
   - [ ] Every fixture under `tests/` is synthetic; none is a real CV, job posting or knowledge-base export
-- **Traces to**: issue #1, `.github/workflows/security.yml`, `scripts/hooks/guard-private-data.sh`
+- **Traces to**: issue #1, `.github/workflows/security.yml`, `.claude/hooks/guard-private-data.sh`
 
 ### NFR-07 — Untrusted external content
 - **Priority**: Must
-- **Milestone**: M3
+- **Milestone**: M2
 - **Source**: design spec §1
 - **Description**: Fetched web content and uploaded documents shall be treated
   as untrusted data: analyzed for facts, never obeyed as instructions, and
@@ -696,7 +697,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] The read-only tool set available during job/document analysis stays fixed regardless of page content
   - [ ] The prompt-injection fixture is part of the golden suite, so a regression that starts obeying embedded instructions shows as a snapshot diff
   - [ ] Extracted facts from untrusted content still pass through the standard classify → review → commit pipeline; none bypass it
-- **Traces to**: issue #1, tests `tests/golden/test_prompt_injection.py`
+- **Traces to**: issue #46, tests `tests/golden/test_prompt_injection.py`
 
 ### NFR-08 — No live model calls in tests
 - **Priority**: Must
@@ -738,4 +739,4 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] The benchmark reports p95 under 30 s in the target environment; a regression above threshold is flagged in the weekly sanity report
   - [ ] The measurement excludes calls to opt-in external providers, which carry no latency SLA here
   - [ ] Unit/integration/golden tests do not assert on this latency directly — per NFR-08 they use fakes; the check is a separate, real-model benchmark
-- **Traces to**: issue #1, `scripts/demo/latency_bench.py`, `docs/sanity/`
+- **Traces to**: issue #47, `scripts/bench/latency.py`, `docs/sanity/`
