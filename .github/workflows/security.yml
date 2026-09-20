@@ -11,6 +11,20 @@ on:
   # waiting for Monday — see the comment on the `secrets` job below.
   workflow_dispatch:
 
+# Least privilege by default. Jobs that need more (CodeQL's security-events:
+# write) raise it for themselves. pull-requests: read is required because the
+# scanners read PR metadata on pull_request events.
+permissions:
+  contents: read
+  pull-requests: read
+
+# A force-push or a quick second push should not leave two scans racing; the
+# newer one wins. Never cancel on main -- a cancelled run leaves a required
+# context permanently pending.
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   audit-dependencies:
     name: pip-audit
@@ -54,7 +68,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   codeql:
-    name: CodeQL
+    name: CodeQL (Python)
     runs-on: ubuntu-latest
     permissions:
       # `security-events: write` REPLACES the default permission set, so
