@@ -3,12 +3,25 @@ site_description: Local-first personal professional knowledge system that genera
 repo_url: https://github.com/SelfishCoconut/cvforge
 edit_uri: ""
 
-# The superpowers plan and spec live under docs/ but are working documents, not
-# site pages. They carry relative links written for the files they describe, which
-# would resolve against docs/superpowers/plans/ and fail --strict. not_in_nav is
-# NOT enough: it still builds and link-checks them.
+# Three working-document trees live under docs/ but are not site pages.
+#
+# superpowers/ (the plan and spec) carries relative links written for the files it
+# describes, which resolve against docs/superpowers/plans/ and fail --strict.
+#
+# reports/ (progress-report skill) and sanity/ (codebase-sanity agent) are written
+# on demand, one dated file per run. Since validation.nav.omitted_files became
+# `warn` below, ANY page under docs/ that is absent from nav aborts the strict
+# build -- so the first progress report or sanity audit would have turned the
+# required `Docs build` context red without a line of code changing.
+#
+# exclude_docs, not not_in_nav: not_in_nav suppresses only the orphan warning and
+# still builds and LINK-CHECKS the file. These reports are generated text citing
+# file:line, and one relative link into src/ would fail strict link validation --
+# the second way this same file class can redden the gate. exclude_docs closes both.
 exclude_docs: |
   superpowers/
+  reports/
+  sanity/
 
 # An ADR or page missing from `nav` is unreachable from the site, and mkdocs
 # reports that at INFO by default, so --strict does NOT catch it. Adding an ADR

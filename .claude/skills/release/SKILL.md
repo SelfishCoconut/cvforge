@@ -44,6 +44,29 @@ after.
   deliverable, not an afterthought.
 - Write the progress report with the `progress-report` skill.
 
+Those are three file edits, and they go through the same gate as every other
+change (CLAUDE.md: card -> feature branch -> PR -> required CI green -> squash
+merge). `main` is protected: there is no direct push, and the PR needs all 11
+required contexts green. Tag only AFTER the squash merge has landed on `main`
+and you have pulled it -- otherwise the tag points at a commit that does not
+contain the version bump or the roadmap update, which is the whole point of it.
+
+```bash
+git switch -c chore/close-m<n>
+git add pyproject.toml docs/roadmap.md docs/reports/<date>.md
+git commit -m "chore: close M<n>"
+# Write the body first: it must contain "Closes #<milestone epic issue>" and a
+# filled-in "How to validate" section. --title/--body-file, never --fill --
+# --fill overwrites both with the commit message, and the template is mandatory.
+gh pr create --title "chore: close M<n>" --body-file /tmp/close-m<n>-pr.md
+# wait for all 11 required contexts, then squash merge
+gh pr merge --squash --delete-branch
+git switch main && git pull
+```
+
+Tags themselves are not covered by branch protection, so the release sequence
+runs directly on the merged commit:
+
 ```bash
 git tag -a v0.<n>.0 -m "M<n>: <milestone name>"
 git push --tags

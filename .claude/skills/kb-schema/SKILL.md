@@ -56,4 +56,4 @@ Read `docs/architecture/knowledge-model.md` and ADR-0001 before touching anythin
 | give an entity table an FK to another entity | relationships live in `edge`; two places to traverse means two places to forget |
 | invent a `rel` value inline | the vocabulary is closed; widening it is an ADR |
 | write an entity in a test without an assertion | the test will pass and the invariant test will fail — fix the helper, not the invariant |
-| drop or rename a column in a migration | his real knowledge base is the only copy; export first |
+| drop or rename a column in a migration | the user's real knowledge base is the only copy; export first |
