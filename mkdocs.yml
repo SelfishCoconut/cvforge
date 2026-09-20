@@ -48,7 +48,6 @@ theme:
 
 plugins:
   - search
-  - mermaid2
   - mkdocstrings:
       handlers:
         python:
@@ -66,7 +65,7 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:mermaid2.fence_mermaid_custom
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
       permalink: true
 
@@ -84,4 +83,6 @@ nav:
       - 0003 Changeset review pipeline: adr/0003-changeset-review-pipeline.md
       - 0004 SRS is the source of requirement text: adr/0004-srs-is-the-source-of-requirement-text.md
       - 0005 Action pinning policy: adr/0005-action-pinning-policy.md
+      - 0006 SQLAlchemy Core and Alembic: adr/0006-sqlalchemy-core-and-alembic.md
+      - 0007 Material native Mermaid: adr/0007-material-native-mermaid.md
   - API reference: reference/api.md
