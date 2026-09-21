@@ -22,11 +22,11 @@ jobs:
       - run: uv sync --locked
       # `scripts` is included on purpose: scripts/demo/* is the PR template's
       # mandatory validation artifact, so it is load-bearing. Ungated, demos rot.
-      - run: uv run ruff check src tests scripts
-      - run: uv run ruff format --check src tests scripts
+      - run: uv run ruff check src tests scripts .claude/hooks
+      - run: uv run ruff format --check src tests scripts .claude/hooks
       - run: uv run mypy
       - name: Complexity gate
-        run: uv run xenon --max-absolute C --max-modules B --max-average A src
+        run: uv run xenon --max-absolute C --max-modules B --max-average A src .claude/hooks
 
   unit:
     name: Unit tests + coverage

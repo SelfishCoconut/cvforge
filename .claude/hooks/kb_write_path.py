@@ -12,7 +12,8 @@ one library's idiom stops working the moment a module reaches for a raw
 `sqlite3` cursor -- which is exactly when a stray write is most likely. So this
 matches ORM idioms, stdlib `sqlite3` cursors, and raw SQL text alike. A pattern
 that silently matches nothing is worse than no check at all, because it reads
-as a pass: see `tests/unit/test_hooks.py` for the cases this is held to.
+as a pass: see `tests/unit/test_hooks.py` for the cases this is held to, and
+`tests/integration/test_hooks_wiring.py` for the shell wrapper end to end.
 
 Like the private-data guard, this fails OPEN. It runs after every Edit and
 Write in the repository and must never be able to error a tool call.
