@@ -4,18 +4,18 @@
 
 # --- python quality ---
 lint:
-	uv run ruff check src tests scripts
-	uv run ruff format --check src tests scripts
+	uv run ruff check src tests scripts .claude/hooks
+	uv run ruff format --check src tests scripts .claude/hooks
 
 format:
-	uv run ruff format src tests scripts
-	uv run ruff check --fix src tests scripts
+	uv run ruff format src tests scripts .claude/hooks
+	uv run ruff check --fix src tests scripts .claude/hooks
 
 typecheck:
 	uv run mypy
 
 complexity:
-	uv run xenon --max-absolute C --max-modules B --max-average A src
+	uv run xenon --max-absolute C --max-modules B --max-average A src .claude/hooks
 
 # --- tests ---
 test-unit:

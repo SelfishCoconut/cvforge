@@ -73,7 +73,9 @@ python_version = "3.13"
 strict = true
 # `scripts` is in scope on purpose: scripts/demo/* is the PR template's mandatory
 # "How to validate" artifact, so it is load-bearing process infrastructure.
-files = ["src", "tests", "scripts"]
+# `.claude/hooks` likewise: the two gating hooks guard private data and
+# invariant 2, and they were silently dead once while no gate looked at them.
+files = ["src", "tests", "scripts", ".claude/hooks"]
 pretty = true
 
 # ---------------------------------------------------------------- pytest

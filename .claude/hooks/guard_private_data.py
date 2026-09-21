@@ -41,8 +41,12 @@ SANCTIONED = re.compile(r"(^|/)tests/data/")
 # A CV-shaped filename anywhere outside the synthetic fixture tree.
 CV_SHAPED = re.compile(r"(cv|curriculum|resume)[^/]*\.(pdf|docx?|tex|txt)$", re.IGNORECASE)
 
-FORCE_ADD = re.compile(r"\bgit\s+add\b.*(-f\b|--force\b)")
+# The Bash patterns apply to ONE command segment at a time. Matched against the
+# whole line, `git add README.md && rm -f build.log` read as a force-add (the
+# `-f` belongs to `rm`), and a guard that cries wolf gets routed around.
+SEGMENT_SPLIT = re.compile(r"&&|\|\||[;&|\n]")
 GIT_ADD = re.compile(r"\bgit\s+add\b")
+FORCE_FLAG = re.compile(r"(^|\s)(-f|--force)(\s|$)")
 PRIVATE_IN_CMD = re.compile(r"(^|\s)(\./)?(data|cv_out)/|\.db(\s|$)")
 
 
@@ -54,38 +58,48 @@ def _deny(reason: str) -> None:
     raise DenyError(reason)
 
 
-def _check(tool: str, tool_input: dict[str, object]) -> None:
-    """Raise Deny if this call would put private data in the repository."""
-    if tool in {"Write", "Edit"}:
-        path = str(tool_input.get("file_path", "") or "")
-        if SANCTIONED.search(path):
-            return
-        if PRIVATE_PATH.search(path):
-            _deny(
-                f"{path} is private data (data/, cv_out/, *.db, .env). This repository is "
-                "PUBLIC. Write it outside the repo, or use tests/data/ with synthetic content."
-            )
-        if CV_SHAPED.search(path) and "tests/data/" not in path and "templates/" not in path:
-            _deny(
-                f"{path} looks like a real CV. Real CVs belong in cv_out/ -- gitignored, and a "
-                "separate top-level directory from data/. Only synthetic fixtures under "
-                "tests/data/ may be written inside the repo."
-            )
+def _check_write(path: str) -> None:
+    """Raise DenyError if writing `path` would put private data in the repository."""
+    if SANCTIONED.search(path):
+        return
+    if PRIVATE_PATH.search(path):
+        _deny(
+            f"{path} is private data (data/, cv_out/, *.db, .env). This repository is "
+            "PUBLIC. Write it outside the repo, or use tests/data/ with synthetic content."
+        )
+    if CV_SHAPED.search(path) and "templates/" not in path:
+        _deny(
+            f"{path} looks like a real CV. Real CVs belong in cv_out/ -- gitignored, and a "
+            "separate top-level directory from data/. Only synthetic fixtures under "
+            "tests/data/ may be written inside the repo."
+        )
 
-    if tool == "Bash":
-        cmd = " ".join(str(tool_input.get("command", "") or "").split())
-        if FORCE_ADD.search(cmd):
+
+def _check_bash(command: str) -> None:
+    """Raise DenyError if any segment of `command` stages private data."""
+    for segment in SEGMENT_SPLIT.split(" ".join(command.split())):
+        if not GIT_ADD.search(segment):
+            continue
+        if FORCE_FLAG.search(segment):
             _deny(
                 "`git add --force` defeats .gitignore, which is the only thing keeping your "
                 "knowledge base, documents and generated CVs out of a public repository. "
                 "If a file genuinely must be tracked, remove its ignore rule deliberately "
                 "in its own commit."
             )
-        if GIT_ADD.search(cmd) and PRIVATE_IN_CMD.search(cmd):
+        if PRIVATE_IN_CMD.search(segment):
             _deny(
                 "That `git add` names private data (data/, cv_out/ or a database file). "
                 "This repository is PUBLIC -- do not track it."
             )
+
+
+def _check(tool: str, tool_input: dict[str, object]) -> None:
+    """Raise DenyError if this call would put private data in the repository."""
+    if tool in {"Write", "Edit"}:
+        _check_write(str(tool_input.get("file_path", "") or ""))
+    elif tool == "Bash":
+        _check_bash(str(tool_input.get("command", "") or ""))
 
 
 def main() -> int:
