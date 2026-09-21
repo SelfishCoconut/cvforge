@@ -29,7 +29,7 @@ Done:
 - CI (7 jobs), security (pip-audit, Bandit, Gitleaks, CodeQL), weekly sanity
   metrics, Dependabot, issue and PR templates.
 - SRS with FR-01..FR-40 and NFR-01..NFR-10, one GitHub issue per requirement.
-- ADR-0001..0007 (see `docs/adr/README.md`).
+- ADR-0001..0008 (see `docs/adr/README.md`). Released as `v0.1.0`.
 - MkDocs site with mkdocstrings API pages and authored C4/ER/flow diagrams.
 - `.claude` toolkit: 11 skills, 4 agents, 4 hooks, plugin set enabled
   (Semgrep deliberately dropped). The two gating hooks are Python files that
@@ -40,8 +40,14 @@ Done:
 Write the M1 implementation plan (`superpowers:writing-plans`) covering FR-01 to
 FR-13 and FR-38 to FR-40: the SQLite schema with provenance (SQLAlchemy Core +
 Alembic per ADR-0006), the LLM provider layer, the conversational ingest agent,
-the proposal → review → commit pipeline, and the chat + review UI. Open M1
-issues already on the tracker (#47, #48, #50) feed into it.
+the proposal → review → commit pipeline, and the chat + review UI. The plan must
+also schedule:
+- NFR-01, -02, -08 and -09 (#59–#62), moved out of M0 by ADR-0008 because no
+  test enforces them yet.
+- The M1 issues already on the tracker: #47, #48, #50 and #53–#58.
+
+One decision is waiting on Álvaro: #64, the personal email address in public git
+history.
 
 **The issue-first rule is now in force.** Every change starts from a GitHub issue,
 goes through a branch and a PR containing `Closes #<n>`, and merges only on green
