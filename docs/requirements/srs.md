@@ -38,9 +38,9 @@ Each requirement below is a subsection with six fields, in this order:
   `achievement` and `responsibility`, each carrying a name, a normalized name, a
   summary and a knowledge state.
 - **Acceptance criteria**:
-  - [ ] One entity of each of the eight kinds round-trips through the database with every common field preserved
-  - [ ] A kind outside the closed set is rejected before reaching the database
-  - [ ] `normalized_name` is derived deterministically (case-folded, whitespace-collapsed) and is queryable
+  - [x] One entity of each of the eight kinds round-trips through the database with every common field preserved
+  - [x] A kind outside the closed set is rejected before reaching the database
+  - [x] `normalized_name` is derived deterministically (case-folded, whitespace-collapsed) and is queryable
 - **Traces to**: issue #5, tests `tests/unit/test_entity_model.py`
 
 ### FR-02 — Store typed relationships between entities
@@ -53,10 +53,10 @@ Each requirement below is a subsection with six fields, in this order:
   `demonstrates`, `taught_by`, `part_of`, `related_to`), unique per
   (source, relationship, destination).
 - **Acceptance criteria**:
-  - [ ] An edge created with a closed-vocabulary `rel` and `started_at`/`ended_at` round-trips with all fields preserved
-  - [ ] An edge whose `rel` is outside the closed vocabulary is rejected before reaching the database
-  - [ ] Inserting a second edge with the same (`src_id`, `rel`, `dst_id`) violates the UNIQUE constraint rather than silently duplicating
-  - [ ] An edge with `ended_at` earlier than `started_at` is rejected rather than stored inconsistently
+  - [x] An edge created with a closed-vocabulary `rel` and `started_at`/`ended_at` round-trips with all fields preserved
+  - [x] An edge whose `rel` is outside the closed vocabulary is rejected before reaching the database
+  - [x] Inserting a second edge with the same (`src_id`, `rel`, `dst_id`) violates the UNIQUE constraint rather than silently duplicating
+  - [x] An edge with `ended_at` earlier than `started_at` is rejected rather than stored inconsistently
 - **Traces to**: issue #6, tests `tests/unit/test_edge_model.py`
 
 ### FR-03 — Bind every fact to its evidence
@@ -67,10 +67,10 @@ Each requirement below is a subsection with six fields, in this order:
   edge, at least one assertion referencing an evidence span within a source, so
   that the origin of any stored fact can be displayed.
 - **Acceptance criteria**:
-  - [ ] Committing an entity without at least one assertion raises and writes nothing
-  - [ ] Committing an edge without at least one assertion raises and writes nothing
-  - [ ] Given a stored fact, the API returns its source kind, locator and excerpt
-  - [ ] A repository-wide invariant test finds zero entities and zero edges lacking an assertion
+  - [x] Committing an entity without at least one assertion raises and writes nothing
+  - [x] Committing an edge without at least one assertion raises and writes nothing
+  - [x] Given a stored fact, the API returns its source kind, locator and excerpt
+  - [x] A repository-wide invariant test finds zero entities and zero edges lacking an assertion
 - **Traces to**: issue #7, tests `tests/unit/test_provenance.py`, `tests/integration/test_invariants.py`
 
 ### FR-04 — Track a knowledge state per entity
@@ -81,10 +81,10 @@ Each requirement below is a subsection with six fields, in this order:
   of `confirmed | learning | gap | archived`, changeable only through an
   approved `set_state` operation.
 - **Acceptance criteria**:
-  - [ ] Each of the four states round-trips and is filterable in a query
-  - [ ] A state value outside the closed set is rejected before reaching the database
-  - [ ] Changing an entity's state without a committed `set_state` operation is not possible through the write path
-  - [ ] "Something Álvaro has but never recorded" produces no entity — it surfaces only as a match verdict (§4.4), never as an implicit state
+  - [x] Each of the four states round-trips and is filterable in a query
+  - [x] A state value outside the closed set is rejected before reaching the database
+  - [x] Changing an entity's state without a committed `set_state` operation is not possible through the write path
+  - [x] "Something Álvaro has but never recorded" produces no entity — it surfaces only as a match verdict (§4.4), never as an implicit state
 - **Traces to**: issue #8, tests `tests/unit/test_entity_model.py`
 
 ### FR-05 — Embedding-based similarity search over entities
@@ -109,10 +109,10 @@ Each requirement below is a subsection with six fields, in this order:
   mutation through `src/cvforge/kb/apply.py`, the only module permitted to write
   those tables; no agent tool may write.
 - **Acceptance criteria**:
-  - [ ] A dedicated test scans `src/` and fails if any module other than `kb/apply.py` executes an INSERT/UPDATE/DELETE against the entity, edge or assertion tables
+  - [x] A dedicated test scans `src/` and fails if any module other than `kb/apply.py` executes an INSERT/UPDATE/DELETE against the entity, edge or assertion tables
   - [ ] Every Pydantic AI agent's tool list contains only read tools (`search_entities`, `get_entity`, `neighbours`, `find_similar`)
-  - [ ] Calling into `kb/apply.py` outside of an accepted/edited operation commit raises rather than silently writing
-  - [ ] Introducing a write call outside `kb/apply.py` is caught by the `kb-write-path` hook / CI check rather than merging silently
+  - [x] Calling into `kb/apply.py` outside of an accepted/edited operation commit raises rather than silently writing
+  - [x] Introducing a write call outside `kb/apply.py` is caught by the `kb-write-path` hook / CI check rather than merging silently
 - **Traces to**: issue #10, tests `tests/unit/test_write_path_invariant.py`
 
 ## Review pipeline
@@ -137,12 +137,15 @@ Each requirement below is a subsection with six fields, in this order:
 - **Source**: design spec §4.5
 - **Description**: The system shall classify every operation as
   `new | known | duplicate | conflict`, naming the related target entity or edge
-  whenever the classification is `duplicate` or `conflict`.
+  whenever the classification is not `new`. The four values are defined in
+  ADR-0009, and the classification is computed against stored rows, not asked of
+  the model.
 - **Acceptance criteria**:
-  - [ ] A proposal for a genuinely new fact classifies as `new` with no named target
-  - [ ] A proposal restating an existing fact classifies `known`/`duplicate` and names the matching id
-  - [ ] A proposal contradicting a stored fact classifies `conflict` and names the conflicting id
-  - [ ] An operation classified `duplicate`/`conflict` with no named target is rejected at validation rather than reaching review
+  - [x] A proposal for a genuinely new fact classifies as `new` with no named target
+  - [x] A proposal restating an existing fact under the same normalized name (for a kind whose name is its identity) classifies `known` — never `duplicate` — and names the matching id
+  - [x] A differently named candidate that similarity search matches to a stored entity classifies `duplicate` and names that entity
+  - [x] A proposal contradicting a stored fact classifies `conflict` and names the conflicting id
+  - [x] An operation classified `known`/`duplicate`/`conflict` with no named target, or `new` with one, is rejected at validation rather than reaching review
 - **Traces to**: issue #12, tests `tests/unit/test_classification.py`
 
 ### FR-09 — Operations are independently reviewable
@@ -152,10 +155,10 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall let Álvaro accept, edit or reject each
   operation in a proposal independently of the others in the same proposal.
 - **Acceptance criteria**:
-  - [ ] Rejecting one operation in a multi-operation proposal leaves sibling operations' status untouched
-  - [ ] Editing an operation persists `edited_payload_json` separately from the originally proposed payload
-  - [ ] Committing a proposal applies only `accepted`/`edited` operations, skipping `rejected` ones
-  - [ ] An operation left `pending` cannot be committed
+  - [x] Rejecting one operation in a multi-operation proposal leaves sibling operations' status untouched
+  - [x] Editing an operation persists `edited_payload_json` separately from the originally proposed payload
+  - [x] Committing a proposal applies only `accepted`/`edited` operations, skipping `rejected` ones
+  - [x] An operation left `pending` cannot be committed
 - **Traces to**: issue #13, tests `tests/unit/test_review_pipeline.py`
 
 ### FR-10 — Commit atomically
@@ -166,10 +169,10 @@ Each requirement below is a subsection with six fields, in this order:
   a proposal in one transaction, writing the entities, edges and assertions and
   recording a `commit_log` row referencing the applied operation ids.
 - **Acceptance criteria**:
-  - [ ] Committing a proposal with N accepted operations writes all N inside a single transaction
-  - [ ] A failure on the last operation of a batch rolls back the entire proposal rather than leaving earlier operations applied
-  - [ ] After commit, a `commit_log` row exists whose `operation_ids_json` matches exactly the applied operations
-  - [ ] Every entity/edge created by the commit has ≥1 assertion written in the same transaction — none is left without one
+  - [x] Committing a proposal with N accepted operations writes all N inside a single transaction
+  - [x] A failure on the last operation of a batch rolls back the entire proposal rather than leaving earlier operations applied
+  - [x] After commit, a `commit_log` row exists whose `operation_ids_json` matches exactly the applied operations
+  - [x] Every entity/edge created by the commit has ≥1 assertion written in the same transaction — none is left without one
 - **Traces to**: issue #14, tests `tests/integration/test_commit_pipeline.py`
 
 ## Conversational agent
@@ -196,9 +199,9 @@ Each requirement below is a subsection with six fields, in this order:
   evidence.
 - **Acceptance criteria**:
   - [ ] Each chat message contributing to a proposal has a corresponding `source`/`evidence` row with a message-id locator
-  - [ ] Given a stored assertion originating from chat, the API resolves it back to the literal message text
-  - [ ] An operation with no source backing it is rejected before commit
-  - [ ] An assertion is never orphaned from a source — the foreign key is enforced, not just conventional
+  - [x] Given a stored assertion originating from chat, the API resolves it back to the literal message text
+  - [x] An operation with no source backing it is rejected before commit
+  - [x] An assertion is never orphaned from a source — the foreign key is enforced, not just conventional
 - **Traces to**: issue #16, tests `tests/unit/test_provenance.py`
 
 ### FR-13 — Stream agent responses
@@ -252,10 +255,10 @@ Each requirement below is a subsection with six fields, in this order:
   the existing knowledge base and classify each as
   `new | known | duplicate | conflict` before review.
 - **Acceptance criteria**:
-  - [ ] A candidate identical to an existing entity/edge classifies `duplicate`/`known`, naming the existing id
+  - [ ] A candidate identical to an existing entity/edge classifies `known`, naming the existing id; a differently worded candidate that similarity search matches classifies `duplicate`, naming it (ADR-0009)
   - [ ] A candidate contradicting a stored fact (e.g. conflicting employment dates) classifies `conflict`, naming the conflicting id
   - [ ] A wholly new candidate classifies `new`
-  - [ ] Ingesting the same document twice does not create duplicate entities — the second run's candidates classify `duplicate`/`known` rather than `new`
+  - [ ] Ingesting the same document twice does not create duplicate entities — the second run's candidates classify `known` rather than `new`
 - **Traces to**: issue #20, tests `tests/integration/test_document_dedup.py`
 
 ## Job intake
@@ -721,10 +724,10 @@ Each requirement below is a subsection with six fields, in this order:
   documented export procedure so the data is portable and inspectable outside
   the app.
 - **Acceptance criteria**:
-  - [ ] The running app writes to exactly one `.db` file path, confirmed by inspecting open connections during a test run
-  - [ ] A documented export command produces a portable copy that a test can load in a fresh location
-  - [ ] The export procedure is documented in `docs/` with the exact command
-  - [ ] Restoring from an exported copy reproduces the same entity/edge/assertion counts as the source
+  - [x] The running app writes to exactly one `.db` file path, confirmed by inspecting open connections during a test run
+  - [x] A documented export command produces a portable copy that a test can load in a fresh location
+  - [x] The export procedure is documented in `docs/` with the exact command
+  - [x] Restoring from an exported copy reproduces the same entity/edge/assertion counts as the source
 - **Traces to**: issue #62, tests `tests/integration/test_db_export.py`
 
 ### NFR-10 — Conversational proposal latency

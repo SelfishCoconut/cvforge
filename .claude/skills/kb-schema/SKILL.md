@@ -14,10 +14,10 @@ Read `docs/architecture/knowledge-model.md` and ADR-0001 before touching anythin
 ## The invariants a change must preserve
 
 1. **One write path.** `src/cvforge/kb/apply.py` is the only module that writes
-   `entity`, `edge` or `assertion` rows. New mutation logic goes *there*, not
-   wherever it is convenient. How `apply.py` talks to SQLite is a separate,
-   still-open decision (issue #51) — nothing in this invariant depends on the
-   answer, and this skill does not presume one.
+   `entity`, `edge` or `assertion` rows — and, per ADR-0006, every `insert()`,
+   `update()` and `delete()` in `src/` lives there. New mutation logic goes
+   *there*, not wherever it is convenient. `tests/unit/test_write_path_invariant.py`
+   scans `src/` with `ast` and fixes `apply.py`'s public surface.
 2. **Every entity and edge has ≥1 assertion** bound to an `evidence` span in a
    `source`. A new entity kind needs no new provenance mechanism — it needs to use
    the existing one.
@@ -37,7 +37,11 @@ Read `docs/architecture/knowledge-model.md` and ADR-0001 before touching anythin
 2. **Decide whether it is a decision.** New entity kind, new `rel` value, new
    provenance semantics, or a change to what "confirmed" means → write an ADR with
    the `adr` skill before the code.
-3. **Write the migration.** Additive where possible. A destructive migration must
+3. **Write the migration.** Edit `kb/schema.py`, then generate a revision
+   into `src/cvforge/kb/migrations/versions/` (autogenerate against a migrated
+   copy, then read and clean it — batch mode is on, because SQLite cannot ALTER
+   constraints). `tests/integration/test_migrations.py` fails if schema and
+   migrations disagree. Additive where possible. A destructive migration must
    be reversible or must export first — the user's knowledge base is irreplaceable
    and is not in version control.
 4. **Update `apply.py` and its invariant tests together.** A new kind that

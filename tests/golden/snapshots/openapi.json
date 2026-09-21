@@ -1,6 +1,186 @@
 {
   "components": {
     "schemas": {
+      "Committed": {
+        "description": "What a commit wrote.\n\nAttributes:\n    commit_id: The `commit_log` row.\n    applied_operation_ids: Applied operations, in order.\n    entity_ids: For each applied `create_entity` seq, the entity it resolved to.",
+        "properties": {
+          "applied_operation_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Applied Operation Ids",
+            "type": "array"
+          },
+          "commit_id": {
+            "title": "Commit Id",
+            "type": "integer"
+          },
+          "entity_ids": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Entity Ids",
+            "type": "object"
+          }
+        },
+        "required": [
+          "commit_id",
+          "applied_operation_ids",
+          "entity_ids"
+        ],
+        "title": "Committed",
+        "type": "object"
+      },
+      "EdgeRecord": {
+        "description": "One typed relationship.",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "dst_id": {
+            "title": "Dst Id",
+            "type": "integer"
+          },
+          "ended_at": {
+            "title": "Ended At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "rel": {
+            "title": "Rel",
+            "type": "string"
+          },
+          "src_id": {
+            "title": "Src Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "title": "Started At"
+          }
+        },
+        "required": [
+          "id",
+          "src_id",
+          "rel",
+          "dst_id",
+          "confidence",
+          "started_at",
+          "ended_at",
+          "note"
+        ],
+        "title": "EdgeRecord",
+        "type": "object"
+      },
+      "EntityKind": {
+        "description": "The eight entity kinds (spec §4.1).",
+        "enum": [
+          "skill",
+          "project",
+          "organization",
+          "role",
+          "education",
+          "credential",
+          "achievement",
+          "responsibility"
+        ],
+        "title": "EntityKind",
+        "type": "string"
+      },
+      "EntityRecord": {
+        "description": "One entity with its kind-specific attributes.",
+        "properties": {
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
+          },
+          "first_seen_at": {
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EntityKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "normalized_name": {
+            "title": "Normalized Name",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/KnowledgeState"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "normalized_name",
+          "summary",
+          "state",
+          "first_seen_at",
+          "updated_at"
+        ],
+        "title": "EntityRecord",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "Health": {
         "description": "Liveness payload.\n\nAttributes:\n    status: Always `ok` when the process is serving.\n    version: The running `cvforge` package version.",
         "properties": {
@@ -19,6 +199,306 @@
         ],
         "title": "Health",
         "type": "object"
+      },
+      "JsonValue": {},
+      "KnowledgeState": {
+        "description": "Knowledge state of an entity (spec §4.4). Not a match verdict.",
+        "enum": [
+          "confirmed",
+          "learning",
+          "gap",
+          "archived"
+        ],
+        "title": "KnowledgeState",
+        "type": "string"
+      },
+      "OperationRecord": {
+        "description": "One operation of a proposal, with its review state.",
+        "properties": {
+          "classification": {
+            "title": "Classification",
+            "type": "string"
+          },
+          "edited_payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited Payload"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "op_type": {
+            "title": "Op Type",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "target_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kind"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "op_type",
+          "payload",
+          "classification",
+          "target_kind",
+          "target_id",
+          "status",
+          "edited_payload",
+          "rationale"
+        ],
+        "title": "OperationRecord",
+        "type": "object"
+      },
+      "ProposalRecord": {
+        "description": "A proposal and its operations in `seq` order.",
+        "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/OperationRecord"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "source_id",
+          "status",
+          "summary",
+          "created_at",
+          "applied_at",
+          "operations"
+        ],
+        "title": "ProposalRecord",
+        "type": "object"
+      },
+      "ProvenanceRecord": {
+        "description": "One assertion resolved back to the literal evidence it cites (FR-03).",
+        "properties": {
+          "assertion_id": {
+            "title": "Assertion Id",
+            "type": "integer"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "assertion_id",
+          "field",
+          "value",
+          "source_id",
+          "source_kind",
+          "source_label",
+          "locator",
+          "excerpt"
+        ],
+        "title": "ProvenanceRecord",
+        "type": "object"
+      },
+      "Review": {
+        "additionalProperties": false,
+        "description": "A reviewer's decision on one operation.\n\nAttributes:\n    decision: ``accept``, ``edit`` or ``reject``.\n    edited_payload: The replacement payload, for ``edit`` only.",
+        "properties": {
+          "decision": {
+            "enum": [
+              "accept",
+              "edit",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "edited_payload": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited Payload"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "Review",
+        "type": "object"
+      },
+      "TargetKind": {
+        "description": "What an assertion or a classification points at.",
+        "enum": [
+          "entity",
+          "edge"
+        ],
+        "title": "TargetKind",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
       }
     }
   },
@@ -27,6 +507,166 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/entities": {
+      "get": {
+        "description": "List entities, optionally filtered by kind and knowledge state.\n\nArgs:\n    conn: Read connection.\n    kind: Only this kind.\n    state: Only this knowledge state.\n\nReturns:\n    Matching entities.",
+        "operationId": "list_entities_api_entities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EntityKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/KnowledgeState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EntityRecord"
+                  },
+                  "title": "Response List Entities Api Entities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Entities",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/entities/{entity_id}": {
+      "get": {
+        "description": "Return one entity with its kind-specific attributes.\n\nArgs:\n    conn: Read connection.\n    entity_id: The entity id.\n\nReturns:\n    The entity.\n\nRaises:\n    HTTPException: 404 if it does not exist.",
+        "operationId": "get_entity_api_entities__entity_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Entity",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/entities/{entity_id}/edges": {
+      "get": {
+        "description": "Return every edge touching an entity.\n\nArgs:\n    conn: Read connection.\n    entity_id: The entity id.\n\nReturns:\n    The edges.",
+        "operationId": "entity_edges_api_entities__entity_id__edges_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeRecord"
+                  },
+                  "title": "Response Entity Edges Api Entities  Entity Id  Edges Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Entity Edges",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "description": "Report that the process is serving, and which version is running.\n\nReturns:\n    The liveness payload.",
@@ -46,6 +686,209 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/proposals/{proposal_id}": {
+      "get": {
+        "description": "Return a proposal and its operations.\n\nArgs:\n    conn: Read connection.\n    proposal_id: The proposal id.\n\nReturns:\n    The proposal.",
+        "operationId": "get_proposal_api_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Proposal",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/proposals/{proposal_id}/commit": {
+      "post": {
+        "description": "Apply the accepted and edited operations in one transaction.\n\nArgs:\n    db: The engine.\n    proposal_id: The proposal.\n\nReturns:\n    What was written.",
+        "operationId": "commit_api_proposals__proposal_id__commit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Committed"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Commit",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/proposals/{proposal_id}/operations/{operation_id}/review": {
+      "post": {
+        "description": "Accept, edit or reject one operation; its siblings are untouched.\n\nArgs:\n    db: The engine. The decision is written through `kb.apply`.\n    proposal_id: The proposal the operation must belong to.\n    operation_id: The operation.\n    body: The decision.\n\nReturns:\n    The proposal after the decision.\n\nRaises:\n    HTTPException: 404 if the operation is not part of this proposal.",
+        "operationId": "review_api_proposals__proposal_id__operations__operation_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "title": "Operation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Review"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/provenance/{target_kind}/{target_id}": {
+      "get": {
+        "description": "Show where a stored fact came from: source kind, locator and excerpt (FR-03).\n\nArgs:\n    conn: Read connection.\n    target_kind: ``entity`` or ``edge``.\n    target_id: Its id.\n\nReturns:\n    One record per assertion.\n\nRaises:\n    HTTPException: 404 if nothing is asserted about that target.",
+        "operationId": "provenance_api_provenance__target_kind___target_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TargetKind"
+            }
+          },
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "title": "Target Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProvenanceRecord"
+                  },
+                  "title": "Response Provenance Api Provenance  Target Kind   Target Id  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Provenance",
+        "tags": [
+          "knowledge"
         ]
       }
     }
