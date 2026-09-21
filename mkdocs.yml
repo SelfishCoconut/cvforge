@@ -85,4 +85,5 @@ nav:
       - 0005 Action pinning policy: adr/0005-action-pinning-policy.md
       - 0006 SQLAlchemy Core and Alembic: adr/0006-sqlalchemy-core-and-alembic.md
       - 0007 Material native Mermaid: adr/0007-material-native-mermaid.md
+      - 0008 Close M0 on evidence: adr/0008-close-m0-on-evidence-not-issues.md
   - API reference: reference/api.md

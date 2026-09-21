@@ -606,7 +606,7 @@ Each requirement below is a subsection with six fields, in this order:
 
 ### NFR-01 — Local-first by default
 - **Priority**: Must
-- **Milestone**: M0
+- **Milestone**: M1
 - **Source**: design spec §1
 - **Description**: The system shall make no outbound network calls by default
   beyond the configured local Ollama endpoint; external LLM providers and web
@@ -616,11 +616,11 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] Enabling Anthropic/OpenAI/search requires an explicit opt-in setting; without it, calls to those providers are refused before being attempted
   - [ ] CI's unit/integration/golden suites run with non-local network access disabled and still pass, proving no hidden outbound dependency
   - [ ] `docs/` states the opt-in providers and how to enable each one
-- **Traces to**: issue #1, tests `tests/unit/test_network_policy.py`
+- **Traces to**: issue #59, tests `tests/unit/test_network_policy.py`
 
 ### NFR-02 — Localhost binding, no authentication
 - **Priority**: Must
-- **Milestone**: M0
+- **Milestone**: M1
 - **Source**: design spec §3
 - **Description**: The system shall bind the web server to `127.0.0.1` only,
   with no authentication layer, reflecting its single-user local-tool design.
@@ -629,7 +629,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] A simulated request from a non-localhost origin cannot reach the API in the default configuration
   - [ ] An API route inventory test confirms no login/session/token endpoint exists
   - [ ] Exposing a different bind address requires an explicit, documented override rather than a default
-- **Traces to**: issue #1, tests `tests/integration/test_app_bind.py`
+- **Traces to**: issue #60, tests `tests/integration/test_app_bind.py`
 
 ### NFR-03 — Test coverage floor
 - **Priority**: Must
@@ -638,9 +638,9 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The test suite shall cover at least 90% of lines and 90% of
   branches in `src/`, enforced automatically.
 - **Acceptance criteria**:
-  - [ ] `fail_under = 90` and `branch = true` are set in `pyproject.toml`
-  - [ ] The CI unit job fails when coverage drops below the floor
-  - [ ] No test is skipped or xfailed without an issue reference in the skip reason
+  - [x] `fail_under = 90` and `branch = true` are set in `pyproject.toml`
+  - [x] The CI unit job fails when coverage drops below the floor
+  - [x] No test is skipped or xfailed without an issue reference in the skip reason
 - **Traces to**: issue #1, `.github/workflows/ci.yml`
 
 ### NFR-04 — Static quality gates
@@ -651,10 +651,10 @@ Each requirement below is a subsection with six fields, in this order:
   and `scripts`, and stay under xenon max-absolute complexity grade C for every
   function.
 - **Acceptance criteria**:
-  - [ ] `mypy --strict src tests scripts` exits 0 in CI
-  - [ ] The xenon complexity check exits 0 in CI at max-absolute grade C
-  - [ ] A function introduced above grade C fails the CI `quality` job rather than merging
-  - [ ] A type error anywhere in `src`, `tests` or `scripts` fails CI rather than surfacing only at runtime
+  - [x] `mypy --strict src tests scripts` exits 0 in CI
+  - [x] The xenon complexity check exits 0 in CI at max-absolute grade C
+  - [x] A function introduced above grade C fails the CI `quality` job rather than merging
+  - [x] A type error anywhere in `src`, `tests` or `scripts` fails CI rather than surfacing only at runtime
 - **Traces to**: issue #1, `.github/workflows/ci.yml`
 
 ### NFR-05 — Zero unsupported claims in automatic mode
@@ -679,11 +679,11 @@ Each requirement below is a subsection with six fields, in this order:
   `data/`, `*.db` and `cv_out/` are gitignored, and a `guard-private-data` hook
   blocks writes or commits that would add real career data anyway.
 - **Acceptance criteria**:
-  - [ ] `.gitignore` contains `data/`, `*.db` and `cv_out/`
-  - [ ] Staging a file under `data/`, or a CV-shaped file outside `tests/data/`, is blocked by the `guard-private-data` hook with a non-zero exit
+  - [x] `.gitignore` contains `data/`, `*.db` and `cv_out/`
+  - [x] Staging a file under `data/`, or a CV-shaped file outside `tests/data/`, is blocked by the `guard-private-data` hook with a PreToolUse `deny` decision
   - [ ] A full-history secret/data scan finds no real personal data across repository history
-  - [ ] Every fixture under `tests/` is synthetic; none is a real CV, job posting or knowledge-base export
-- **Traces to**: issue #1, `.github/workflows/security.yml`, `.claude/hooks/guard-private-data.sh`
+  - [x] Every fixture under `tests/` is synthetic; none is a real CV, job posting or knowledge-base export
+- **Traces to**: issue #1, `.github/workflows/security.yml`, `.claude/hooks/guard_private_data.py`; open criterion 3 tracked in issue #64
 
 ### NFR-07 — Untrusted external content
 - **Priority**: Must
@@ -701,7 +701,7 @@ Each requirement below is a subsection with six fields, in this order:
 
 ### NFR-08 — No live model calls in tests
 - **Priority**: Must
-- **Milestone**: M0
+- **Milestone**: M1
 - **Source**: design spec §9, §4.7
 - **Description**: Unit, integration and golden tests shall never call a live
   LLM or embedding model; all model-shaped behaviour is exercised via Pydantic
@@ -711,11 +711,11 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] A check finds no live `ollama`/`anthropic`/`openai` client instantiation reachable from `tests/unit`, `tests/integration` or `tests/golden`
   - [ ] Every agent test constructs its agent with `TestModel` or a `FunctionModel` stand-in, never the real provider
   - [ ] Introducing a live call in a test is caught by that check and fails CI rather than silently incurring cost or latency
-- **Traces to**: issue #1, `tests/conftest.py`, `.github/workflows/ci.yml`
+- **Traces to**: issue #61, `tests/conftest.py`, `.github/workflows/ci.yml`
 
 ### NFR-09 — Single-file database with a documented export
 - **Priority**: Must
-- **Milestone**: M0
+- **Milestone**: M1
 - **Source**: design spec §2 D2
 - **Description**: The knowledge base shall live in one SQLite file, with a
   documented export procedure so the data is portable and inspectable outside
@@ -725,7 +725,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] A documented export command produces a portable copy that a test can load in a fresh location
   - [ ] The export procedure is documented in `docs/` with the exact command
   - [ ] Restoring from an exported copy reproduces the same entity/edge/assertion counts as the source
-- **Traces to**: issue #1, tests `tests/integration/test_db_export.py`
+- **Traces to**: issue #62, tests `tests/integration/test_db_export.py`
 
 ### NFR-10 — Conversational proposal latency
 - **Priority**: Should
