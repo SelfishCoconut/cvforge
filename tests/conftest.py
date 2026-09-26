@@ -50,9 +50,7 @@ def _never_open_a_database_outside_tmp(
     `data_dir` is the real `./data`. A test that forgets to pass its own `data_dir`
     would silently create, migrate and back up the user's real knowledge base.
     """
-    import cvforge.app as app_module
-
-    real_open = app_module.open_database
+    real_open = migrate.open_database
 
     def guarded(path: Path, backup_dir: Path) -> sa.Engine:
         assert path.resolve().is_relative_to(
@@ -60,7 +58,7 @@ def _never_open_a_database_outside_tmp(
         ), f"a test opened {path}, outside its tmp_path; pass Settings(data_dir=tmp_path / 'data')"
         return real_open(path, backup_dir)
 
-    monkeypatch.setattr(app_module, "open_database", guarded)
+    monkeypatch.setattr("cvforge.app.open_database", guarded)
     yield
 
 

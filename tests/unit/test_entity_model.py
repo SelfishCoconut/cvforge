@@ -51,8 +51,13 @@ def test_each_kind_round_trips_with_every_field(
         KnowledgeState.CONFIRMED,
     )
     assert stored.normalized_name == f"synthetic {kind.value}"
-    expected = CreateEntity.model_validate({**create, "evidence_id": 1}).typed_attributes()
-    assert {k: v for k, v in stored.attributes.items() if v is not None} == expected
+    # Compare with the literal input, not with `typed_attributes()`: that function
+    # produced what was stored, so a field it silently dropped would agree with itself.
+    literal = {
+        key: date.fromisoformat(value) if key.endswith("_at") and isinstance(value, str) else value
+        for key, value in ONE_OF_EACH[kind].items()
+    }
+    assert {k: v for k, v in stored.attributes.items() if v is not None} == literal
 
 
 def test_unknown_kind_is_rejected_by_the_model() -> None:

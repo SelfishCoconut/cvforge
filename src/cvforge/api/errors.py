@@ -1,4 +1,18 @@
-"""Map write-path refusals to HTTP responses, and give routes the database."""
+"""Map write-path refusals to HTTP responses, and give routes the database.
+
+The contract every route shares:
+
+| Refusal | Status |
+|---|---|
+| `NotFoundError` | 404 |
+| `ProposalNotOpenError`, `OperationsPendingError` | 409 |
+| `InvalidEditError`, `UnsupportedOperationError` | 422 |
+| any other `ApplyError` | 400 |
+| `sqlalchemy.exc.IntegrityError` (the database rejected the change) | 409 |
+
+The body is always `{"detail": "<message>"}`, and a refusal leaves the database
+as it was.
+"""
 
 from collections.abc import Iterator
 
@@ -56,9 +70,12 @@ async def _apply_error(_request: Request, error: Exception) -> JSONResponse:
 
 
 async def _integrity_error(_request: Request, error: Exception) -> JSONResponse:
+    # `orig` is the driver's message ("UNIQUE constraint failed: ..."). The wrapper's
+    # own text also carries the SQL statement and its bound parameters.
+    reason = getattr(error, "orig", error)
     return JSONResponse(
         status_code=409,
-        content={"detail": f"the database rejected the change; nothing was written: {error}"},
+        content={"detail": f"the database rejected the change; nothing was written: {reason}"},
     )
 
 
