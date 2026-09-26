@@ -86,4 +86,5 @@ nav:
       - 0006 SQLAlchemy Core and Alembic: adr/0006-sqlalchemy-core-and-alembic.md
       - 0007 Material native Mermaid: adr/0007-material-native-mermaid.md
       - 0008 Close M0 on evidence: adr/0008-close-m0-on-evidence-not-issues.md
+      - 0009 Review-pipeline semantics: adr/0009-review-pipeline-semantics.md
   - API reference: reference/api.md
