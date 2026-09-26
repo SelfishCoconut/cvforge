@@ -40,6 +40,30 @@ def client(kb: sa.Engine) -> Iterator[TestClient]:
         yield test_client
 
 
+@pytest.fixture(autouse=True)
+def _never_open_a_database_outside_tmp(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[None]:
+    """Fail any test whose app would open a knowledge base outside its own `tmp_path`.
+
+    `create_app` opens `Settings().database_path` when it starts, and the default
+    `data_dir` is the real `./data`. A test that forgets to pass its own `data_dir`
+    would silently create, migrate and back up the user's real knowledge base.
+    """
+    import cvforge.app as app_module
+
+    real_open = app_module.open_database
+
+    def guarded(path: Path, backup_dir: Path) -> sa.Engine:
+        assert path.resolve().is_relative_to(
+            tmp_path.resolve()
+        ), f"a test opened {path}, outside its tmp_path; pass Settings(data_dir=tmp_path / 'data')"
+        return real_open(path, backup_dir)
+
+    monkeypatch.setattr(app_module, "open_database", guarded)
+    yield
+
+
 # --- golden-snapshot harness -------------------------------------------------
 
 SNAPSHOT_DIR = Path(__file__).parent / "golden" / "snapshots"
