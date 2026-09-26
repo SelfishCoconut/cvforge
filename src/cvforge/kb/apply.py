@@ -16,9 +16,10 @@ constructs a write. Its public surface is deliberately small, and fixed by
   (invariant 3).
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Literal
 
 import sqlalchemy as sa
@@ -98,6 +99,40 @@ def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+@contextmanager
+def _write_transaction(engine: sa.Engine) -> Iterator[sa.Connection]:
+    """Open a transaction that holds SQLite's write lock before anything is read.
+
+    pysqlite begins a transaction lazily, just before the first INSERT, UPDATE or
+    DELETE. A plain `engine.begin()` therefore runs its checks (is the proposal
+    still open? which operations are pending?) outside any lock and then writes
+    on what it read, so two requests can pass the same check and both write: a
+    proposal committed twice, or a reject landing after the commit it should have
+    prevented. `BEGIN IMMEDIATE` takes the lock first. The second request waits,
+    then reads the state the first one left behind.
+
+    Args:
+        engine: The knowledge-base engine.
+
+    Yields:
+        A connection inside the transaction. It is committed when the block ends
+        and rolled back if the block raises.
+    """
+    with engine.connect() as conn:
+        conn.exec_driver_sql("BEGIN IMMEDIATE")
+        try:
+            yield conn
+        except BaseException:
+            conn.rollback()
+            raise
+        conn.commit()
+
+
+def _json(value: date | float | str | None) -> JsonValue:
+    """Render a column value the way an assertion's `value_json` stores it."""
+    return value.isoformat() if isinstance(value, date) else value
+
+
 # --- intake -------------------------------------------------------------------
 
 
@@ -151,7 +186,11 @@ def record_evidence(engine: sa.Engine, source_id: int, locator: str, excerpt: st
 
     Raises:
         NotFoundError: If the source does not exist.
+        ValueError: If the locator or the excerpt is blank. A span that cites
+            nothing satisfies invariant 3 in letter and not in spirit.
     """
+    if not locator.strip() or not excerpt.strip():
+        raise ValueError("evidence needs a locator and an excerpt; both must be non-blank")
     try:
         with engine.begin() as conn:
             result = conn.execute(
@@ -224,7 +263,13 @@ def review_operation(
     """Accept, edit or reject one operation, independently of its siblings (FR-09).
 
     An edit keeps the original payload and stores the reviewer's version beside
-    it in `edited_payload_json`; the commit applies the edited one.
+    it in `edited_payload_json`; the commit applies the edited one. Each decision
+    replaces the previous one, so accepting or rejecting an operation discards an
+    earlier edit of it. An `edited` operation is already approved: to approve it
+    as edited there is nothing more to do.
+
+    The whole review runs under the write lock (`_write_transaction`), so it
+    cannot land between a commit's checks and its writes.
 
     Args:
         engine: The knowledge-base engine.
@@ -236,9 +281,9 @@ def review_operation(
         NotFoundError: If the operation does not exist.
         ProposalNotOpenError: If its proposal was already committed.
         InvalidEditError: If an edit is missing, changes the operation type, or
-            does not validate.
+            does not validate, or if an edited payload accompanies accept or reject.
     """
-    with engine.begin() as conn:
+    with _write_transaction(engine) as conn:
         row = conn.execute(
             sa.select(schema.operation.c.op_type, schema.proposal.c.status)
             .join(schema.proposal, schema.proposal.c.id == schema.operation.c.proposal_id)
@@ -250,7 +295,7 @@ def review_operation(
             raise ProposalNotOpenError(f"operation {operation_id} belongs to a committed proposal")
         values: dict[str, Any] = {"edited_payload_json": None}
         if decision == "edit":
-            values["edited_payload_json"] = _validated_edit(row.op_type, edited_payload)
+            values["edited_payload_json"] = _validated_edit(conn, row.op_type, edited_payload)
             values["status"] = OpStatus.EDITED.value
         elif edited_payload is not None:
             raise InvalidEditError("an edited payload is only accepted with decision 'edit'")
@@ -264,7 +309,9 @@ def review_operation(
         )
 
 
-def _validated_edit(op_type: str, edited: Mapping[str, JsonValue] | None) -> dict[str, Any]:
+def _validated_edit(
+    conn: sa.Connection, op_type: str, edited: Mapping[str, JsonValue] | None
+) -> dict[str, Any]:
     if edited is None:
         raise InvalidEditError("decision 'edit' requires an edited payload")
     try:
@@ -273,6 +320,9 @@ def _validated_edit(op_type: str, edited: Mapping[str, JsonValue] | None) -> dic
         raise InvalidEditError(f"edited payload is invalid: {error}") from error
     if payload.op_type != op_type:
         raise InvalidEditError(f"an edit cannot change {op_type} into {payload.op_type}")
+    # An edit may change what is cited, so it needs the same check `record_proposal`
+    # applies to the original: never rely on the foreign key alone for evidence.
+    _require(conn, schema.evidence, payload.evidence_id, "evidence")
     return payload.model_dump(mode="json")
 
 
@@ -298,9 +348,17 @@ def commit_proposal(engine: sa.Engine, proposal_id: int) -> CommitResult:
         ProposalNotOpenError: If the proposal was already committed.
         OperationsPendingError: If any operation has not been reviewed.
         UnsupportedOperationError: If an operation cannot be applied by this version.
+        RuntimeError: If the engine does not enforce foreign keys. Commit relies on
+            them for the last line of defence on evidence and targets, so it
+            refuses to run without them; build the engine with `kb.db.make_engine`.
         sqlalchemy.exc.IntegrityError: If the database rejects a row; nothing is kept.
     """
-    with engine.begin() as conn:
+    with _write_transaction(engine) as conn:
+        if conn.exec_driver_sql("PRAGMA foreign_keys").scalar() != 1:
+            raise RuntimeError(
+                "foreign-key enforcement is off, so commit refuses to run; "
+                "build the engine with cvforge.kb.db.make_engine"
+            )
         status = conn.execute(
             sa.select(schema.proposal.c.status).where(schema.proposal.c.id == proposal_id)
         ).scalar_one_or_none()
@@ -449,28 +507,52 @@ class _Committer:
         self._assert(TargetKind.ENTITY, payload.entity_id, payload.field, payload.value, payload)
 
     def _add_or_replace_edge(self, payload: AddEdge, conflict_edge: int | None) -> None:
-        src, dst = self._resolve(payload.src), self._resolve(payload.dst)
-        columns = {
-            "confidence": payload.confidence,
-            "started_at": payload.started_at,
-            "ended_at": payload.ended_at,
-            "note": payload.note,
-        }
         if conflict_edge is not None:
-            self._require_target(TargetKind.EDGE, conflict_edge)
+            self._revise_edge(payload, conflict_edge)
+            return
+        src, dst = self._resolve(payload.src), self._resolve(payload.dst)
+        edge_id = _pk(
             self.conn.execute(
-                sa.update(schema.edge).where(schema.edge.c.id == conflict_edge).values(**columns)
-            )
-            edge_id = conflict_edge
-        else:
-            edge_id = _pk(
-                self.conn.execute(
-                    sa.insert(schema.edge).values(
-                        src_id=src, rel=payload.rel.value, dst_id=dst, **columns
-                    )
+                sa.insert(schema.edge).values(
+                    src_id=src,
+                    rel=payload.rel.value,
+                    dst_id=dst,
+                    confidence=payload.confidence,
+                    started_at=payload.started_at,
+                    ended_at=payload.ended_at,
+                    note=payload.note,
                 )
             )
+        )
         self._assert(TargetKind.EDGE, edge_id, None, None, payload)
+
+    def _revise_edge(self, payload: AddEdge, edge_id: int) -> None:
+        """Apply a `conflict` to a stored edge, changing only what the payload states.
+
+        A payload that contests one date must not erase the confidence, the other
+        date or the note it says nothing about. Each changed column gets its own
+        assertion carrying the new value, so the old assertions stay as history and
+        the change is recoverable from provenance alone.
+        """
+        self._require_target(TargetKind.EDGE, edge_id)
+        stated = {
+            name: value
+            for name, value in (
+                ("confidence", payload.confidence),
+                ("started_at", payload.started_at),
+                ("ended_at", payload.ended_at),
+                ("note", payload.note),
+            )
+            if value is not None
+        }
+        if not stated:  # an edit that cleared every column: cite the evidence, change nothing
+            self._assert(TargetKind.EDGE, edge_id, None, None, payload)
+            return
+        self.conn.execute(
+            sa.update(schema.edge).where(schema.edge.c.id == edge_id).values(**stated)
+        )
+        for name, value in stated.items():
+            self._assert(TargetKind.EDGE, edge_id, name, _json(value), payload)
 
     def _set_state(self, payload: SetState) -> None:
         entity_id = self._resolve(payload.entity)
