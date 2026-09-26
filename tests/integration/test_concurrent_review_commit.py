@@ -8,13 +8,16 @@ is bounded by `HOLD_SECONDS`: an implementation that serialises correctly is
 delayed by it, never deadlocked.
 """
 
+import sqlite3
 import threading
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
+from fastapi.testclient import TestClient
 
+from cvforge.app import create_app
 from cvforge.kb import apply, queries, schema
 from cvforge.kb.models import ProposalDraft
 from cvforge.kb.vocab import SourceKind
@@ -178,3 +181,33 @@ def test_a_reject_racing_a_commit_never_leaves_a_rejected_fact_committed(db: sa.
     # its operation was applied. A rejected operation must never have produced one.
     assert status in {"rejected", "applied"}, status
     assert entities == (1 if status == "applied" else 0)
+
+
+def test_a_busy_database_is_a_503_that_writes_nothing_and_can_be_retried(db: sa.Engine) -> None:
+    proposal, operation = _open_proposal(db)
+    apply.review_operation(db, operation, "accept")
+
+    # New connections give up quickly instead of waiting out the 5 s default.
+    db.dispose()
+
+    @sa.event.listens_for(db, "connect")
+    def _short_busy_timeout(dbapi_connection: sqlite3.Connection, _record: object) -> None:
+        dbapi_connection.execute("PRAGMA busy_timeout = 50")
+
+    holder = db.connect()
+    holder.exec_driver_sql("BEGIN IMMEDIATE")  # another writer is mid-transaction
+    try:
+        with TestClient(create_app(engine=db)) as client:
+            busy = client.post(f"/api/proposals/{proposal}/commit")
+    finally:
+        holder.rollback()
+        holder.close()
+
+    assert busy.status_code == 503
+    assert busy.headers["Retry-After"] == "1"
+    assert "nothing was written" in busy.json()["detail"]
+    with db.connect() as conn:
+        assert queries.table_counts(conn)["entity"] == 0
+    # The proposal is still open, so the retry the response asks for succeeds.
+    with TestClient(create_app(engine=db)) as client:
+        assert client.post(f"/api/proposals/{proposal}/commit").status_code == 200

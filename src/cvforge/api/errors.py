@@ -9,6 +9,8 @@ The contract every route shares:
 | `InvalidEditError`, `UnsupportedOperationError` | 422 |
 | any other `ApplyError` | 400 |
 | `sqlalchemy.exc.IntegrityError` (the database rejected the change) | 409 |
+| `sqlalchemy.exc.OperationalError`, database locked past the busy timeout | 503, `Retry-After: 1` |
+| any other `sqlalchemy.exc.OperationalError` | 500 |
 
 The body is always `{"detail": "<message>"}`, and a refusal leaves the database
 as it was.
@@ -79,6 +81,19 @@ async def _integrity_error(_request: Request, error: Exception) -> JSONResponse:
     )
 
 
+async def _operational_error(_request: Request, error: Exception) -> JSONResponse:
+    reason = str(getattr(error, "orig", error))
+    if "locked" in reason:
+        # Review and commit take SQLite's write lock before they read (`apply._write_transaction`),
+        # so a request that waits longer than the busy timeout never began: nothing was written.
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "1"},
+            content={"detail": "the knowledge base is busy; nothing was written, try again"},
+        )
+    return JSONResponse(status_code=500, content={"detail": "the database failed"})
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Register the refusal-to-status mapping on `app`.
 
@@ -87,3 +102,4 @@ def install_error_handlers(app: FastAPI) -> None:
     """
     app.add_exception_handler(ApplyError, _apply_error)
     app.add_exception_handler(sa.exc.IntegrityError, _integrity_error)
+    app.add_exception_handler(sa.exc.OperationalError, _operational_error)
