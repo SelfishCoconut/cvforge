@@ -4,13 +4,14 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-09-21
+Last updated: 2026-09-26
 
 ---
 
 ## Where we are
 
-**Phase: M0 complete. M1 (knowledge spine) is next.**
+**Phase: M0 complete. M1 (knowledge spine) in progress — M1a (the storage half)
+is delivered in PR #68; M1b (agent layer) and M1c (UI) are planned.**
 
 Done:
 - Design spec approved: `docs/superpowers/specs/2026-09-12-cvforge-design.md`.
@@ -29,7 +30,15 @@ Done:
 - CI (7 jobs), security (pip-audit, Bandit, Gitleaks, CodeQL), weekly sanity
   metrics, Dependabot, issue and PR templates.
 - SRS with FR-01..FR-40 and NFR-01..NFR-10, one GitHub issue per requirement.
-- ADR-0001..0008 (see `docs/adr/README.md`). Released as `v0.1.0`.
+- ADR-0001..0010 (see `docs/adr/README.md`). Released as `v0.1.0`. ADR-0008 to
+  ADR-0010 were decided by Claude under Álvaro's delegation and are awaiting his
+  confirmation (0010 is marked `proposed`).
+- **M1a — knowledge store and review pipeline (PR #68):** SQLite schema with
+  provenance (SQLAlchemy Core + Alembic), `kb/apply.py` as the single writer,
+  the deterministic classifier (`new | known | duplicate | conflict`), read
+  queries, the review/commit API, the NFR-09 export, and the write-path invariant
+  test. No model is involved yet. Closes #5–#8, #12–#14, #48, #62; #10 and #16
+  are partial (agent tools and chat intake are M1b).
 - MkDocs site with mkdocstrings API pages and authored C4/ER/flow diagrams.
 - `.claude` toolkit: 11 skills, 4 agents, 4 hooks, plugin set enabled
   (Semgrep deliberately dropped). The two gating hooks are Python files that
@@ -37,17 +46,21 @@ Done:
 
 ## Next action
 
-Write the M1 implementation plan (`superpowers:writing-plans`) covering FR-01 to
-FR-13 and FR-38 to FR-40: the SQLite schema with provenance (SQLAlchemy Core +
-Alembic per ADR-0006), the LLM provider layer, the conversational ingest agent,
-the proposal → review → commit pipeline, and the chat + review UI. The plan must
-also schedule:
-- NFR-01, -02, -08 and -09 (#59–#62), moved out of M0 by ADR-0008 because no
-  test enforces them yet.
-- The M1 issues already on the tracker: #47, #48, #50 and #53–#58.
+Execute `docs/superpowers/plans/2026-09-26-m1b-agent-layer.md`, package by
+package, in this order: **B1** provider layer and settings (FR-38, FR-39, NFR-01,
+NFR-02, NFR-08) → **B2** embeddings and `sqlite-vec` similarity (FR-40, FR-05) →
+**B3** `record_proposal` classifying for itself (audit F2, first), then read-only
+tools, `IngestAgent` and the chat endpoint (FR-06, FR-07, FR-11, FR-12) → **B4** streaming (FR-13, backend) → **B5** latency benchmark (NFR-10) →
+**C1** the chat, review, knowledge and settings UI (FR-13, frontend). Each package
+is one PR with `Closes #<n>` for the FR issues it delivers. The plan records the
+decisions it takes (D-A to D-G) and the ADR each one gets.
+
+Still open from the M1 tracker and not scheduled by that plan: #50
+(`sync_issues.py`) and #53–#58 (CI and docs hygiene). NFR-07 (#46) is M2's.
 
 One decision is waiting on Álvaro: #64, the personal email address in public git
-history.
+history. It is deliberately left alone — rewriting public history is not
+reversible.
 
 **The issue-first rule is now in force.** Every change starts from a GitHub issue,
 goes through a branch and a PR containing `Closes #<n>`, and merges only on green
@@ -58,7 +71,7 @@ CI. Direct pushes to `main` are rejected, including for admins.
 | | Milestone | Delivers | Status |
 |---|---|---|---|
 | M0 | Foundations | Repo, CI/CD, coverage gate, security pipeline, SRS, ADRs, docs site, `.claude` toolkit, health skeleton | done |
-| M1 | Knowledge spine | Schema + provenance, LLM provider layer, conversational ingest, proposal→review→commit, chat + review UI | not started |
+| M1 | Knowledge spine | Schema + provenance, LLM provider layer, conversational ingest, proposal→review→commit, chat + review UI | in progress (M1a done; M1b, M1c planned) |
 | M2 | Document ingestion | Upload → extract → classify new/known/duplicate/conflict → review | not started |
 | M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | not started |
 | M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | not started |
@@ -70,13 +83,14 @@ CI. Direct pushes to `main` are rejected, including for admins.
 ## Environment facts (verified 2026-09-12)
 
 - `uv` 0.12.9 · Node v26.8.1 · `latexmk`, `xelatex`, `pdflatex` all present.
-- Ollama 0.33.2 with `qwen3.6:27b`, `qwen3:14b`, `qwen3.5:9b` pulled.
-  **`nomic-embed-text` is NOT pulled yet** — needed for semantic dedup (M1):
-  `ollama pull nomic-embed-text`.
+- Ollama 0.33.2 with `qwen3.6:27b`, `qwen3:14b`, `qwen3.5:9b` and
+  `nomic-embed-text` pulled (re-verified 2026-09-26).
+- Python 3.13.15 / SQLite 3.53.1: `sqlite3` supports `enable_load_extension`, so
+  `sqlite-vec` can load (checked 2026-09-26; CI's build is proven by B2's first run).
 - `gh` authenticated as `SelfishCoconut`; token scopes `gist, read:org,
   read:project, repo, workflow`. No `project` write scope — irrelevant, no board.
-- The `github` MCP server currently fails to connect (*Authorization header is
-  badly formatted*). Use the `gh` CLI until it is fixed.
+- The `github` MCP server still fails to connect (*Authorization header is badly
+  formatted*, re-checked 2026-09-26). Use the `gh` CLI until it is fixed.
 
 ## Decisions that are settled — do not relitigate
 

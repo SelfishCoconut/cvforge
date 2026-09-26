@@ -63,6 +63,9 @@ def get_proposal(conn: Conn, proposal_id: int) -> queries.ProposalRecord:
 
     Returns:
         The proposal.
+
+    Raises:
+        HTTPException: 404 if the proposal does not exist.
     """
     return _proposal(conn, proposal_id)
 
@@ -82,6 +85,10 @@ def review(db: Engine, proposal_id: int, operation_id: int, body: Review) -> que
 
     Raises:
         HTTPException: 404 if the operation is not part of this proposal.
+        NotFoundError: Mapped to 404 if the operation does not exist.
+        ProposalNotOpenError: Mapped to 409 if the proposal was already committed.
+        InvalidEditError: Mapped to 422 if an edit is missing, changes the
+            operation type, does not validate, or accompanies accept/reject.
     """
     with db.connect() as conn:
         owner = queries.operation_proposal_id(conn, operation_id)
@@ -102,6 +109,16 @@ def commit(db: Engine, proposal_id: int) -> Committed:
 
     Returns:
         What was written.
+
+    Raises:
+        NotFoundError: Mapped to 404 if the proposal, or a target an operation
+            names, does not exist.
+        ProposalNotOpenError: Mapped to 409 if the proposal was already committed.
+        OperationsPendingError: Mapped to 409 if any operation is still pending.
+        UnsupportedOperationError: Mapped to 422 if an operation cannot be
+            applied by this version (`merge_duplicate`, until M1b).
+        sqlalchemy.exc.IntegrityError: Mapped to 409; the database rejected a
+            row and nothing was written.
     """
     result = apply.commit_proposal(db, proposal_id)
     return Committed(

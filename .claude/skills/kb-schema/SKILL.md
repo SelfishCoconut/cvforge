@@ -36,11 +36,14 @@ Read `docs/architecture/knowledge-model.md` and ADR-0001 before touching anythin
    already covers it. Duplication is the primary failure mode here.
 2. **Decide whether it is a decision.** New entity kind, new `rel` value, new
    provenance semantics, or a change to what "confirmed" means → write an ADR with
-   the `adr` skill before the code.
-3. **Write the migration.** Edit `kb/schema.py`, then generate a revision
-   into `src/cvforge/kb/migrations/versions/` (autogenerate against a migrated
-   copy, then read and clean it — batch mode is on, because SQLite cannot ALTER
-   constraints). `tests/integration/test_migrations.py` fails if schema and
+   the `adr` skill before the code. What is written when, and what the four
+   classifications mean, is already settled in ADR-0009.
+3. **Write the migration.** Edit `kb/schema.py`, then run
+   `make migration MSG="what changed"` to generate a revision into
+   `src/cvforge/kb/migrations/versions/` (it autogenerates against a migrated
+   copy; read and clean the result — batch mode is on, because SQLite cannot ALTER
+   constraints). Revisions are the one place DML may appear outside `apply.py`
+   (ADR-0010), so a data migration is a reviewed design decision, not a default. `tests/integration/test_migrations.py` fails if schema and
    migrations disagree. Additive where possible. A destructive migration must
    be reversible or must export first — the user's knowledge base is irreplaceable
    and is not in version control.

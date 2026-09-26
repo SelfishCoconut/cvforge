@@ -10,7 +10,9 @@ source of truth.
 
 ## Status
 
-M0 (foundations). See `docs/roadmap.md` for current state and the next action.
+M0 (foundations) is done. M1 (the knowledge spine) is in progress: the knowledge
+store and review pipeline (M1a) are in; the agent layer and the UI are next. See
+`docs/roadmap.md` for current state and the next action.
 
 ## Run it
 
@@ -20,6 +22,9 @@ make run         # http://127.0.0.1:8000 — SPA and API from one process
 ```
 
 `make demo-health` proves the skeleton works offline, with no server and no build.
+`make demo-review-pipeline` walks the whole intake → proposal → review → commit
+loop the same way. The knowledge base is one file, `data/cvforge.db`; the export
+procedure is in `docs/architecture/knowledge-model.md`.
 
 ## Develop
 
@@ -28,6 +33,7 @@ uv sync                      # Python 3.13 environment
 uv run pre-commit install    # commit-time gates
 make lint typecheck complexity
 make test                    # unit + integration + golden
+make migration MSG="what changed"   # new Alembic revision after editing kb/schema.py
 make docs-serve              # documentation site at :8000
 ```
 

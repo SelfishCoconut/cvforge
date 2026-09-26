@@ -379,7 +379,9 @@ def orphans(conn: sa.Connection) -> OrphanReport:
 
 
 def table_counts(conn: sa.Connection) -> dict[str, int]:
-    """Count the rows of every knowledge and provenance table (NFR-09 export check).
+    """Count the rows of the seven core knowledge and provenance tables (NFR-09 export check).
+
+    The per-kind child tables (one row per entity) and `commit_log` are not counted.
 
     Args:
         conn: An open connection.

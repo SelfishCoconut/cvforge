@@ -28,11 +28,23 @@ erDiagram
   COMMIT_LOG { int id int proposal_id json operation_ids_json }
 ```
 
-`assertion.target_id` is polymorphic (an entity or an edge), so it cannot carry a
-foreign key. `queries.orphans()` and `tests/integration/test_invariants.py` check
-it instead. Every other reference is a real foreign key, enforced on every
-connection (`PRAGMA foreign_keys = ON`), and every closed vocabulary is also a
-CHECK constraint.
+Three references cannot carry a foreign key, so each is checked another way:
+
+- `assertion.target_id` is polymorphic (an entity or an edge). `queries.orphans()`
+  and `tests/integration/test_invariants.py` check it.
+- `operation.target_kind` / `operation.target_id` name an entity or an edge in the
+  same polymorphic way. `OperationDraft` checks the pair's shape (both set or
+  neither, matching the classification), and `commit_proposal` raises
+  `NotFoundError` if the named target is missing when it applies the operation.
+- `operation.payload_json` carries an `evidence_id` inside JSON. `record_proposal`
+  checks that the cited evidence exists before any operation is stored.
+- `commit_log.operation_ids_json` is a JSON list of the operation ids applied. It
+  is written by `commit_proposal` in the same transaction as the operations it
+  lists.
+
+Every other reference is a real foreign key, enforced on every connection
+(`PRAGMA foreign_keys = ON`), and every closed vocabulary is also a CHECK
+constraint.
 
 ## Entity kinds
 
@@ -66,14 +78,19 @@ flowchart LR
   A[Álvaro speaks / uploads / pastes a URL] --> B[Agent]
   B -->|reads only| KB[(cvforge.db)]
   B --> P[Proposal: typed operations<br/>each classified and evidenced]
+  A -->|intake: record_source, record_evidence| W[kb/apply.py]
+  P -->|record_proposal: proposal, operation| W
   P --> R[Review UI: accept / edit / reject<br/>per operation]
-  R --> W[kb/apply.py]
-  W -->|one transaction| KB
+  R -->|review_operation| W
+  R -->|commit_proposal| W
+  W -->|entity, edge, assertion:<br/>one transaction, only after approval| KB
 ```
 
-Nothing else writes. A database write introduced anywhere outside `kb/apply.py`
-is a bug caught by the `provenance-auditor` agent, the `kb-write-path` hook and an
-invariant test.
+Nothing else writes. Intake and proposal storage record *what was said and what
+is proposed* before review; only `commit_proposal` writes entity, edge and
+assertion rows, and only after Álvaro has reviewed every operation. A database
+write introduced anywhere outside `kb/apply.py` is a bug caught by the
+`provenance-auditor` agent, the `kb-write-path` hook and an invariant test.
 
 ### What is written when (ADR-0009)
 
@@ -97,7 +114,7 @@ decide this.
 |---|---|---|
 | `new` | Nothing stored covers it | Creates or changes rows |
 | `known` | Already recorded (same kind and normalized name, field value or edge) | Adds evidence to the existing record |
-| `duplicate` | A differently named record is probably the same thing | Links to that record |
+| `duplicate` | A differently named record is probably the same thing (needs similarity search, M1b — nothing emits it until then) | Links to that record |
 | `conflict` | Recorded with a different value | Replaces the value; the old assertion stays as history |
 
 ## Backup, export and migrations (NFR-09)
@@ -114,7 +131,9 @@ The copy opens with any SQLite tool, and restoring means putting it back at
 `data/cvforge.db`. The command refuses to overwrite an existing file.
 
 On startup, the app migrates the database to the newest Alembic revision. If a
-migration is pending, it first writes a copy to
-`data/backups/cvforge-<revision>-<timestamp>.db`. A schema change is a new file
+migration is pending on an existing database, it first writes a copy to
+`data/backups/cvforge-<revision>-<timestamp>.db`, where `<revision>` is the
+revision the database was at *before* migrating. A brand-new file has nothing to
+back up. A schema change is a new file
 in `src/cvforge/kb/migrations/versions/`. `tests/integration/test_migrations.py`
 fails if the migrated schema and `schema.py` disagree.

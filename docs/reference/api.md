@@ -22,6 +22,10 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.api.proposals
 
+## Error contract
+
+::: cvforge.api.errors
+
 ## Knowledge base
 
 ### Vocabularies
@@ -47,6 +51,10 @@ Generated from docstrings. Update the docstring, not this page.
 ### The write path
 
 ::: cvforge.kb.apply
+
+### Engine and connections
+
+::: cvforge.kb.db
 
 ### Migrations and export
 

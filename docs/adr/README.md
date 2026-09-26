@@ -19,3 +19,4 @@ was decided, and when, is the whole point.
 | [0007](0007-material-native-mermaid.md) | Mermaid renders through Material's native support | accepted | 2026-09-20 |
 | [0008](0008-close-m0-on-evidence-not-issues.md) | M0 closes on evidenced requirements; unevidenced NFRs move to M1 | accepted | 2026-09-21 |
 | [0009](0009-review-pipeline-semantics.md) | Review-pipeline semantics: what is written when; the four classifications | accepted | 2026-09-21 |
+| [0010](0010-m1a-storage-and-gate-policies.md) | M1a storage and gate policies: rollback journal; migrations outside the write scan and coverage floor | proposed | 2026-09-26 |

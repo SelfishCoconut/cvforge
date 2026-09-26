@@ -111,9 +111,9 @@ Each requirement below is a subsection with six fields, in this order:
 - **Acceptance criteria**:
   - [x] A dedicated test scans `src/` and fails if any module other than `kb/apply.py` executes an INSERT/UPDATE/DELETE against the entity, edge or assertion tables
   - [ ] Every Pydantic AI agent's tool list contains only read tools (`search_entities`, `get_entity`, `neighbours`, `find_similar`)
-  - [x] Calling into `kb/apply.py` outside of an accepted/edited operation commit raises rather than silently writing
+  - [x] `commit_proposal` raises and writes nothing while any operation is pending or once the proposal is already committed, and no other function in `kb/apply.py` writes `entity`, `edge` or `assertion` rows (intake and review write only `source`, `evidence`, `proposal` and `operation`, per ADR-0009)
   - [x] Introducing a write call outside `kb/apply.py` is caught by the `kb-write-path` hook / CI check rather than merging silently
-- **Traces to**: issue #10, tests `tests/unit/test_write_path_invariant.py`
+- **Traces to**: issue #10, tests `tests/unit/test_write_path_invariant.py`, `tests/unit/test_review_pipeline.py`
 
 ## Review pipeline
 
@@ -143,10 +143,10 @@ Each requirement below is a subsection with six fields, in this order:
 - **Acceptance criteria**:
   - [x] A proposal for a genuinely new fact classifies as `new` with no named target
   - [x] A proposal restating an existing fact under the same normalized name (for a kind whose name is its identity) classifies `known` — never `duplicate` — and names the matching id
-  - [x] A differently named candidate that similarity search matches to a stored entity classifies `duplicate` and names that entity
+  - [x] A differently named candidate that similarity search matches to a stored entity classifies `duplicate` and names that entity (exercised through an injected `SimilarFinder`; the real finder arrives with FR-05)
   - [x] A proposal contradicting a stored fact classifies `conflict` and names the conflicting id
   - [x] An operation classified `known`/`duplicate`/`conflict` with no named target, or `new` with one, is rejected at validation rather than reaching review
-- **Traces to**: issue #12, tests `tests/unit/test_classification.py`
+- **Traces to**: issues #12 and #48, tests `tests/unit/test_classification.py`
 
 ### FR-09 — Operations are independently reviewable
 - **Priority**: Must
@@ -724,7 +724,7 @@ Each requirement below is a subsection with six fields, in this order:
   documented export procedure so the data is portable and inspectable outside
   the app.
 - **Acceptance criteria**:
-  - [x] The running app writes to exactly one `.db` file path, confirmed by inspecting open connections during a test run
+  - [x] The running app writes to exactly one `.db` file, confirmed by listing the data directory after a request against the running app: `cvforge.db` and nothing else (no `-wal` or `-shm` side files)
   - [x] A documented export command produces a portable copy that a test can load in a fresh location
   - [x] The export procedure is documented in `docs/` with the exact command
   - [x] Restoring from an exported copy reproduces the same entity/edge/assertion counts as the source
