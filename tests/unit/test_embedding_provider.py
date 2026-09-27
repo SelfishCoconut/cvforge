@@ -31,12 +31,21 @@ def test_a_fake_of_another_dimension_works_with_no_edit_to_embeddings_py() -> No
     assert len(vector) == 16
 
 
-def test_two_texts_sharing_a_leading_word_are_more_similar_than_unrelated_texts() -> None:
+@pytest.mark.parametrize(
+    ("shared_a", "shared_b", "unrelated"),
+    [
+        ("rust programmer", "rust developer", "banana bread recipe"),
+        ("rust programmer", "rust enthusiast", "banana bread recipe"),
+        ("python developer", "python programmer", "banana bread recipe"),
+        ("rust programmer", "rust developer", "python developer"),
+    ],
+)
+def test_two_texts_sharing_a_word_are_more_similar_than_unrelated_texts(
+    shared_a: str, shared_b: str, unrelated: str
+) -> None:
     fake = FakeEmbeddingProvider(dimension=8)
-    shared_a, shared_b, unrelated = fake.embed(
-        ["rust programmer", "rust enthusiast", "banana bread recipe"]
-    )
-    assert _cosine(shared_a, shared_b) > _cosine(shared_a, unrelated)
+    a, b, c = fake.embed([shared_a, shared_b, unrelated])
+    assert _cosine(a, b) > _cosine(a, c)
 
 
 def test_an_object_missing_embed_is_not_an_embedding_provider() -> None:
