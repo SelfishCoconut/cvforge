@@ -6,6 +6,9 @@ data/
 cv_out/
 .env
 
+# --- codebase-memory MCP local cache/index (not the project's ADRs; those are docs/adr/) ---
+.codebase-memory/
+
 # --- python ---
 __pycache__/
 *.py[cod]

@@ -148,31 +148,21 @@ def test_no_test_imports_a_live_provider_client() -> None:
 - Produces: `REGISTERED_WRITERS: dict[str, frozenset[str]]` in the invariant test, mapping a path relative to `src/cvforge/` to the tables it may write. Initially empty; B1.3 adds `llm/settings_store.py → {"app_setting"}`; B2 adds `kb/embeddings.py → {"entity_vec", "entity_vec_meta"}` (final names decided in B2.2).
 - Produces: `KNOWLEDGE_TABLES` — every table name in `cvforge.kb.schema.metadata.tables` **except** the registered ones. A registered module may not reference any of them.
 
-- [ ] **Step 1: Write the failing test.** Extend `_modules()` so a module in `REGISTERED_WRITERS` is exempt from `test_no_module_but_apply_writes` but subject to a new test:
-
-```python
-@pytest.mark.parametrize("rel", sorted(REGISTERED_WRITERS))
-def test_a_registered_writer_never_touches_a_knowledge_table(rel: str) -> None:
-    source = (SRC / rel).read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    referenced = {
-        n.attr
-        for n in ast.walk(tree)
-        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == "schema"
-    }
-    strings = " ".join(
-        n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
-    )
-    forbidden = KNOWLEDGE_TABLES - REGISTERED_WRITERS[rel]
-    assert not referenced & forbidden
-    assert not any(re.search(rf"\b{t}\b", strings) for t in forbidden)
-
-
-def test_registering_a_writer_is_a_visible_change() -> None:
-    assert set(REGISTERED_WRITERS) == {"llm/settings_store.py"}  # edit deliberately, in review
-```
-
-- [ ] **Step 2:** Run it; confirm it fails only for the missing registry. **Step 3:** implement the registry with the empty/initial map and a `test_the_registry_scanner_catches_a_leak` case using a synthetic snippet that references `schema.entity`. **Step 4:** run `uv run pytest tests/unit/test_write_path_invariant.py -v`. **Step 5:** write ADR-0011 (Context: scanner is table-blind; Decision: registry; Alternatives: route through `apply.py`, exempt by directory, drop the AST test; Consequences). **Step 6:** commit — `docs: ADR-0011 registered writers for non-knowledge state`.
+> **Delivered 2026-09-27**, ahead of B1.3, because the registry is infrastructure
+> with no consumer yet: `REGISTERED_WRITERS` starts **empty** (not
+> `{"llm/settings_store.py"}` — that module doesn't exist until B1.3 creates it,
+> and a registry entry naming a nonexistent file would fail the moment its test
+> tried to read it). The scanner logic itself is proven by a synthetic-snippet
+> test (`test_the_registered_writer_scanner_sees_a_reference_either_way`), not by
+> a real registered writer. `test_a_registered_writer_never_touches_a_knowledge_table`
+> therefore reports **skipped** (pytest's own handling of a zero-length
+> parametrize, not a deliberate skip) until B1.3 adds the first entry — a comment
+> above it says so. ADR-0011 (`proposed`), the ADR index, the `mkdocs.yml` nav
+> entry, and the `kb-schema` skill paragraph are all in place. When B1.3 lands,
+> update `REGISTERED_WRITERS = {"llm/settings_store.py": frozenset({"app_setting"})}`
+> and `test_registering_a_writer_is_a_visible_change`'s expected set together, in
+> that task's own commit — that edit **is** the "visible, reviewed change" the
+> registry exists to force.
 
 ### Task B1.3: The `app_setting` table, the settings store, and `build_model()` (FR-38, FR-39, NFR-01)
 
