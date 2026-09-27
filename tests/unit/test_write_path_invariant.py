@@ -43,7 +43,9 @@ SRC = Path(__file__).resolve().parents[2] / "src" / "cvforge"
 WRITER = SRC / "kb" / "apply.py"
 EXEMPT_DIRS = (SRC / "kb" / "migrations",)
 SQLITE3_MODULES = (SRC / "kb" / "db.py", SRC / "kb" / "export.py")
-REGISTERED_WRITERS: dict[str, frozenset[str]] = {}
+REGISTERED_WRITERS: dict[str, frozenset[str]] = {
+    "llm/settings_store.py": frozenset({"app_setting"}),
+}
 KNOWLEDGE_TABLES = frozenset(schema.metadata.tables) - frozenset().union(
     *REGISTERED_WRITERS.values()
 )
@@ -132,10 +134,14 @@ def references_knowledge_table(source: str, allowed: frozenset[str]) -> bool:
 
     Looks for `schema.<table>` attribute access and for the bare table name
     inside a string literal, so a registered writer building SQL with `sa.text`
-    is caught the same way a knowledge writer would be.
+    is caught the same way a knowledge writer would be. Docstrings are excluded
+    (as in `writes_in`), so a module explaining *why* it isn't a knowledge
+    writer — in prose that names "assertion" or "evidence" — isn't flagged for
+    saying so.
     """
     forbidden = KNOWLEDGE_TABLES - allowed
     tree = ast.parse(source)
+    prose = _docstrings(tree)
     referenced = {
         node.attr
         for node in ast.walk(tree)
@@ -148,7 +154,7 @@ def references_knowledge_table(source: str, allowed: frozenset[str]) -> bool:
     strings = " ".join(
         node.value
         for node in ast.walk(tree)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in prose
     )
     return any(re.search(rf"\b{table}\b", strings) for table in forbidden)
 
@@ -250,9 +256,6 @@ def test_the_writer_itself_is_scanned_positive() -> None:
 # --- ADR-0011: registered writers of non-knowledge state ---------------------
 
 
-# Reports "skipped" (pytest's own handling of an empty parameter set) while
-# REGISTERED_WRITERS is empty — not a deliberately skipped test. It gains real
-# cases, and stops skipping, the moment M1b registers a writer.
 @pytest.mark.parametrize("rel", sorted(REGISTERED_WRITERS), ids=lambda rel: rel)
 def test_a_registered_writer_never_touches_a_knowledge_table(rel: str) -> None:
     source = (SRC / rel).read_text(encoding="utf-8")
@@ -263,8 +266,8 @@ def test_a_registered_writer_never_touches_a_knowledge_table(rel: str) -> None:
 
 
 def test_registering_a_writer_is_a_visible_change() -> None:
-    """Nothing is registered yet; M1b task B1.3 adds llm/settings_store.py, edit deliberately."""
-    assert REGISTERED_WRITERS == {}
+    """Edit this set deliberately, in review — it is exactly the point of the registry."""
+    assert set(REGISTERED_WRITERS) == {"llm/settings_store.py"}
 
 
 @pytest.mark.parametrize(

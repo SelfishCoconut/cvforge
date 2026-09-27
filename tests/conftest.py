@@ -3,6 +3,7 @@
 import ipaddress
 import json
 import socket
+import uuid
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -87,6 +88,17 @@ def client(kb: sa.Engine) -> Iterator[TestClient]:
     """A test client over a freshly built application backed by the in-memory `kb`."""
     with TestClient(create_app(engine=kb)) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def canary() -> str:
+    """A fresh, unpredictable stand-in for a secret value.
+
+    Generated at runtime rather than written as a literal: a key-shaped string
+    constant trips CI's Gitleaks `generic-api-key` rule, which happened to this
+    project's M1b plan on PR #68.
+    """
+    return f"canary-{uuid.uuid4().hex}"
 
 
 @pytest.fixture(autouse=True)

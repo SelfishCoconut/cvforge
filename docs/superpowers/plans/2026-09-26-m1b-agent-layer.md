@@ -176,18 +176,29 @@ def test_no_test_imports_a_live_provider_client() -> None:
 - Test: `tests/unit/test_settings.py`, `tests/unit/test_llm_provider.py`, `tests/integration/test_migrations.py` (existing gate must stay green)
 
 **Interfaces:**
-- Produces (`llm/provider.py`):
+
+> **Delivered 2026-09-27, with one deliberate deviation from the sketch below:**
+> `Provider` lives in `kb/vocab.py`, not `llm/provider.py` — `kb/schema.py` needs
+> it for `app_setting`'s CHECK constraint, and `kb/` must not import from `llm/`
+> (agents depend on the knowledge layer, never the reverse). `ProviderSettings`
+> lives in `llm/settings_store.py`, not `llm/provider.py` — `provider.py` needs
+> it to call `load_settings`, and putting the type in `provider.py` too would
+> make the two modules import each other. `EXTERNAL`,
+> `ExternalProviderDisabledError`, `MissingApiKeyError` and `build_model` stay in
+> `provider.py` as sketched.
+
+- Produces (`kb/vocab.py`):
 
 ```python
 class Provider(StrEnum):
     OLLAMA = "ollama"
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+```
 
+- Produces (`llm/settings_store.py`):
 
-EXTERNAL = frozenset({Provider.ANTHROPIC, Provider.OPENAI})
-
-
+```python
 class ProviderSettings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     provider: Provider = Provider.OLLAMA
@@ -200,6 +211,18 @@ class ProviderSettings(BaseModel):
     similarity_threshold: float = Field(default=0.85, ge=0, le=1)  # D-G
 
 
+def load_settings(
+    engine: sa.Engine, *, environ: Mapping[str, str] = os.environ
+) -> ProviderSettings: ...
+def save_settings(engine: sa.Engine, settings: ProviderSettings) -> ProviderSettings: ...
+```
+
+- Produces (`llm/provider.py`):
+
+```python
+EXTERNAL = frozenset({Provider.ANTHROPIC, Provider.OPENAI})
+
+
 class ExternalProviderDisabledError(Exception): ...
 
 
@@ -208,8 +231,6 @@ class MissingApiKeyError(Exception): ...
 
 def build_model(engine: sa.Engine, *, environ: Mapping[str, str] = os.environ) -> Model: ...
 ```
-
-- Produces (`llm/settings_store.py`): `load_settings(engine, *, environ=os.environ) -> ProviderSettings` (seeds the row from `CVFORGE_LLM_*` env vars on the first call **only**), `save_settings(engine, settings: ProviderSettings) -> ProviderSettings`.
 
 > **Canary values are generated at runtime, never written as literals:** `CANARY = f"canary-{uuid4().hex}"` (a fixture in `tests/conftest.py`). A key-shaped literal in a test or a doc trips CI's Gitleaks `generic-api-key` rule, which happened to this plan on PR #68, and a public repository must never hold anything that looks like a credential.
 

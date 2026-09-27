@@ -27,6 +27,7 @@ from cvforge.kb.vocab import (
     OpType,
     Origin,
     ProposalStatus,
+    Provider,
     Rel,
     SourceKind,
     TargetKind,
@@ -225,6 +226,11 @@ evidence = sa.Table(
     sa.Column("source_id", sa.Integer, sa.ForeignKey("source.id"), nullable=False),
     sa.Column("locator", sa.String, nullable=False),
     sa.Column("excerpt", sa.String, nullable=False),
+    # The database-level twin of the ValueError apply.record_evidence raises for
+    # blank text: a span that cites nothing satisfies invariant 3 in letter, not
+    # in spirit, and this closes the gap for any writer that isn't apply.py.
+    sa.CheckConstraint("length(trim(locator)) > 0", name="locator_nonblank"),
+    sa.CheckConstraint("length(trim(excerpt)) > 0", name="excerpt_nonblank"),
 )
 
 # `target_id` is polymorphic (entity or edge), so it cannot carry a foreign key.
@@ -296,4 +302,28 @@ commit_log = sa.Table(
     sa.Column("proposal_id", sa.Integer, sa.ForeignKey("proposal.id"), nullable=False),
     sa.Column("applied_at", sa.DateTime, nullable=False),
     sa.Column("operation_ids_json", sa.JSON, nullable=False),
+)
+
+# Not knowledge: no assertion, no evidence, no provenance. Written by
+# llm/settings_store.py, a registered writer (ADR-0011), never by kb/apply.py.
+# One row, id fixed at 1 — there is exactly one provider configuration.
+# api_key_env is the NAME of an environment variable, never a key (ADR-0012 D-B).
+app_setting = sa.Table(
+    "app_setting",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("provider", sa.String, nullable=False),
+    sa.Column("model", sa.String, nullable=False),
+    sa.Column("base_url", sa.String),
+    sa.Column("api_key_env", sa.String),
+    sa.Column("allow_external", sa.Boolean, nullable=False),
+    sa.Column("embedding_provider", sa.String, nullable=False),
+    sa.Column("embedding_model", sa.String, nullable=False),
+    sa.Column("similarity_threshold", sa.Float, nullable=False),
+    sa.Column("updated_at", sa.DateTime, nullable=False),
+    sa.CheckConstraint("id = 1", name="single_row"),
+    _in("provider", values(Provider), "provider"),
+    sa.CheckConstraint(
+        "similarity_threshold >= 0 AND similarity_threshold <= 1", name="similarity_threshold_range"
+    ),
 )
