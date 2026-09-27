@@ -13,6 +13,8 @@ from cvforge.api.errors import install_error_handlers
 from cvforge.api.health import router as health_router
 from cvforge.api.knowledge import router as knowledge_router
 from cvforge.api.proposals import router as proposals_router
+from cvforge.api.security import install_security_middleware
+from cvforge.api.settings import router as settings_router
 from cvforge.config import Settings
 from cvforge.kb.migrate import open_database
 
@@ -48,10 +50,12 @@ def create_app(settings: Settings | None = None, *, engine: sa.Engine | None = N
 
     app = FastAPI(title="CVForge", version=cvforge.__version__, lifespan=lifespan)
     app.state.settings = settings
+    install_security_middleware(app)
     install_error_handlers(app)
     app.include_router(health_router, prefix="/api")
     app.include_router(knowledge_router, prefix="/api")
     app.include_router(proposals_router, prefix="/api")
+    app.include_router(settings_router, prefix="/api")
     _mount_spa(app, settings.frontend_dist)
     return app
 

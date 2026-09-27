@@ -22,9 +22,17 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.api.proposals
 
+## Settings API
+
+::: cvforge.api.settings
+
 ## Error contract
 
 ::: cvforge.api.errors
+
+## Security middleware
+
+::: cvforge.api.security
 
 ## Knowledge base
 

@@ -2,6 +2,7 @@
 
 import pytest
 import sqlalchemy as sa
+from pydantic import ValidationError
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -97,3 +98,13 @@ def test_the_stored_base_url_stays_the_bare_host_not_the_v1_endpoint(kb: sa.Engi
     with kb.connect() as conn:
         row = conn.execute(sa.select(schema.app_setting)).one()
     assert row.base_url == "http://box:1234"
+
+
+def test_an_unsupported_provider_name_is_rejected_with_a_clear_error() -> None:
+    """Caught by Pydantic before it ever reaches build_model or the database.
+
+    Simulates untrusted input (e.g. a JSON request body), which is exactly the
+    case a type checker cannot help with — hence the ignore.
+    """
+    with pytest.raises(ValidationError, match="grok"):
+        ProviderSettings(provider="grok")  # type: ignore[arg-type]

@@ -22,7 +22,7 @@ def test_the_app_does_not_dispose_an_engine_it_was_given(kb: sa.Engine, propose:
         kb, propose({"op_type": "create_entity", "kind": "skill", "name": "Rust"}, accept=True)
     )
 
-    with TestClient(create_app(engine=kb)) as client:
+    with TestClient(create_app(engine=kb), base_url="http://127.0.0.1") as client:
         assert client.get("/api/entities").status_code == 200
 
     with kb.connect() as conn:

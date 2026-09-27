@@ -21,7 +21,7 @@ def main() -> int:
     """
     engine = make_engine(None)  # in-memory: a demo must never touch data/cvforge.db
     metadata.create_all(engine)
-    with TestClient(create_app(engine=engine)) as client:
+    with TestClient(create_app(engine=engine), base_url="http://127.0.0.1") as client:
         response = client.get("/api/health")
     print(f"GET /api/health -> {response.status_code}")
     print(json.dumps(response.json(), indent=2))

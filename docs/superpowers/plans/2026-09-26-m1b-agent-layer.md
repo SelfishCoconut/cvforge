@@ -282,6 +282,25 @@ def test_the_settings_row_holds_no_secret(engine): ...  # canary value absent fr
 
 ### Task B1.4: The `/api/settings` router (FR-39, NFR-02)
 
+> **Delivered 2026-09-27.** Two deviations from the sketch below:
+> - `Settings.allowed_hosts` and a custom `api/security.py`, not Starlette's
+>   `TrustedHostMiddleware`: that middleware splits a `Host` header on the first
+>   `:`, which lands inside an IPv6 literal's brackets (`[::1]:8000` → `[`), so
+>   it can never correctly match `[::1]`. The custom check does the same job with
+>   bracket-aware parsing, verified empirically before writing it that way.
+> - Most of the plan's test snippets below (Host/Origin/route-inventory) ended up
+>   in `tests/unit/test_security_middleware.py`, not
+>   `tests/integration/test_app_bind.py`: they run in-process over `TestClient`
+>   (no real socket), matching how every other API test in this codebase is
+>   already classified `unit` here. Only the one test needing a genuine
+>   non-loopback connection attempt (a real `uvicorn.Server` in a thread) is
+>   `integration` — verified with a quick empirical check first: a same-host
+>   non-loopback TCP connect refuses in 0.0s in this sandbox, so the test needs
+>   no generous timeout and cannot hang.
+> - `test_default_bind_is_loopback` and `test_a_non_loopback_host_is_refused`
+>   already existed in `tests/unit/test_config.py` before this task; not
+>   duplicated.
+
 **Files:**
 - Create: `src/cvforge/api/settings.py`; modify `src/cvforge/app.py` (`include_router(settings_router, prefix="/api")`)
 - Create: `tests/unit/test_settings_api.py`, `tests/integration/test_app_bind.py`

@@ -197,7 +197,7 @@ def test_a_busy_database_is_a_503_that_writes_nothing_and_can_be_retried(db: sa.
     holder = db.connect()
     holder.exec_driver_sql("BEGIN IMMEDIATE")  # another writer is mid-transaction
     try:
-        with TestClient(create_app(engine=db)) as client:
+        with TestClient(create_app(engine=db), base_url="http://127.0.0.1") as client:
             busy = client.post(f"/api/proposals/{proposal}/commit")
     finally:
         holder.rollback()
@@ -209,5 +209,5 @@ def test_a_busy_database_is_a_503_that_writes_nothing_and_can_be_retried(db: sa.
     with db.connect() as conn:
         assert queries.table_counts(conn)["entity"] == 0
     # The proposal is still open, so the retry the response asks for succeeds.
-    with TestClient(create_app(engine=db)) as client:
+    with TestClient(create_app(engine=db), base_url="http://127.0.0.1") as client:
         assert client.post(f"/api/proposals/{proposal}/commit").status_code == 200

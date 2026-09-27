@@ -85,8 +85,13 @@ def evidence_id(kb: sa.Engine) -> int:
 
 @pytest.fixture
 def client(kb: sa.Engine) -> Iterator[TestClient]:
-    """A test client over a freshly built application backed by the in-memory `kb`."""
-    with TestClient(create_app(engine=kb)) as test_client:
+    """A test client over a freshly built application backed by the in-memory `kb`.
+
+    `base_url` is a real loopback address, not `TestClient`'s default
+    `http://testserver`: the app's Host-header check (audit F6) would refuse
+    every request otherwise, since `testserver` names no address it binds.
+    """
+    with TestClient(create_app(engine=kb), base_url="http://127.0.0.1") as test_client:
         yield test_client
 
 

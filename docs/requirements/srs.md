@@ -571,10 +571,10 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall support pluggable LLM providers — Ollama
   (default), Anthropic, OpenAI — behind a common interface.
 - **Acceptance criteria**:
-  - [ ] `build_model()` returns a working model handle for each of the three providers against fakes/mocks, with no live call
-  - [ ] Switching the persisted provider setting changes which provider the next `build_model()` call targets, without a restart
-  - [ ] An unsupported provider name is rejected with a clear error rather than silently defaulting
-  - [ ] With no configuration at all, the system defaults to the local Ollama endpoint
+  - [x] `build_model()` returns a working model handle for each of the three providers against fakes/mocks, with no live call
+  - [x] Switching the persisted provider setting changes which provider the next `build_model()` call targets, without a restart
+  - [x] An unsupported provider name is rejected with a clear error rather than silently defaulting
+  - [x] With no configuration at all, the system defaults to the local Ollama endpoint
 - **Traces to**: issue #42, tests `tests/unit/test_llm_provider.py`
 
 ### FR-39 — Runtime-changeable provider settings
@@ -585,11 +585,11 @@ Each requirement below is a subsection with six fields, in this order:
   API-key references in the database, seeded from environment variables on
   first run only, and changeable at runtime via the `/settings` view.
 - **Acceptance criteria**:
-  - [ ] On first run with env vars set, the settings row is seeded from them exactly once
-  - [ ] Changing an env var after first run has no effect — the DB-persisted row remains authoritative
-  - [ ] A settings update call changes the persisted row and immediately changes the provider used by the next agent call
-  - [ ] An API key is stored as a reference, never returned in plaintext by a read endpoint
-- **Traces to**: issue #43, tests `tests/unit/test_settings.py`
+  - [x] On first run with env vars set, the settings row is seeded from them exactly once
+  - [x] Changing an env var after first run has no effect — the DB-persisted row remains authoritative
+  - [x] A settings update call changes the persisted row and immediately changes the provider used by the next agent call
+  - [x] An API key is stored as a reference, never returned in plaintext by a read endpoint
+- **Traces to**: issue #43, tests `tests/unit/test_settings.py`, `tests/unit/test_settings_api.py`
 
 ### FR-40 — Pluggable embedding provider
 - **Priority**: Must
@@ -628,11 +628,11 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall bind the web server to `127.0.0.1` only,
   with no authentication layer, reflecting its single-user local-tool design.
 - **Acceptance criteria**:
-  - [ ] Inspecting the bound socket at startup shows `127.0.0.1`, never `0.0.0.0` or a public interface
-  - [ ] A simulated request from a non-localhost origin cannot reach the API in the default configuration
-  - [ ] An API route inventory test confirms no login/session/token endpoint exists
-  - [ ] Exposing a different bind address requires an explicit, documented override rather than a default
-- **Traces to**: issue #60, tests `tests/integration/test_app_bind.py`
+  - [x] Inspecting the bound socket at startup shows `127.0.0.1`, never `0.0.0.0` or a public interface
+  - [x] A simulated request from a non-localhost origin cannot reach the API in the default configuration
+  - [x] An API route inventory test confirms no login/session/token endpoint exists
+  - [ ] Exposing a different bind address requires an explicit, documented override rather than a default — not applicable as built: `Settings.host` accepts only the three loopback forms (`config.py:_reject_non_loopback`), so a non-loopback bind is refused outright rather than gated behind an override. Revisit this criterion's wording if a non-default bind is ever wanted.
+- **Traces to**: issue #60, tests `tests/unit/test_config.py`, `tests/unit/test_security_middleware.py`, `tests/integration/test_app_bind.py`
 
 ### NFR-03 — Test coverage floor
 - **Priority**: Must

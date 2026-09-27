@@ -417,6 +417,78 @@
         "title": "ProvenanceRecord",
         "type": "object"
       },
+      "Provider": {
+        "description": "LLM providers `build_model()` can construct (spec §5, §2 D5). Local-first: see NFR-01.",
+        "enum": [
+          "ollama",
+          "anthropic",
+          "openai"
+        ],
+        "title": "Provider",
+        "type": "string"
+      },
+      "ProviderSettings": {
+        "additionalProperties": false,
+        "description": "The persisted, runtime-changeable configuration `build_model()` reads (FR-38, FR-39).\n\nAttributes:\n    provider: Which LLM provider to build.\n    model: The provider's model name.\n    base_url: The provider's endpoint. Only meaningful for `ollama`.\n    api_key_env: The NAME of an environment variable holding the API key —\n        never the key itself (ADR-0012 decision D-B). `None` for `ollama`.\n    allow_external: Must be `True` before `provider` may be `anthropic` or\n        `openai` (NFR-01).\n    embedding_provider: Which embedding backend to use. Only `\"ollama\"`\n        exists in M1; a real pluggable interface arrives in M1b task B2.1.\n    embedding_model: The embedding provider's model name.\n    similarity_threshold: Minimum cosine similarity for a `duplicate` match\n        (ADR-0012 decision D-G).",
+        "properties": {
+          "allow_external": {
+            "default": false,
+            "title": "Allow External",
+            "type": "boolean"
+          },
+          "api_key_env": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Env"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "http://127.0.0.1:11434",
+            "title": "Base Url"
+          },
+          "embedding_model": {
+            "default": "nomic-embed-text",
+            "title": "Embedding Model",
+            "type": "string"
+          },
+          "embedding_provider": {
+            "default": "ollama",
+            "title": "Embedding Provider",
+            "type": "string"
+          },
+          "model": {
+            "default": "qwen3.6:27b",
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider",
+            "default": "ollama"
+          },
+          "similarity_threshold": {
+            "default": 0.85,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Similarity Threshold",
+            "type": "number"
+          }
+        },
+        "title": "ProviderSettings",
+        "type": "object"
+      },
       "Review": {
         "additionalProperties": false,
         "description": "A reviewer's decision on one operation.\n\nAttributes:\n    decision: ``accept``, ``edit`` or ``reject``.\n    edited_payload: The replacement payload, for ``edit`` only.",
@@ -449,6 +521,24 @@
           "decision"
         ],
         "title": "Review",
+        "type": "object"
+      },
+      "SettingsView": {
+        "description": "The persisted settings, plus whether a usable key is configured — never the key itself.\n\nAttributes:\n    settings: The persisted provider settings.\n    api_key_configured: True when `settings.api_key_env` names a real,\n        currently-set environment variable. False both when no name is\n        set and when the named variable is unset — a caller who only\n        wants \"is a key needed and missing\" reads this one field either way.",
+        "properties": {
+          "api_key_configured": {
+            "title": "Api Key Configured",
+            "type": "boolean"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ProviderSettings"
+          }
+        },
+        "required": [
+          "settings",
+          "api_key_configured"
+        ],
+        "title": "SettingsView",
         "type": "object"
       },
       "TargetKind": {
@@ -889,6 +979,68 @@
         "summary": "Provenance",
         "tags": [
           "knowledge"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "description": "Return the currently persisted provider settings.\n\nArgs:\n    db: The knowledge-base engine.\n\nReturns:\n    The settings.",
+        "operationId": "get_settings_api_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Replace the persisted provider settings.\n\nArgs:\n    db: The knowledge-base engine.\n    body: The full replacement settings.\n\nReturns:\n    The settings, as persisted.\n\nRaises:\n    HTTPException: 422 if `body` selects Anthropic or OpenAI without\n        `allow_external` (NFR-01).",
+        "operationId": "put_settings_api_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Settings",
+        "tags": [
+          "settings"
         ]
       }
     }

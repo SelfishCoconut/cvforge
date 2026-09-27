@@ -30,7 +30,7 @@ def _settings(built_dist: Path) -> Settings:
 
 def test_spa_and_api_coexist(built_dist: Path) -> None:
     """The static mount at / must not shadow the JSON API under /api."""
-    with TestClient(create_app(_settings(built_dist))) as client:
+    with TestClient(create_app(_settings(built_dist)), base_url="http://127.0.0.1") as client:
         root = client.get("/")
         assert root.status_code == 200
         assert "CVForge" in root.text
@@ -44,7 +44,7 @@ def test_spa_and_api_coexist(built_dist: Path) -> None:
 
 
 def test_openapi_schema_is_served(built_dist: Path) -> None:
-    with TestClient(create_app(_settings(built_dist))) as client:
+    with TestClient(create_app(_settings(built_dist)), base_url="http://127.0.0.1") as client:
         schema = client.get("/openapi.json")
         assert schema.status_code == 200
         assert "/api/health" in schema.json()["paths"]
