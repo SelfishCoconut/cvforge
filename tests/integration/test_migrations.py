@@ -104,9 +104,14 @@ def test_the_migrated_check_constraints_match_the_declared_ones(
     would never see.
     """
     declared = make_engine(None)
-    metadata.create_all(declared)
-    migrated = open_db(tmp_path / "cvforge.db")
+    try:
+        metadata.create_all(declared)
+        migrated = open_db(tmp_path / "cvforge.db")
 
-    expected = _check_constraints(declared)
-    assert len(expected) > 20, "the regex stopped seeing the constraints; fix it, do not relax this"
-    assert _check_constraints(migrated) == expected
+        expected = _check_constraints(declared)
+        assert len(expected) > 20, (
+            "the regex stopped seeing the constraints; fix it, do not relax this"
+        )
+        assert _check_constraints(migrated) == expected
+    finally:
+        declared.dispose()

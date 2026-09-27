@@ -112,6 +112,13 @@ def test_commit_refuses_an_engine_without_foreign_key_enforcement() -> None:
     engine = sa.create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
+    try:
+        _assert_commit_refused_without_foreign_keys(engine)
+    finally:
+        engine.dispose()
+
+
+def _assert_commit_refused_without_foreign_keys(engine: sa.Engine) -> None:
     metadata.create_all(engine)
     source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
     evidence = apply.record_evidence(engine, source, "message:1", "I use Rust.")
