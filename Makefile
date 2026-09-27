@@ -1,6 +1,6 @@
 .PHONY: lint format typecheck complexity test test-unit test-integration test-golden \
         update-golden test-demos sanity docs docs-serve build-ui dev-ui ui-install \
-        ui-lint ui-test run demo-health clean
+        ui-lint ui-test run demo-health demo-review-pipeline migration clean
 
 # --- python quality ---
 lint:
@@ -29,6 +29,10 @@ test-golden:
 
 test: test-unit test-integration test-golden
 
+# New Alembic revision from the schema.py diff. READ the generated file.
+migration:
+	uv run python scripts/new_migration.py "$(MSG)"
+
 # Regenerate golden snapshots, then REVIEW THE DIFF — that review is the gate.
 update-golden:
 	uv run pytest -m golden --no-cov --update-golden
@@ -37,7 +41,10 @@ update-golden:
 demo-health:
 	uv run python scripts/demo/health.py
 
-test-demos: demo-health
+demo-review-pipeline:
+	uv run python scripts/demo/review_pipeline.py
+
+test-demos: demo-health demo-review-pipeline
 	@echo "all offline demos ran clean"
 
 # --- mechanical quality signals ---

@@ -9,6 +9,8 @@ import json
 from fastapi.testclient import TestClient
 
 from cvforge.app import create_app
+from cvforge.kb.db import make_engine
+from cvforge.kb.schema import metadata
 
 
 def main() -> int:
@@ -17,7 +19,9 @@ def main() -> int:
     Returns:
         0 when the endpoint answered 200, 1 otherwise.
     """
-    with TestClient(create_app()) as client:
+    engine = make_engine(None)  # in-memory: a demo must never touch data/cvforge.db
+    metadata.create_all(engine)
+    with TestClient(create_app(engine=engine)) as client:
         response = client.get("/api/health")
     print(f"GET /api/health -> {response.status_code}")
     print(json.dumps(response.json(), indent=2))

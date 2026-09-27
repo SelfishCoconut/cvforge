@@ -21,7 +21,7 @@ def test_mount_happens_when_index_html_exists(tmp_path: Path) -> None:
 
 
 def test_root_returns_404_without_a_build(tmp_path: Path) -> None:
-    app = create_app(Settings(frontend_dist=tmp_path))
+    app = create_app(Settings(frontend_dist=tmp_path, data_dir=tmp_path / "data"))
     with TestClient(app) as client:
         assert client.get("/").status_code == 404
         assert client.get("/api/health").status_code == 200

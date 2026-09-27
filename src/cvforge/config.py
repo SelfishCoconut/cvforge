@@ -5,6 +5,8 @@ from pathlib import Path
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from cvforge.kb.db import DATABASE_FILE
+
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 
 
@@ -29,6 +31,16 @@ class Settings(BaseSettings):
     port: int = 8000
     data_dir: Path = Path("data")
     frontend_dist: Path = Path("frontend/dist")
+
+    @property
+    def database_path(self) -> Path:
+        """The single knowledge-base file under `data_dir` (NFR-09)."""
+        return self.data_dir / DATABASE_FILE
+
+    @property
+    def backup_dir(self) -> Path:
+        """Where pre-migration copies of the database are written."""
+        return self.data_dir / "backups"
 
     @field_validator("host")
     @classmethod

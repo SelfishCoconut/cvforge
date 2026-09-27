@@ -33,7 +33,7 @@ C4Container
   Rel(spa, api, "Calls", "JSON over /api")
   Rel(api, agents, "Requests a proposal or an analysis")
   Rel(agents, kb, "Reads only")
-  Rel(api, kb, "Reads, and commits approved proposals")
+  Rel(api, kb, "Reads, records intake and review decisions, and commits approved proposals")
   Rel(kb, db, "SQL")
 ```
 
@@ -41,5 +41,8 @@ C4Container
 
 The arrow from the agent layer to the knowledge layer is read-only, and there is
 no arrow from the agent layer to the database. An agent's output is a `Proposal`
-— plain data. Only `kb/apply.py`, reached from the API after Álvaro approves
-operations, writes. See [ADR-0003](../adr/0003-changeset-review-pipeline.md).
+— plain data. Only `kb/apply.py`, reached from the API, writes. It records intake
+and proposals before review, and writes entity, edge and assertion rows only in
+`commit_proposal`, after Álvaro has reviewed every operation. See
+[ADR-0003](../adr/0003-changeset-review-pipeline.md) and
+[ADR-0009](../adr/0009-review-pipeline-semantics.md).
