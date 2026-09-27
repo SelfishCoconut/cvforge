@@ -1,5 +1,6 @@
 """Application factory: one process serving the JSON API and the built SPA (ADR-0002)."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -16,10 +17,38 @@ from cvforge.api.proposals import router as proposals_router
 from cvforge.api.security import install_security_middleware
 from cvforge.api.settings import router as settings_router
 from cvforge.config import Settings
+from cvforge.kb.embeddings import (
+    EmbeddingError,
+    EmbeddingProvider,
+    OllamaEmbeddingProvider,
+    reindex_missing,
+)
 from cvforge.kb.migrate import open_database
+from cvforge.llm.settings_store import ProviderSettings, load_settings
+
+logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Settings | None = None, *, engine: sa.Engine | None = None) -> FastAPI:
+def _build_embedder(settings: ProviderSettings) -> EmbeddingProvider:
+    """The embedding provider `settings` names — only Ollama exists in M1.
+
+    Args:
+        settings: The persisted provider settings.
+
+    Returns:
+        A provider. Constructing it makes no network call.
+    """
+    return OllamaEmbeddingProvider(
+        settings.base_url or "http://127.0.0.1:11434", settings.embedding_model
+    )
+
+
+def create_app(
+    settings: Settings | None = None,
+    *,
+    engine: sa.Engine | None = None,
+    embedder: EmbeddingProvider | None = None,
+) -> FastAPI:
     """Build the CVForge application.
 
     The JSON API is mounted under `/api`. The built SPA is mounted at `/` only
@@ -30,10 +59,18 @@ def create_app(settings: Settings | None = None, *, engine: sa.Engine | None = N
     up first). Pass `engine` to use an already-open database instead, as the
     tests and the offline demos do.
 
+    An `engine` passed in means someone else owns startup: no embedder is built
+    from settings (real or fake, `embedder` decides), and `reindex_missing`
+    never runs — the caller controls that, so the same test suite that forbids
+    live embedding calls never triggers one just by building an app.
+
     Args:
         settings: Process configuration. A default `Settings()` is read from the
             environment when omitted.
         engine: An open knowledge-base engine; the app does not dispose it.
+        embedder: What indexes newly committed entities. Defaults to a real,
+            settings-built provider when the app owns its own engine; `None`
+            otherwise, which makes post-commit indexing a no-op.
 
     Returns:
         The configured application.
@@ -44,6 +81,16 @@ def create_app(settings: Settings | None = None, *, engine: sa.Engine | None = N
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         owned = engine is None
         app.state.engine = engine or open_database(settings.database_path, settings.backup_dir)
+        if embedder is not None:
+            app.state.embedder = embedder
+        elif owned:
+            app.state.embedder = _build_embedder(load_settings(app.state.engine))
+            try:
+                reindex_missing(app.state.engine, app.state.embedder)
+            except EmbeddingError as exc:
+                logger.warning("startup similarity reindex skipped: %s", exc)
+        else:
+            app.state.embedder = None
         yield
         if owned:
             app.state.engine.dispose()

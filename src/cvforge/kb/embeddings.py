@@ -219,9 +219,12 @@ def reindex_missing(engine: sa.Engine, provider: EmbeddingProvider) -> int:
     Returns:
         How many entities were newly indexed.
     """
-    ensure_index(engine, provider.dimension)
     with engine.connect() as conn:
         all_ids = {record.id for record in queries.list_entities(conn)}
+    if not all_ids:
+        return 0  # nothing to do — never probe the embedder just to find that out
+    ensure_index(engine, provider.dimension)
+    with engine.connect() as conn:
         already_indexed = _indexed_ids(conn)
     to_index = sorted(all_ids - already_indexed)
     if not to_index:

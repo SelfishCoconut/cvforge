@@ -7,15 +7,32 @@ only route to them is committing a reviewed proposal.
 from typing import Annotated, Literal
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 from cvforge.api.errors import connection, engine
 from cvforge.kb import apply, queries
+from cvforge.kb.embeddings import EmbeddingProvider, index_entities
 
 router = APIRouter(tags=["review"])
 Conn = Annotated[sa.Connection, Depends(connection)]
 Engine = Annotated[sa.Engine, Depends(engine)]
+
+
+def _embedder(request: Request) -> EmbeddingProvider | None:
+    """FastAPI dependency: the embedder the app was built with, or None.
+
+    Args:
+        request: The incoming request.
+
+    Returns:
+        The embedder, or None if commit-time indexing is disabled.
+    """
+    result: EmbeddingProvider | None = request.app.state.embedder
+    return result
+
+
+Embedder = Annotated[EmbeddingProvider | None, Depends(_embedder)]
 
 
 class Review(BaseModel):
@@ -39,11 +56,15 @@ class Committed(BaseModel):
         commit_id: The `commit_log` row.
         applied_operation_ids: Applied operations, in order.
         entity_ids: For each applied `create_entity` seq, the entity it resolved to.
+        index_pending: Entity ids the similarity index could not embed yet (the
+            embedder was unavailable). The commit still happened; only the
+            search index is behind — `reindex_missing` catches these up later.
     """
 
     commit_id: int
     applied_operation_ids: list[int]
     entity_ids: dict[int, int]
+    index_pending: list[int] = []
 
 
 def _proposal(conn: sa.Connection, proposal_id: int) -> queries.ProposalRecord:
@@ -100,11 +121,16 @@ def review(db: Engine, proposal_id: int, operation_id: int, body: Review) -> que
 
 
 @router.post("/proposals/{proposal_id}/commit")
-def commit(db: Engine, proposal_id: int) -> Committed:
+def commit(db: Engine, embedder: Embedder, proposal_id: int) -> Committed:
     """Apply the accepted and edited operations in one transaction.
+
+    Newly created entities are indexed for similarity search right after
+    (never inside the write transaction — D-D). A failed embedding call never
+    fails the commit: the affected ids come back as `index_pending` instead.
 
     Args:
         db: The engine.
+        embedder: What indexes the new entities; `None` skips indexing.
         proposal_id: The proposal.
 
     Returns:
@@ -121,8 +147,12 @@ def commit(db: Engine, proposal_id: int) -> Committed:
             row and nothing was written.
     """
     result = apply.commit_proposal(db, proposal_id)
+    index_pending: list[int] = []
+    if embedder is not None and result.entity_ids:
+        index_pending = index_entities(db, embedder, list(result.entity_ids.values()))
     return Committed(
         commit_id=result.commit_id,
         applied_operation_ids=result.applied_operation_ids,
         entity_ids=result.entity_ids,
+        index_pending=index_pending,
     )

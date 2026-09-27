@@ -116,6 +116,20 @@ def test_reindex_missing_is_a_no_op_once_everything_is_indexed(
     assert reindex_missing(kb, provider) == 0
 
 
+def test_reindex_missing_never_probes_the_embedder_when_there_is_nothing_to_index(
+    kb: sa.Engine,
+) -> None:
+    class _TripwireProvider:
+        @property
+        def dimension(self) -> int:
+            raise AssertionError("dimension should not be read when there is nothing to index")
+
+        def embed(self, texts: Sequence[str]) -> list[list[float]]:
+            raise AssertionError("embed should not be called when there is nothing to index")
+
+    assert reindex_missing(kb, _TripwireProvider()) == 0
+
+
 def test_find_similar_truncates_to_limit(kb: sa.Engine, propose: Propose) -> None:
     provider = FakeEmbeddingProvider(dimension=8)
     ids = [_entity(kb, propose, name=f"rust programmer {i}") for i in range(3)]
