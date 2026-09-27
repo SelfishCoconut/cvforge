@@ -106,6 +106,14 @@ class ProposalStatus(StrEnum):
     COMMITTED = "committed"
 
 
+class Provider(StrEnum):
+    """LLM providers `build_model()` can construct (spec §5, §2 D5). Local-first: see NFR-01."""
+
+    OLLAMA = "ollama"
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+
+
 # Kind-specific closed sets (spec §4.1 comments).
 SKILL_CATEGORIES = ("language", "framework", "tool", "platform", "method", "soft")
 ORG_TYPES = ("employer", "client", "institution")

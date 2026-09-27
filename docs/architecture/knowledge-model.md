@@ -137,3 +137,13 @@ revision the database was at *before* migrating. A brand-new file has nothing to
 back up. A schema change is a new file
 in `src/cvforge/kb/migrations/versions/`. `tests/integration/test_migrations.py`
 fails if the migrated schema and `schema.py` disagree.
+
+## Non-knowledge state
+
+Not every table in the same file is knowledge. `app_setting` (the LLM provider
+configuration, `cvforge.llm.settings_store`) carries no assertion, no evidence
+and no provenance — it is one row of process configuration, not a fact about
+Álvaro's career. It is written by `llm/settings_store.py`, a **registered
+writer** (ADR-0011), never by `kb/apply.py`. The distinction matters for
+`table_counts` and any tool that treats "everything in `cvforge.db`" as
+knowledge: `app_setting` is deliberately outside that count.

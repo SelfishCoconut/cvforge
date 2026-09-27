@@ -70,7 +70,7 @@ def _populate(engine: sa.Engine) -> None:
 
 def test_the_running_app_uses_exactly_one_database_file(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path / "data", frontend_dist=tmp_path / "none")
-    with TestClient(create_app(settings)) as client:
+    with TestClient(create_app(settings), base_url="http://127.0.0.1") as client:
         assert client.get("/api/entities").status_code == 200
         on_disk = sorted(p.name for p in (tmp_path / "data").iterdir())
     assert on_disk == ["cvforge.db"]

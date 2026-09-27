@@ -88,4 +88,8 @@ nav:
       - 0008 Close M0 on evidence: adr/0008-close-m0-on-evidence-not-issues.md
       - 0009 Review-pipeline semantics: adr/0009-review-pipeline-semantics.md
       - 0010 M1a storage and gate policies: adr/0010-m1a-storage-and-gate-policies.md
+      - 0011 Registered writers for non-knowledge state: adr/0011-registered-writers-for-non-knowledge-state.md
+      - 0012 API keys are never persisted: adr/0012-api-keys-are-never-persisted.md
+  - Guides:
+      - LLM providers: guides/providers.md
   - API reference: reference/api.md

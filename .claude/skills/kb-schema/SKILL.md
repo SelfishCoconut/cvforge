@@ -18,6 +18,12 @@ Read `docs/architecture/knowledge-model.md` and ADR-0001 before touching anythin
    `update()` and `delete()` in `src/` lives there. New mutation logic goes
    *there*, not wherever it is convenient. `tests/unit/test_write_path_invariant.py`
    scans `src/` with `ast` and fixes `apply.py`'s public surface.
+   A module that writes state which is **not knowledge** — no assertion, no
+   evidence, nothing invariant 2 is about — may instead be added to
+   `REGISTERED_WRITERS` in that test file, naming exactly the tables it may write
+   (ADR-0011). It stays barred from every knowledge table. This is for things
+   like provider settings or a vector index, never for a shortcut around
+   `apply.py`.
 2. **Every entity and edge has ≥1 assertion** bound to an `evidence` span in a
    `source`. A new entity kind needs no new provenance mechanism — it needs to use
    the existing one.

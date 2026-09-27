@@ -54,7 +54,7 @@ def main() -> int:
     proposal = apply.record_proposal(engine, draft)
     print(f"2. proposal  #{proposal} with {len(ops)} pending operations; nothing stored yet")
 
-    with TestClient(create_app(engine=engine)) as client:
+    with TestClient(create_app(engine=engine), base_url="http://127.0.0.1") as client:
         empty = client.get("/api/entities").json()
         operations = client.get(f"/api/proposals/{proposal}").json()["operations"]
         for op in operations:

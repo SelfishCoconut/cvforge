@@ -23,6 +23,12 @@ class Settings(BaseSettings):
             documents and the browser profile. Never committed.
         frontend_dist: Directory holding the built SPA. The SPA is only served
             when it contains an `index.html`.
+        allowed_hosts: Host header values the API answers to (NFR-02, audit
+            F6). Binding to loopback stops a remote attacker; it does not stop
+            a hostile page already open in the user's own browser making the
+            browser's DNS resolve an attacker's hostname to 127.0.0.1. Every
+            loopback form is listed regardless of which one `host` binds,
+            since a browser may reach the same bound socket through any of them.
     """
 
     model_config = SettingsConfigDict(env_prefix="CVFORGE_", env_file=".env", extra="ignore")
@@ -31,6 +37,7 @@ class Settings(BaseSettings):
     port: int = 8000
     data_dir: Path = Path("data")
     frontend_dist: Path = Path("frontend/dist")
+    allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "[::1]")
 
     @property
     def database_path(self) -> Path:

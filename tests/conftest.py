@@ -1,12 +1,17 @@
 """Shared fixtures."""
 
+import ipaddress
 import json
+import socket
+import uuid
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
+from pydantic_ai import models as pydantic_ai_models
 
 from cvforge.app import create_app
 from cvforge.kb import apply, migrate, queries
@@ -15,6 +20,51 @@ from cvforge.kb.models import ProposalDraft
 from cvforge.kb.schema import evidence as evidence_table
 from cvforge.kb.schema import metadata
 from cvforge.kb.vocab import SourceKind
+
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+
+
+def _is_loopback(host: str) -> bool:
+    """True for a loopback name or address; false otherwise, including an unresolved name."""
+    if host in LOOPBACK_HOSTS:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False  # a hostname we don't special-case: refuse rather than risk a DNS lookup
+
+
+@pytest.fixture(autouse=True)
+def _no_live_traffic(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Refuse non-loopback network access and real model requests in every test (NFR-01, NFR-08).
+
+    Without this, a test that reaches for a real socket does not fail fast: the
+    address is unroutable in this environment, and the OS falls through to its
+    connect timeout (tens of seconds) instead of refusing immediately. Loopback is
+    exempted so the `TestClient`'s in-process transport, the in-memory SQLite
+    engine and a test that binds its own localhost socket keep working.
+    """
+    real_connect = socket.socket.connect
+    real_connect_ex = socket.socket.connect_ex
+
+    def _check(sock: socket.socket, address: Any) -> None:
+        if sock.family in (socket.AF_INET, socket.AF_INET6):
+            host = address[0] if isinstance(address, tuple) else address
+            if not _is_loopback(str(host)):
+                raise OSError("non-local network access is disabled in tests (NFR-01/NFR-08)")
+
+    def guarded_connect(sock: socket.socket, address: Any, *args: Any, **kwargs: Any) -> Any:
+        _check(sock, address)
+        return real_connect(sock, address, *args, **kwargs)
+
+    def guarded_connect_ex(sock: socket.socket, address: Any, *args: Any, **kwargs: Any) -> Any:
+        _check(sock, address)
+        return real_connect_ex(sock, address, *args, **kwargs)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", guarded_connect_ex)
+    monkeypatch.setattr(pydantic_ai_models, "ALLOW_MODEL_REQUESTS", False)
+    yield
 
 
 @pytest.fixture
@@ -35,9 +85,25 @@ def evidence_id(kb: sa.Engine) -> int:
 
 @pytest.fixture
 def client(kb: sa.Engine) -> Iterator[TestClient]:
-    """A test client over a freshly built application backed by the in-memory `kb`."""
-    with TestClient(create_app(engine=kb)) as test_client:
+    """A test client over a freshly built application backed by the in-memory `kb`.
+
+    `base_url` is a real loopback address, not `TestClient`'s default
+    `http://testserver`: the app's Host-header check (audit F6) would refuse
+    every request otherwise, since `testserver` names no address it binds.
+    """
+    with TestClient(create_app(engine=kb), base_url="http://127.0.0.1") as test_client:
         yield test_client
+
+
+@pytest.fixture
+def canary() -> str:
+    """A fresh, unpredictable stand-in for a secret value.
+
+    Generated at runtime rather than written as a literal: a key-shaped string
+    constant trips CI's Gitleaks `generic-api-key` rule, which happened to this
+    project's M1b plan on PR #68.
+    """
+    return f"canary-{uuid.uuid4().hex}"
 
 
 @pytest.fixture(autouse=True)

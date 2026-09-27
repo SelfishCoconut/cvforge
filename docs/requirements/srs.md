@@ -571,10 +571,10 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall support pluggable LLM providers — Ollama
   (default), Anthropic, OpenAI — behind a common interface.
 - **Acceptance criteria**:
-  - [ ] `build_model()` returns a working model handle for each of the three providers against fakes/mocks, with no live call
-  - [ ] Switching the persisted provider setting changes which provider the next `build_model()` call targets, without a restart
-  - [ ] An unsupported provider name is rejected with a clear error rather than silently defaulting
-  - [ ] With no configuration at all, the system defaults to the local Ollama endpoint
+  - [x] `build_model()` returns a working model handle for each of the three providers against fakes/mocks, with no live call
+  - [x] Switching the persisted provider setting changes which provider the next `build_model()` call targets, without a restart
+  - [x] An unsupported provider name is rejected with a clear error rather than silently defaulting
+  - [x] With no configuration at all, the system defaults to the local Ollama endpoint
 - **Traces to**: issue #42, tests `tests/unit/test_llm_provider.py`
 
 ### FR-39 — Runtime-changeable provider settings
@@ -585,11 +585,11 @@ Each requirement below is a subsection with six fields, in this order:
   API-key references in the database, seeded from environment variables on
   first run only, and changeable at runtime via the `/settings` view.
 - **Acceptance criteria**:
-  - [ ] On first run with env vars set, the settings row is seeded from them exactly once
-  - [ ] Changing an env var after first run has no effect — the DB-persisted row remains authoritative
-  - [ ] A settings update call changes the persisted row and immediately changes the provider used by the next agent call
-  - [ ] An API key is stored as a reference, never returned in plaintext by a read endpoint
-- **Traces to**: issue #43, tests `tests/unit/test_settings.py`
+  - [x] On first run with env vars set, the settings row is seeded from them exactly once
+  - [x] Changing an env var after first run has no effect — the DB-persisted row remains authoritative
+  - [x] A settings update call changes the persisted row and immediately changes the provider used by the next agent call
+  - [x] An API key is stored as a reference, never returned in plaintext by a read endpoint
+- **Traces to**: issue #43, tests `tests/unit/test_settings.py`, `tests/unit/test_settings_api.py`
 
 ### FR-40 — Pluggable embedding provider
 - **Priority**: Must
@@ -615,11 +615,11 @@ Each requirement below is a subsection with six fields, in this order:
   beyond the configured local Ollama endpoint; external LLM providers and web
   search are opt-in.
 - **Acceptance criteria**:
-  - [ ] A network-call audit over the default configuration shows zero calls to non-local hosts
-  - [ ] Enabling Anthropic/OpenAI/search requires an explicit opt-in setting; without it, calls to those providers are refused before being attempted
-  - [ ] CI's unit/integration/golden suites run with non-local network access disabled and still pass, proving no hidden outbound dependency
-  - [ ] `docs/` states the opt-in providers and how to enable each one
-- **Traces to**: issue #59, tests `tests/unit/test_network_policy.py`
+  - [ ] A network-call audit over the default configuration shows zero calls to non-local hosts — not yet a dedicated check; `tests/unit/test_network_policy.py` proves the *test suite* refuses non-loopback traffic, which is a different claim from auditing the *app's* default runtime behavior
+  - [x] Enabling Anthropic/OpenAI/search requires an explicit opt-in setting; without it, calls to those providers are refused before being attempted
+  - [x] CI's unit/integration/golden suites run with non-local network access disabled and still pass, proving no hidden outbound dependency
+  - [x] `docs/` states the opt-in providers and how to enable each one
+- **Traces to**: issue #59, tests `tests/unit/test_network_policy.py`, `tests/unit/test_llm_provider.py`, `docs/guides/providers.md`
 
 ### NFR-02 — Localhost binding, no authentication
 - **Priority**: Must
@@ -628,11 +628,11 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall bind the web server to `127.0.0.1` only,
   with no authentication layer, reflecting its single-user local-tool design.
 - **Acceptance criteria**:
-  - [ ] Inspecting the bound socket at startup shows `127.0.0.1`, never `0.0.0.0` or a public interface
-  - [ ] A simulated request from a non-localhost origin cannot reach the API in the default configuration
-  - [ ] An API route inventory test confirms no login/session/token endpoint exists
-  - [ ] Exposing a different bind address requires an explicit, documented override rather than a default
-- **Traces to**: issue #60, tests `tests/integration/test_app_bind.py`
+  - [x] Inspecting the bound socket at startup shows `127.0.0.1`, never `0.0.0.0` or a public interface
+  - [x] A simulated request from a non-localhost origin cannot reach the API in the default configuration
+  - [x] An API route inventory test confirms no login/session/token endpoint exists
+  - [ ] Exposing a different bind address requires an explicit, documented override rather than a default — not applicable as built: `Settings.host` accepts only the three loopback forms (`config.py:_reject_non_loopback`), so a non-loopback bind is refused outright rather than gated behind an override. Revisit this criterion's wording if a non-default bind is ever wanted.
+- **Traces to**: issue #60, tests `tests/unit/test_config.py`, `tests/unit/test_security_middleware.py`, `tests/integration/test_app_bind.py`
 
 ### NFR-03 — Test coverage floor
 - **Priority**: Must
@@ -710,11 +710,11 @@ Each requirement below is a subsection with six fields, in this order:
   LLM or embedding model; all model-shaped behaviour is exercised via Pydantic
   AI `TestModel`/`FunctionModel` or fake providers.
 - **Acceptance criteria**:
-  - [ ] CI runs the unit/integration/golden suites with network access to model endpoints disabled, and all pass
-  - [ ] A check finds no live `ollama`/`anthropic`/`openai` client instantiation reachable from `tests/unit`, `tests/integration` or `tests/golden`
-  - [ ] Every agent test constructs its agent with `TestModel` or a `FunctionModel` stand-in, never the real provider
-  - [ ] Introducing a live call in a test is caught by that check and fails CI rather than silently incurring cost or latency
-- **Traces to**: issue #61, `tests/conftest.py`, `.github/workflows/ci.yml`
+  - [x] CI runs the unit/integration/golden suites with network access to model endpoints disabled, and all pass
+  - [x] A check finds no live `ollama`/`anthropic`/`openai` client instantiation reachable from `tests/unit`, `tests/integration` or `tests/golden`
+  - [ ] Every agent test constructs its agent with `TestModel` or a `FunctionModel` stand-in, never the real provider — not applicable yet, no agent exists (M1b task B3)
+  - [x] Introducing a live call in a test is caught by that check and fails CI rather than silently incurring cost or latency
+- **Traces to**: issue #61, `tests/conftest.py`, `tests/unit/test_network_policy.py`, `tests/unit/test_no_live_clients.py`
 
 ### NFR-09 — Single-file database with a documented export
 - **Priority**: Must

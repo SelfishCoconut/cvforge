@@ -61,6 +61,19 @@ Inputs and failure modes the spec implies but no single FR test exercises. Each 
 
 ### Task B1.1: Dependencies and the "no live traffic" guard (NFR-08, NFR-01)
 
+> **Delivered 2026-09-27**, as sketched: `pydantic-ai-slim[anthropic,openai]` and
+> `httpx` joined the runtime dependencies (the exact installed version,
+> `pydantic-ai-slim==2.51.0`, was confirmed against its real API before any code
+> was written against it — see B1.3's own step 0 note). The autouse
+> `_no_live_traffic` fixture in `tests/conftest.py` refuses non-loopback socket
+> connections and sets `models.ALLOW_MODEL_REQUESTS = False`; a static AST check
+> (`tests/unit/test_no_live_clients.py`) bars any test from importing
+> `anthropic`/`openai`/`ollama` directly. One thing the sketch didn't
+> anticipate: without the guard, a test that reaches for a real socket does not
+> fail fast in this environment — it falls through to the OS connect timeout
+> (confirmed empirically, ~60s) rather than refusing immediately — which is
+> exactly the failure mode this task exists to prevent.
+
 **Files:**
 - Modify: `pyproject.toml` (add `pydantic-ai-slim[openai,anthropic]`, `httpx` to runtime deps)
 - Modify: `tests/conftest.py` (autouse guard)
@@ -148,31 +161,21 @@ def test_no_test_imports_a_live_provider_client() -> None:
 - Produces: `REGISTERED_WRITERS: dict[str, frozenset[str]]` in the invariant test, mapping a path relative to `src/cvforge/` to the tables it may write. Initially empty; B1.3 adds `llm/settings_store.py → {"app_setting"}`; B2 adds `kb/embeddings.py → {"entity_vec", "entity_vec_meta"}` (final names decided in B2.2).
 - Produces: `KNOWLEDGE_TABLES` — every table name in `cvforge.kb.schema.metadata.tables` **except** the registered ones. A registered module may not reference any of them.
 
-- [ ] **Step 1: Write the failing test.** Extend `_modules()` so a module in `REGISTERED_WRITERS` is exempt from `test_no_module_but_apply_writes` but subject to a new test:
-
-```python
-@pytest.mark.parametrize("rel", sorted(REGISTERED_WRITERS))
-def test_a_registered_writer_never_touches_a_knowledge_table(rel: str) -> None:
-    source = (SRC / rel).read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    referenced = {
-        n.attr
-        for n in ast.walk(tree)
-        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == "schema"
-    }
-    strings = " ".join(
-        n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
-    )
-    forbidden = KNOWLEDGE_TABLES - REGISTERED_WRITERS[rel]
-    assert not referenced & forbidden
-    assert not any(re.search(rf"\b{t}\b", strings) for t in forbidden)
-
-
-def test_registering_a_writer_is_a_visible_change() -> None:
-    assert set(REGISTERED_WRITERS) == {"llm/settings_store.py"}  # edit deliberately, in review
-```
-
-- [ ] **Step 2:** Run it; confirm it fails only for the missing registry. **Step 3:** implement the registry with the empty/initial map and a `test_the_registry_scanner_catches_a_leak` case using a synthetic snippet that references `schema.entity`. **Step 4:** run `uv run pytest tests/unit/test_write_path_invariant.py -v`. **Step 5:** write ADR-0011 (Context: scanner is table-blind; Decision: registry; Alternatives: route through `apply.py`, exempt by directory, drop the AST test; Consequences). **Step 6:** commit — `docs: ADR-0011 registered writers for non-knowledge state`.
+> **Delivered 2026-09-27**, ahead of B1.3, because the registry is infrastructure
+> with no consumer yet: `REGISTERED_WRITERS` starts **empty** (not
+> `{"llm/settings_store.py"}` — that module doesn't exist until B1.3 creates it,
+> and a registry entry naming a nonexistent file would fail the moment its test
+> tried to read it). The scanner logic itself is proven by a synthetic-snippet
+> test (`test_the_registered_writer_scanner_sees_a_reference_either_way`), not by
+> a real registered writer. `test_a_registered_writer_never_touches_a_knowledge_table`
+> therefore reports **skipped** (pytest's own handling of a zero-length
+> parametrize, not a deliberate skip) until B1.3 adds the first entry — a comment
+> above it says so. ADR-0011 (`proposed`), the ADR index, the `mkdocs.yml` nav
+> entry, and the `kb-schema` skill paragraph are all in place. When B1.3 lands,
+> update `REGISTERED_WRITERS = {"llm/settings_store.py": frozenset({"app_setting"})}`
+> and `test_registering_a_writer_is_a_visible_change`'s expected set together, in
+> that task's own commit — that edit **is** the "visible, reviewed change" the
+> registry exists to force.
 
 ### Task B1.3: The `app_setting` table, the settings store, and `build_model()` (FR-38, FR-39, NFR-01)
 
@@ -186,18 +189,29 @@ def test_registering_a_writer_is_a_visible_change() -> None:
 - Test: `tests/unit/test_settings.py`, `tests/unit/test_llm_provider.py`, `tests/integration/test_migrations.py` (existing gate must stay green)
 
 **Interfaces:**
-- Produces (`llm/provider.py`):
+
+> **Delivered 2026-09-27, with one deliberate deviation from the sketch below:**
+> `Provider` lives in `kb/vocab.py`, not `llm/provider.py` — `kb/schema.py` needs
+> it for `app_setting`'s CHECK constraint, and `kb/` must not import from `llm/`
+> (agents depend on the knowledge layer, never the reverse). `ProviderSettings`
+> lives in `llm/settings_store.py`, not `llm/provider.py` — `provider.py` needs
+> it to call `load_settings`, and putting the type in `provider.py` too would
+> make the two modules import each other. `EXTERNAL`,
+> `ExternalProviderDisabledError`, `MissingApiKeyError` and `build_model` stay in
+> `provider.py` as sketched.
+
+- Produces (`kb/vocab.py`):
 
 ```python
 class Provider(StrEnum):
     OLLAMA = "ollama"
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+```
 
+- Produces (`llm/settings_store.py`):
 
-EXTERNAL = frozenset({Provider.ANTHROPIC, Provider.OPENAI})
-
-
+```python
 class ProviderSettings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     provider: Provider = Provider.OLLAMA
@@ -210,6 +224,18 @@ class ProviderSettings(BaseModel):
     similarity_threshold: float = Field(default=0.85, ge=0, le=1)  # D-G
 
 
+def load_settings(
+    engine: sa.Engine, *, environ: Mapping[str, str] = os.environ
+) -> ProviderSettings: ...
+def save_settings(engine: sa.Engine, settings: ProviderSettings) -> ProviderSettings: ...
+```
+
+- Produces (`llm/provider.py`):
+
+```python
+EXTERNAL = frozenset({Provider.ANTHROPIC, Provider.OPENAI})
+
+
 class ExternalProviderDisabledError(Exception): ...
 
 
@@ -218,8 +244,6 @@ class MissingApiKeyError(Exception): ...
 
 def build_model(engine: sa.Engine, *, environ: Mapping[str, str] = os.environ) -> Model: ...
 ```
-
-- Produces (`llm/settings_store.py`): `load_settings(engine, *, environ=os.environ) -> ProviderSettings` (seeds the row from `CVFORGE_LLM_*` env vars on the first call **only**), `save_settings(engine, settings: ProviderSettings) -> ProviderSettings`.
 
 > **Canary values are generated at runtime, never written as literals:** `CANARY = f"canary-{uuid4().hex}"` (a fixture in `tests/conftest.py`). A key-shaped literal in a test or a doc trips CI's Gitleaks `generic-api-key` rule, which happened to this plan on PR #68, and a public repository must never hold anything that looks like a credential.
 
@@ -270,6 +294,25 @@ def test_the_settings_row_holds_no_secret(engine): ...  # canary value absent fr
 - [ ] **Step 2:** Run → FAIL (modules absent). **Step 3:** add the table (single row, `CHECK (id = 1)`, provider CHECK from `Provider`, `allow_external` bool, `updated_at`), generate migration 0002, implement `settings_store` (reads/writes via SQLAlchemy Core; register in the invariant test) and `build_model` (Ollama via `OllamaModel(model, provider=OllamaProvider(base_url=f"{base_url.rstrip('/')}/v1"))` — the stored `base_url` stays the bare host, because embeddings call `{base_url}/api/embed`; Anthropic/OpenAI gated on `allow_external`; key read from `environ[api_key_env]` at call time and passed to the provider). **Step 4:** run `make lint typecheck complexity` and the two test files plus `tests/integration/test_migrations.py`. **Step 5:** commit — `feat: provider settings persisted in the database and build_model() (FR-38, FR-39)`.
 
 ### Task B1.4: The `/api/settings` router (FR-39, NFR-02)
+
+> **Delivered 2026-09-27.** Two deviations from the sketch below:
+> - `Settings.allowed_hosts` and a custom `api/security.py`, not Starlette's
+>   `TrustedHostMiddleware`: that middleware splits a `Host` header on the first
+>   `:`, which lands inside an IPv6 literal's brackets (`[::1]:8000` → `[`), so
+>   it can never correctly match `[::1]`. The custom check does the same job with
+>   bracket-aware parsing, verified empirically before writing it that way.
+> - Most of the plan's test snippets below (Host/Origin/route-inventory) ended up
+>   in `tests/unit/test_security_middleware.py`, not
+>   `tests/integration/test_app_bind.py`: they run in-process over `TestClient`
+>   (no real socket), matching how every other API test in this codebase is
+>   already classified `unit` here. Only the one test needing a genuine
+>   non-loopback connection attempt (a real `uvicorn.Server` in a thread) is
+>   `integration` — verified with a quick empirical check first: a same-host
+>   non-loopback TCP connect refuses in 0.0s in this sandbox, so the test needs
+>   no generous timeout and cannot hang.
+> - `test_default_bind_is_loopback` and `test_a_non_loopback_host_is_refused`
+>   already existed in `tests/unit/test_config.py` before this task; not
+>   duplicated.
 
 **Files:**
 - Create: `src/cvforge/api/settings.py`; modify `src/cvforge/app.py` (`include_router(settings_router, prefix="/api")`)
@@ -344,6 +387,16 @@ Implementation (audit F6): `starlette.middleware.trustedhost.TrustedHostMiddlewa
 - [ ] **Steps 2–5:** run → FAIL; implement; run `make test` and confirm the golden diff is additive; commit — `feat: /api/settings and the NFR-02 bind checks`.
 
 ### Task B1.5: Document the opt-in providers (NFR-01 criterion 4) and open the PR
+
+> **Delivered 2026-09-27**, as sketched: ADR-0012 records decision D-B (an API
+> key is never stored, only the name of the environment variable holding it);
+> `docs/guides/providers.md` covers Ollama (no opt-in), Anthropic/OpenAI
+> (`api_key_env` + `allow_external`, both via `/api/settings` and via
+> `CVFORGE_LLM_*` first-run seeding), the still-Ollama-only embedding provider,
+> and web search (not yet implemented). PR #72 opened for the whole B1
+> package, closing #42, #43, #59, #60, #61; all three PR-review agents ran
+> (one hit a rate limit mid-review but still returned a full report before
+> failing), findings triaged and fixed in the same PR rather than a follow-up.
 
 **Files:** Create `docs/guides/providers.md` (add to `mkdocs.yml` nav; state each opt-in provider and how to enable it: set `api_key_env`, set `allow_external`); ADR-0012 (D-B); update `docs/architecture/` if a diagram lists the LLM layer.
 

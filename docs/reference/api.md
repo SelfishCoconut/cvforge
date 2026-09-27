@@ -22,9 +22,17 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.api.proposals
 
+## Settings API
+
+::: cvforge.api.settings
+
 ## Error contract
 
 ::: cvforge.api.errors
+
+## Security middleware
+
+::: cvforge.api.security
 
 ## Knowledge base
 
@@ -61,3 +69,13 @@ Generated from docstrings. Update the docstring, not this page.
 ::: cvforge.kb.migrate
 
 ::: cvforge.kb.export
+
+## LLM provider layer
+
+### Settings
+
+::: cvforge.llm.settings_store
+
+### Building a model
+
+::: cvforge.llm.provider
