@@ -31,9 +31,9 @@ Done:
 - CI (7 jobs), security (pip-audit, Bandit, Gitleaks, CodeQL), weekly sanity
   metrics, Dependabot, issue and PR templates.
 - SRS with FR-01..FR-40 and NFR-01..NFR-10, one GitHub issue per requirement.
-- ADR-0001..0010 (see `docs/adr/README.md`). Released as `v0.1.0`. ADR-0008 to
-  ADR-0010 were decided by Claude under Álvaro's delegation and are awaiting his
-  confirmation (0010 is marked `proposed`).
+- ADR-0001..0012 (see `docs/adr/README.md`). Released as `v0.1.0`. ADR-0008 to
+  ADR-0012 were decided by Claude under Álvaro's delegation and are awaiting his
+  confirmation (0010, 0011 and 0012 are marked `proposed`).
 - **M1a — knowledge store and review pipeline (PR #68):** SQLite schema with
   provenance (SQLAlchemy Core + Alembic), `kb/apply.py` as the single writer,
   the deterministic classifier (`new | known | duplicate | conflict`), read
@@ -49,6 +49,17 @@ Done:
   deferred to M1b, because unreachable until it lands: `record_proposal` trusts
   the caller's classification (plan task B3.0, first in that package) and the
   API has no Host/Origin check (task B1.4).
+- **M1b package B1 — pluggable LLM provider and runtime settings (PR #72):**
+  `Provider` (ollama/anthropic/openai) in `kb/vocab.py`; the `app_setting`
+  table (migration 0002) plus two evidence CHECK constraints (audit F5);
+  `llm/settings_store.py` (`ProviderSettings`, `load_settings`/`save_settings`,
+  the first real entry in the ADR-0011 registered-writer registry) and
+  `llm/provider.py` (`build_model()` — Ollama needs no opt-in, Anthropic/OpenAI
+  are refused before any client is constructed without `allow_external`);
+  `GET`/`PUT /api/settings`; `api/security.py` closing the Host/Origin gap
+  binding alone leaves (audit F6), since Starlette's own `TrustedHostMiddleware`
+  mis-parses an IPv6 Host header. ADR-0011 and ADR-0012 record the two
+  decisions this took. Closed #42, #43, #59, #60, #61.
 - MkDocs site with mkdocstrings API pages and authored C4/ER/flow diagrams.
 - `.claude` toolkit: 11 skills, 4 agents, 4 hooks, plugin set enabled
   (Semgrep deliberately dropped). The two gating hooks are Python files that
@@ -65,13 +76,20 @@ tools, `IngestAgent` and the chat endpoint (FR-06, FR-07, FR-11, FR-12) → **B4
 is one PR with `Closes #<n>` for the FR issues it delivers. The plan records the
 decisions it takes (D-A to D-G) and the ADR each one gets.
 
-**In flight now: package B1, task B1.1** — the "no live traffic" test guard
-(network policy + a static check that no test imports a live provider client),
-on branch `feat/fr-38-provider-settings`. Executed natively in-session (not
-subagent-driven): the tasks are small and sequential within a package, and the
-project's own PR-review agents (`provenance-auditor`, `regression-guard`,
-`doc-curator`) still gate each package's PR, which is where independent review
-adds the most value here.
+**Package B1 is done (PR #72, on `feat/fr-38-provider-settings`), reviewed by
+the three PR-review agents, and hardened once more against their combined
+findings** (a knowledge-table guard on the writer registry independent of its
+own derivation, the sqlite3-import bar actually applying to registered writers
+as ADR-0011 says it should, the new CHECK constraints proven live against a
+migrated database rather than only text-diffed, plus several smaller test
+gaps). Awaiting merge.
+
+**Next: package B2 — embeddings and `sqlite-vec` similarity search** (FR-40,
+FR-05; closes #44, #9), branch `feat/fr-40-embeddings`. Executed natively
+in-session, not subagent-driven: tasks stay small and sequential within a
+package, and the project's own PR-review agents (`provenance-auditor`,
+`regression-guard`, `doc-curator`) gate each package's PR, which is where
+independent review adds the most value here.
 
 Still open from the M1 tracker and not scheduled by that plan: #50
 (`sync_issues.py`) and #53–#58 (CI and docs hygiene). NFR-07 (#46) is M2's.

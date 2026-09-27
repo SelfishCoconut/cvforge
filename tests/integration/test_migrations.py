@@ -54,6 +54,94 @@ def test_the_migrated_database_enforces_the_check_constraints(
         )
 
 
+def test_the_migrated_database_refuses_a_blank_evidence_locator(
+    tmp_path: Path, open_db: Callable[..., sa.Engine]
+) -> None:
+    """The database-level twin of `apply.record_evidence`'s ValueError (audit F5): proven live,
+    against a migrated database, not just matched as declared-vs-migrated text."""
+    engine = open_db(tmp_path / "cvforge.db")
+    with engine.begin() as conn:
+        source_id = int(
+            conn.execute(
+                sa.insert(metadata.tables["source"]).values(
+                    kind="conversation", label="x", captured_at=sa.func.current_timestamp()
+                )
+            ).inserted_primary_key[0]  # type: ignore[index]
+        )
+    with (
+        pytest.raises(sa.exc.IntegrityError, match="ck_evidence_locator_nonblank"),
+        engine.begin() as conn,
+    ):
+        conn.execute(
+            sa.insert(metadata.tables["evidence"]).values(
+                source_id=source_id, locator="", excerpt="ok"
+            )
+        )
+
+
+def test_the_migrated_database_refuses_a_blank_evidence_excerpt(
+    tmp_path: Path, open_db: Callable[..., sa.Engine]
+) -> None:
+    """Whitespace-only, not just empty: the CHECK trims, matching the Python-level guard."""
+    engine = open_db(tmp_path / "cvforge.db")
+    with engine.begin() as conn:
+        source_id = int(
+            conn.execute(
+                sa.insert(metadata.tables["source"]).values(
+                    kind="conversation", label="x", captured_at=sa.func.current_timestamp()
+                )
+            ).inserted_primary_key[0]  # type: ignore[index]
+        )
+    with (
+        pytest.raises(sa.exc.IntegrityError, match="ck_evidence_excerpt_nonblank"),
+        engine.begin() as conn,
+    ):
+        conn.execute(
+            sa.insert(metadata.tables["evidence"]).values(
+                source_id=source_id, locator="message:1", excerpt="   "
+            )
+        )
+
+
+def _app_setting_values(**overrides: object) -> dict[str, object]:
+    return {
+        "provider": "ollama",
+        "model": "m",
+        "allow_external": False,
+        "embedding_provider": "ollama",
+        "embedding_model": "m",
+        "similarity_threshold": 0.5,
+        "updated_at": sa.func.current_timestamp(),
+        **overrides,
+    }
+
+
+def test_the_migrated_database_refuses_a_second_app_setting_row(
+    tmp_path: Path, open_db: Callable[..., sa.Engine]
+) -> None:
+    engine = open_db(tmp_path / "cvforge.db")
+    with (
+        pytest.raises(sa.exc.IntegrityError, match="ck_app_setting_single_row"),
+        engine.begin() as conn,
+    ):
+        conn.execute(sa.insert(metadata.tables["app_setting"]).values(_app_setting_values(id=2)))
+
+
+def test_the_migrated_database_refuses_an_out_of_range_similarity_threshold(
+    tmp_path: Path, open_db: Callable[..., sa.Engine]
+) -> None:
+    engine = open_db(tmp_path / "cvforge.db")
+    with (
+        pytest.raises(sa.exc.IntegrityError, match="ck_app_setting_similarity_threshold_range"),
+        engine.begin() as conn,
+    ):
+        conn.execute(
+            sa.insert(metadata.tables["app_setting"]).values(
+                _app_setting_values(id=1, similarity_threshold=1.5)
+            )
+        )
+
+
 def test_reopening_at_head_takes_no_backup(
     tmp_path: Path, open_db: Callable[..., sa.Engine]
 ) -> None:

@@ -41,8 +41,13 @@ C4Container
 
 The arrow from the agent layer to the knowledge layer is read-only, and there is
 no arrow from the agent layer to the database. An agent's output is a `Proposal`
-— plain data. Only `kb/apply.py`, reached from the API, writes. It records intake
-and proposals before review, and writes entity, edge and assertion rows only in
-`commit_proposal`, after Álvaro has reviewed every operation. See
-[ADR-0003](../adr/0003-changeset-review-pipeline.md) and
-[ADR-0009](../adr/0009-review-pipeline-semantics.md).
+— plain data. `kb/apply.py`, reached from the API, is the only writer of entity,
+edge and assertion rows — it records intake and proposals before review, and
+writes those rows only in `commit_proposal`, after Álvaro has reviewed every
+operation. A small, explicitly registered set of other writers (ADR-0011) may
+write specific *non-knowledge* state directly from the API — today, only
+`llm/settings_store.py` writing the LLM provider settings — and are barred from
+ever touching a knowledge table. See
+[ADR-0003](../adr/0003-changeset-review-pipeline.md),
+[ADR-0009](../adr/0009-review-pipeline-semantics.md) and
+[ADR-0011](../adr/0011-registered-writers-for-non-knowledge-state.md).

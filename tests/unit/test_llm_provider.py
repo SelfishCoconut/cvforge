@@ -75,7 +75,8 @@ def test_an_unset_environment_variable_is_an_error_not_a_fallback_to_ollama(kb: 
 
 def test_ollama_never_needs_a_key_even_with_allow_external_off(kb: sa.Engine) -> None:
     save_settings(kb, ProviderSettings(provider=Provider.OLLAMA, model="m"))
-    build_model(kb, environ={})  # must not raise
+    model = build_model(kb, environ={})  # must not raise
+    assert isinstance(model, OllamaModel)
 
 
 def test_a_custom_base_url_gets_the_v1_suffix_for_the_openai_compatible_endpoint(
@@ -108,3 +109,11 @@ def test_an_unsupported_provider_name_is_rejected_with_a_clear_error() -> None:
     """
     with pytest.raises(ValidationError, match="grok"):
         ProviderSettings(provider="grok")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("threshold", [1.5, -0.1])
+def test_an_out_of_range_similarity_threshold_is_rejected_by_pydantic(threshold: float) -> None:
+    """The database's ck_app_setting_similarity_threshold_range is the second line of defense;
+    this is the first (tests/integration/test_migrations.py holds the second)."""
+    with pytest.raises(ValidationError, match="similarity_threshold"):
+        ProviderSettings(similarity_threshold=threshold)

@@ -9,6 +9,8 @@ would still be caught here).
 import ast
 from pathlib import Path
 
+import pytest
+
 TESTS = Path(__file__).resolve().parents[1]
 LIVE = {"anthropic", "openai", "ollama"}
 
@@ -34,3 +36,22 @@ def test_no_test_imports_a_live_provider_client() -> None:
         "a test imports a live provider's own client; use TestModel/FunctionModel or a fake "
         f"instead (NFR-08): {offenders}"
     )
+
+
+@pytest.mark.parametrize(
+    "snippet",
+    [
+        "import anthropic",
+        "import openai as o",
+        "from ollama import Client",
+        "import anthropic.types",
+    ],
+)
+def test_the_scanner_catches_every_live_import_form(snippet: str) -> None:
+    """A scanner that silently matches nothing reads as a pass; hold it to cases (NFR-08 c4)."""
+    assert _imported_roots(snippet) & LIVE
+
+
+@pytest.mark.parametrize("snippet", ["import pydantic_ai", "from cvforge.llm import provider"])
+def test_the_scanner_ignores_unrelated_imports(snippet: str) -> None:
+    assert not (_imported_roots(snippet) & LIVE)

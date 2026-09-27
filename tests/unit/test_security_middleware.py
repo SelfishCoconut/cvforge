@@ -34,6 +34,22 @@ def test_the_apps_own_host_forms_are_all_accepted(client: TestClient) -> None:
         assert client.get("/api/health", headers={"Host": host}).status_code == 200
 
 
+def test_a_bracketed_ipv6_host_with_a_port_is_still_recognized(client: TestClient) -> None:
+    """The exact case `_host_from_header`'s own docstring names: the port must be stripped."""
+    assert client.get("/api/health", headers={"Host": "[::1]:8000"}).status_code == 200
+
+
+def test_a_bad_host_wins_over_a_bad_origin(client: TestClient, propose: Propose) -> None:
+    """The host check is outermost (install_security_middleware's registration order):
+    it must refuse before the origin check ever runs, not fall through to a 403."""
+    proposal = propose(SKILL, accept=True)
+    response = client.post(
+        f"/api/proposals/{proposal}/commit",
+        headers={"Host": "attacker.example", "Origin": "https://evil.example"},
+    )
+    assert response.status_code == 400
+
+
 def test_an_unsafe_request_from_a_foreign_origin_is_refused_and_changes_nothing(
     client: TestClient, kb: sa.Engine, propose: Propose
 ) -> None:
@@ -52,6 +68,18 @@ def test_a_same_origin_unsafe_request_still_works(client: TestClient, propose: P
         f"/api/proposals/{proposal}/commit", headers={"Origin": "http://127.0.0.1:8000"}
     )
     assert response.status_code == 200  # a different port is still this machine
+
+
+def test_a_bracketed_ipv6_origin_is_recognized_as_this_machine(
+    client: TestClient, propose: Propose
+) -> None:
+    """Symmetric with the Host-header case: urlsplit already strips the brackets from
+    an Origin URL's hostname, but this proves the two checks agree in practice."""
+    proposal = propose(SKILL, accept=True)
+    response = client.post(
+        f"/api/proposals/{proposal}/commit", headers={"Origin": "http://[::1]:8000"}
+    )
+    assert response.status_code == 200
 
 
 def test_safe_methods_ignore_origin(client: TestClient) -> None:

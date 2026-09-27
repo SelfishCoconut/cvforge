@@ -710,11 +710,11 @@ Each requirement below is a subsection with six fields, in this order:
   LLM or embedding model; all model-shaped behaviour is exercised via Pydantic
   AI `TestModel`/`FunctionModel` or fake providers.
 - **Acceptance criteria**:
-  - [ ] CI runs the unit/integration/golden suites with network access to model endpoints disabled, and all pass
-  - [ ] A check finds no live `ollama`/`anthropic`/`openai` client instantiation reachable from `tests/unit`, `tests/integration` or `tests/golden`
-  - [ ] Every agent test constructs its agent with `TestModel` or a `FunctionModel` stand-in, never the real provider
-  - [ ] Introducing a live call in a test is caught by that check and fails CI rather than silently incurring cost or latency
-- **Traces to**: issue #61, `tests/conftest.py`, `.github/workflows/ci.yml`
+  - [x] CI runs the unit/integration/golden suites with network access to model endpoints disabled, and all pass
+  - [x] A check finds no live `ollama`/`anthropic`/`openai` client instantiation reachable from `tests/unit`, `tests/integration` or `tests/golden`
+  - [ ] Every agent test constructs its agent with `TestModel` or a `FunctionModel` stand-in, never the real provider — not applicable yet, no agent exists (M1b task B3)
+  - [x] Introducing a live call in a test is caught by that check and fails CI rather than silently incurring cost or latency
+- **Traces to**: issue #61, `tests/conftest.py`, `tests/unit/test_network_policy.py`, `tests/unit/test_no_live_clients.py`
 
 ### NFR-09 — Single-file database with a documented export
 - **Priority**: Must

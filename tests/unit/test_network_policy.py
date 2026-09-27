@@ -27,6 +27,7 @@ def test_a_loopback_connection_is_allowed() -> None:
     server.listen(1)
     client = socket.socket()
     client.connect(server.getsockname())
+    assert client.getpeername() == server.getsockname()
     client.close()
     server.close()
 

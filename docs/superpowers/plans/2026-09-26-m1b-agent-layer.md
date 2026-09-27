@@ -61,6 +61,19 @@ Inputs and failure modes the spec implies but no single FR test exercises. Each 
 
 ### Task B1.1: Dependencies and the "no live traffic" guard (NFR-08, NFR-01)
 
+> **Delivered 2026-09-27**, as sketched: `pydantic-ai-slim[anthropic,openai]` and
+> `httpx` joined the runtime dependencies (the exact installed version,
+> `pydantic-ai-slim==2.51.0`, was confirmed against its real API before any code
+> was written against it — see B1.3's own step 0 note). The autouse
+> `_no_live_traffic` fixture in `tests/conftest.py` refuses non-loopback socket
+> connections and sets `models.ALLOW_MODEL_REQUESTS = False`; a static AST check
+> (`tests/unit/test_no_live_clients.py`) bars any test from importing
+> `anthropic`/`openai`/`ollama` directly. One thing the sketch didn't
+> anticipate: without the guard, a test that reaches for a real socket does not
+> fail fast in this environment — it falls through to the OS connect timeout
+> (confirmed empirically, ~60s) rather than refusing immediately — which is
+> exactly the failure mode this task exists to prevent.
+
 **Files:**
 - Modify: `pyproject.toml` (add `pydantic-ai-slim[openai,anthropic]`, `httpx` to runtime deps)
 - Modify: `tests/conftest.py` (autouse guard)
@@ -374,6 +387,16 @@ Implementation (audit F6): `starlette.middleware.trustedhost.TrustedHostMiddlewa
 - [ ] **Steps 2–5:** run → FAIL; implement; run `make test` and confirm the golden diff is additive; commit — `feat: /api/settings and the NFR-02 bind checks`.
 
 ### Task B1.5: Document the opt-in providers (NFR-01 criterion 4) and open the PR
+
+> **Delivered 2026-09-27**, as sketched: ADR-0012 records decision D-B (an API
+> key is never stored, only the name of the environment variable holding it);
+> `docs/guides/providers.md` covers Ollama (no opt-in), Anthropic/OpenAI
+> (`api_key_env` + `allow_external`, both via `/api/settings` and via
+> `CVFORGE_LLM_*` first-run seeding), the still-Ollama-only embedding provider,
+> and web search (not yet implemented). PR #72 opened for the whole B1
+> package, closing #42, #43, #59, #60, #61; all three PR-review agents ran
+> (one hit a rate limit mid-review but still returned a full report before
+> failing), findings triaged and fixed in the same PR rather than a follow-up.
 
 **Files:** Create `docs/guides/providers.md` (add to `mkdocs.yml` nav; state each opt-in provider and how to enable it: set `api_key_env`, set `allow_external`); ADR-0012 (D-B); update `docs/architecture/` if a diagram lists the LLM layer.
 

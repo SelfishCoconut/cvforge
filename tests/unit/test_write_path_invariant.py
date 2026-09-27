@@ -18,10 +18,12 @@ writes, and are exempt (ADR-0010); a data migration that needs DML there is a
 design decision for review, not something this test should quietly allow elsewhere.
 
 Known limits: a write through a variable that merely holds a table
-(`t = schema.entity; t.insert()`) and SQL assembled at runtime
-(`'INS' + 'ERT INTO'`) are not visible to a syntax scan. Docstrings are not
-scanned, so prose can mention SQL. The `kb-write-path` hook and the
-`provenance-auditor` agent are the second net.
+(`t = schema.entity; t.insert()`), or a table imported by name
+(`from cvforge.kb.schema import entity`), is not visible to a syntax scan —
+neither the general write-construct scan nor `references_knowledge_table`
+below resolves it. Nor is SQL assembled at runtime (`'INS' + 'ERT INTO'`).
+Docstrings are not scanned, so prose can mention SQL. The `kb-write-path` hook
+and the `provenance-auditor` agent are the second net.
 
 A module may also be **registered** as a writer of specific non-knowledge
 tables (ADR-0011): it is exempt from the scan above (it is allowed to write),
@@ -119,13 +121,26 @@ def imports_sqlite3(source: str) -> bool:
     return False
 
 
-def _modules() -> list[Path]:
+def _all_non_exempt_modules() -> list[Path]:
+    """Every module under `src/cvforge/` except `apply.py` and the migrations directory.
+
+    Unlike `_modules()`, this does NOT exempt registered writers: the
+    sqlite3-import bar (ADR-0011) applies to them too, unless a registry entry
+    explicitly says a writer needs the raw driver — none does today.
+    """
     return [
         path
         for path in sorted(SRC.rglob("*.py"))
-        if path != WRITER
-        and not any(path.is_relative_to(d) for d in EXEMPT_DIRS)
-        and str(path.relative_to(SRC)) not in REGISTERED_WRITERS
+        if path != WRITER and not any(path.is_relative_to(d) for d in EXEMPT_DIRS)
+    ]
+
+
+def _modules() -> list[Path]:
+    """Modules subject to the "no write outside `apply.py`" scan; registered writers are exempt."""
+    return [
+        path
+        for path in _all_non_exempt_modules()
+        if str(path.relative_to(SRC)) not in REGISTERED_WRITERS
     ]
 
 
@@ -237,11 +252,11 @@ def test_the_sqlite3_scanner_sees_every_import_form(snippet: str, expected: bool
 
 @pytest.mark.parametrize(
     "path",
-    [path for path in _modules() if path not in SQLITE3_MODULES],
+    [path for path in _all_non_exempt_modules() if path not in SQLITE3_MODULES],
     ids=lambda p: str(p.relative_to(SRC)),
 )
 def test_only_the_engine_and_the_export_use_the_sqlite3_driver(path: Path) -> None:
-    """The driver can write without going through SQLAlchemy at all."""
+    """The driver can write without SQLAlchemy at all — registered writers are checked too."""
     assert not imports_sqlite3(path.read_text(encoding="utf-8")), (
         f"{path.relative_to(SRC)} imports sqlite3. Only kb/db.py (the connect-time "
         "pragma) and kb/export.py (the backup API) may."
@@ -268,6 +283,42 @@ def test_a_registered_writer_never_touches_a_knowledge_table(rel: str) -> None:
 def test_registering_a_writer_is_a_visible_change() -> None:
     """Edit this set deliberately, in review — it is exactly the point of the registry."""
     assert set(REGISTERED_WRITERS) == {"llm/settings_store.py"}
+
+
+# A fixed reference set, independent of KNOWLEDGE_TABLES' own derivation from
+# REGISTERED_WRITERS: this must never shrink just because a future entry widens
+# its allowance. If a new entity kind is added, add its table here too.
+CORE_KNOWLEDGE_TABLES = frozenset(
+    {
+        "entity",
+        "edge",
+        "assertion",
+        "source",
+        "evidence",
+        "proposal",
+        "operation",
+        "commit_log",
+        "skill",
+        "project",
+        "organization",
+        "role",
+        "education",
+        "credential",
+        "achievement",
+        "responsibility",
+    }
+)
+
+
+def test_no_registered_writer_is_ever_allowed_a_knowledge_table() -> None:
+    """`KNOWLEDGE_TABLES` is derived FROM `REGISTERED_WRITERS`, so it can't catch this by itself:
+
+    a value naming a core table would just shrink what counts as "knowledge"
+    right along with it. This checks against a fixed set instead.
+    """
+    for rel, allowed in REGISTERED_WRITERS.items():
+        overreach = allowed & CORE_KNOWLEDGE_TABLES
+        assert not overreach, f"{rel} is registered to write {sorted(overreach)}, a knowledge table"
 
 
 @pytest.mark.parametrize(
