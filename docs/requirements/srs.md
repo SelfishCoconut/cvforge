@@ -615,11 +615,11 @@ Each requirement below is a subsection with six fields, in this order:
   beyond the configured local Ollama endpoint; external LLM providers and web
   search are opt-in.
 - **Acceptance criteria**:
-  - [ ] A network-call audit over the default configuration shows zero calls to non-local hosts
-  - [ ] Enabling Anthropic/OpenAI/search requires an explicit opt-in setting; without it, calls to those providers are refused before being attempted
-  - [ ] CI's unit/integration/golden suites run with non-local network access disabled and still pass, proving no hidden outbound dependency
-  - [ ] `docs/` states the opt-in providers and how to enable each one
-- **Traces to**: issue #59, tests `tests/unit/test_network_policy.py`
+  - [ ] A network-call audit over the default configuration shows zero calls to non-local hosts — not yet a dedicated check; `tests/unit/test_network_policy.py` proves the *test suite* refuses non-loopback traffic, which is a different claim from auditing the *app's* default runtime behavior
+  - [x] Enabling Anthropic/OpenAI/search requires an explicit opt-in setting; without it, calls to those providers are refused before being attempted
+  - [x] CI's unit/integration/golden suites run with non-local network access disabled and still pass, proving no hidden outbound dependency
+  - [x] `docs/` states the opt-in providers and how to enable each one
+- **Traces to**: issue #59, tests `tests/unit/test_network_policy.py`, `tests/unit/test_llm_provider.py`, `docs/guides/providers.md`
 
 ### NFR-02 — Localhost binding, no authentication
 - **Priority**: Must
