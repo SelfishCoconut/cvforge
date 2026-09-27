@@ -114,7 +114,7 @@ decide this.
 |---|---|---|
 | `new` | Nothing stored covers it | Creates or changes rows |
 | `known` | Already recorded (same kind and normalized name, field value or edge) | Adds evidence to the existing record |
-| `duplicate` | A differently named record is probably the same thing (needs similarity search, M1b — nothing emits it until then) | Links to that record |
+| `duplicate` | A differently named record is probably the same thing, found by `kb/embeddings.py`'s `sqlite-vec` similarity index at or above the configured threshold (FR-05, ADR-0013) | Links to that record |
 | `conflict` | Recorded with a different value | Replaces the value; the old assertion stays as history |
 
 ## Backup, export and migrations (NFR-09)
@@ -147,3 +147,11 @@ and no provenance — it is one row of process configuration, not a fact about
 writer** (ADR-0011), never by `kb/apply.py`. The distinction matters for
 `table_counts` and any tool that treats "everything in `cvforge.db`" as
 knowledge: `app_setting` is deliberately outside that count.
+
+`entity_vec` (a `sqlite-vec` `vec0` virtual table of entity name embeddings,
+`cvforge.kb.embeddings`) is the same kind of non-knowledge state: it carries
+no assertion or evidence either, only a derived vector per entity, and is
+disposable — dropping it and re-running `reindex_missing` rebuilds it from the
+entities that already exist. It is written by `kb/embeddings.py`, also a
+registered writer, and rebuilt whenever the configured embedding dimension
+changes (ADR-0013).

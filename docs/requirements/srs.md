@@ -95,11 +95,13 @@ Each requirement below is a subsection with six fields, in this order:
   vector embeddings of `name + summary` stored in a `sqlite-vec` virtual table,
   to support duplicate-candidate retrieval and requirement matching.
 - **Acceptance criteria**:
-  - [ ] Given a query embedding, `find_similar` returns entities ranked by similarity above a configurable threshold
-  - [ ] Querying an empty entity table returns no matches rather than raising
-  - [ ] Unit tests inject deterministic fake vectors; no unit or integration test triggers a real embedding model call
-  - [ ] A candidate scoring below the configured similarity threshold is not returned as a match
-- **Traces to**: issue #9, tests `tests/unit/test_embeddings.py`
+  - [x] Given a query embedding, `find_similar` returns entities ranked by similarity above a configurable threshold
+  - [x] Querying an empty entity table returns no matches rather than raising
+  - [x] Unit tests inject deterministic fake vectors; no unit or integration test triggers a real embedding model call
+  - [x] A candidate scoring below the configured similarity threshold is not returned as a match
+- **Traces to**: issue #9, tests `tests/unit/test_similarity.py`,
+  `tests/unit/test_dedup.py`, `tests/integration/test_vec_index.py`,
+  `tests/integration/test_commit_indexes_entities.py`
 
 ### FR-06 — Single write path for the knowledge base
 - **Priority**: Must
@@ -143,7 +145,7 @@ Each requirement below is a subsection with six fields, in this order:
 - **Acceptance criteria**:
   - [x] A proposal for a genuinely new fact classifies as `new` with no named target
   - [x] A proposal restating an existing fact under the same normalized name (for a kind whose name is its identity) classifies `known` — never `duplicate` — and names the matching id
-  - [x] A differently named candidate that similarity search matches to a stored entity classifies `duplicate` and names that entity (exercised through an injected `SimilarFinder`; the real finder arrives with FR-05)
+  - [x] A differently named candidate that similarity search matches to a stored entity classifies `duplicate` and names that entity (an injected `SimilarFinder` for the classifier's own unit tests; the real finder is `kb.dedup.make_similar_finder`, FR-05)
   - [x] A proposal contradicting a stored fact classifies `conflict` and names the conflicting id
   - [x] An operation classified `known`/`duplicate`/`conflict` with no named target, or `new` with one, is rejected at validation rather than reaching review
 - **Traces to**: issues #12 and #48, tests `tests/unit/test_classification.py`
@@ -599,10 +601,10 @@ Each requirement below is a subsection with six fields, in this order:
   (default `nomic-embed-text` via Ollama) behind an `EmbeddingProvider`
   interface.
 - **Acceptance criteria**:
-  - [ ] A fake `EmbeddingProvider` substituted in tests produces deterministic vectors of the expected dimension
-  - [ ] A fake provider returning a different vector dimension is accepted without editing `kb/embeddings.py`, and a provider missing a protocol method fails at construction
-  - [ ] No unit, integration or golden test calls a live embedding model
-  - [ ] An embedding-provider failure is handled and surfaced to the caller rather than crashing the request
+  - [x] A fake `EmbeddingProvider` substituted in tests produces deterministic vectors of the expected dimension
+  - [x] A fake provider returning a different vector dimension is accepted without editing `kb/embeddings.py`, and a provider missing a protocol method fails at construction
+  - [x] No unit, integration or golden test calls a live embedding model
+  - [x] An embedding-provider failure is handled and surfaced to the caller rather than crashing the request
 - **Traces to**: issue #44, tests `tests/unit/test_embedding_provider.py`
 
 ## Non-functional requirements

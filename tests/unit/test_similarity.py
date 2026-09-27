@@ -106,6 +106,27 @@ def test_index_entities_with_an_id_that_does_not_exist_reports_it_missing(kb: sa
     assert index_entities(kb, provider, [999]) == [999]
 
 
+def test_indexing_embeds_the_summary_too_not_just_the_name(kb: sa.Engine, propose: Propose) -> None:
+    provider = FakeEmbeddingProvider(dimension=8)
+    entity_id = apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "create_entity",
+                "kind": "skill",
+                "name": "Systems programming",
+                "summary": "distributed systems",
+            },
+            accept=True,
+        ),
+    ).entity_ids[0]
+    index_entities(kb, provider, [entity_id])
+
+    hits = find_similar(kb, provider, "distributed", threshold=0.4)
+
+    assert [hit.entity_id for hit in hits] == [entity_id]
+
+
 def test_reindex_missing_is_a_no_op_once_everything_is_indexed(
     kb: sa.Engine, propose: Propose
 ) -> None:

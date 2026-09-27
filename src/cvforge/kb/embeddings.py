@@ -174,6 +174,11 @@ def _indexed_ids(conn: sa.Connection) -> set[int]:
     return {row[0] for row in conn.exec_driver_sql(f"SELECT entity_id FROM {_TABLE}")}  # noqa: S608
 
 
+def _index_text(record: queries.EntityRecord) -> str:
+    """The text indexed for one entity: its name, plus its summary if it has one (FR-05)."""
+    return f"{record.name} {record.summary}" if record.summary else record.name
+
+
 def index_entities(
     engine: sa.Engine, provider: EmbeddingProvider, entity_ids: Sequence[int]
 ) -> list[int]:
@@ -181,7 +186,7 @@ def index_entities(
 
     Args:
         engine: The knowledge-base engine.
-        provider: What turns a name into a vector.
+        provider: What turns `name + summary` into a vector.
         entity_ids: The ids to (re)index.
 
     Returns:
@@ -191,16 +196,18 @@ def index_entities(
     ensure_index(engine, provider.dimension)
     with engine.connect() as conn:
         records = [queries.get_entity(conn, eid) for eid in entity_ids]
-    present = [(eid, r.name) for eid, r in zip(entity_ids, records, strict=True) if r is not None]
+    present = [
+        (eid, _index_text(r)) for eid, r in zip(entity_ids, records, strict=True) if r is not None
+    ]
     missing = [eid for eid, r in zip(entity_ids, records, strict=True) if r is None]
     if not present:
         return missing
     try:
-        vectors = provider.embed([name for _, name in present])
+        vectors = provider.embed([text for _, text in present])
     except EmbeddingError:
-        return [eid for eid, _name in present] + missing
+        return [eid for eid, _text in present] + missing
     with _write_transaction(engine) as conn:
-        for (eid, _name), vector in zip(present, vectors, strict=True):
+        for (eid, _text), vector in zip(present, vectors, strict=True):
             # `_TABLE` is the fixed constant "entity_vec", never external input.
             conn.exec_driver_sql(
                 f"INSERT OR REPLACE INTO {_TABLE}(entity_id, embedding) VALUES (?, ?)",  # noqa: S608
