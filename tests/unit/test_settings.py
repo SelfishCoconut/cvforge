@@ -54,6 +54,18 @@ def test_an_unset_env_var_leaves_the_field_at_its_default(kb: sa.Engine) -> None
     assert (settings.model, settings.provider) == ("only-this-one", Provider.OLLAMA)
 
 
+def test_a_malformed_provider_env_var_on_first_run_raises_rather_than_silently_defaulting(
+    kb: sa.Engine,
+) -> None:
+    with pytest.raises(ValueError, match="not-a-real-provider"):
+        load_settings(kb, environ={"CVFORGE_LLM_PROVIDER": "not-a-real-provider"})
+
+
+def test_a_malformed_similarity_threshold_env_var_on_first_run_raises(kb: sa.Engine) -> None:
+    with pytest.raises(ValueError, match="not-a-float"):
+        load_settings(kb, environ={"CVFORGE_LLM_SIMILARITY_THRESHOLD": "not-a-float"})
+
+
 def test_saving_replaces_the_stored_settings(kb: sa.Engine) -> None:
     load_settings(kb, environ={})  # seed the row
     save_settings(kb, ProviderSettings(provider=Provider.OLLAMA, model="qwen-new"))

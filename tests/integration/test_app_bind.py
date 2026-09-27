@@ -62,11 +62,11 @@ def test_a_request_from_a_non_local_origin_cannot_reach_the_api(
         probe.connect(("8.8.8.8", 80))
         local_ip = probe.getsockname()[0]
     except OSError:
-        pytest.skip("this environment has no configured network route to discover a local IP")
+        pytest.skip("this environment has no configured network route to discover a local IP (#73)")
     finally:
         probe.close()
     if local_ip == "127.0.0.1":
-        pytest.skip("this environment's only route is loopback; nothing to test against")
+        pytest.skip("this environment's only route is loopback; nothing to test against (#73)")
 
     with pytest.raises(OSError):
         socket.create_connection((local_ip, running_app), timeout=3)
