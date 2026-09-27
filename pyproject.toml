@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-ai-slim[anthropic,openai]>=1.0",
     "pydantic-settings>=2.6",
     "sqlalchemy>=2.0.54",
+    "sqlite-vec>=0.1.9",
     "uvicorn>=0.53.0",
 ]
 
@@ -81,6 +82,11 @@ strict = true
 # invariant 2, and they were silently dead once while no gate looked at them.
 files = ["src", "tests", "scripts", ".claude/hooks"]
 pretty = true
+
+[[tool.mypy.overrides]]
+# sqlite-vec ships no py.typed marker or stubs (upstream, as of 0.1.9).
+module = "sqlite_vec"
+ignore_missing_imports = true
 
 # ---------------------------------------------------------------- pytest
 [tool.pytest.ini_options]

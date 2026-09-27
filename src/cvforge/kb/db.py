@@ -5,13 +5,25 @@ from pathlib import Path
 from typing import Any
 
 import sqlalchemy as sa
+import sqlite_vec
 from sqlalchemy.pool import StaticPool
 
 DATABASE_FILE = "cvforge.db"
 
 
+def _load_vec_extension(dbapi_connection: sqlite3.Connection) -> None:
+    """Load sqlite-vec, so `kb.embeddings`'s `vec0` similarity index is usable.
+
+    Args:
+        dbapi_connection: The raw sqlite3 connection being opened.
+    """
+    dbapi_connection.enable_load_extension(True)
+    sqlite_vec.load(dbapi_connection)
+    dbapi_connection.enable_load_extension(False)
+
+
 def _on_connect(dbapi_connection: sqlite3.Connection, _record: Any) -> None:
-    """Enforce foreign keys on every connection.
+    """Enforce foreign keys and load sqlite-vec on every connection.
 
     SQLite ships with foreign keys OFF per connection. Without this pragma an
     evidence row could point at a source that does not exist (FR-12).
@@ -23,6 +35,7 @@ def _on_connect(dbapi_connection: sqlite3.Connection, _record: Any) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys = ON")
     cursor.close()
+    _load_vec_extension(dbapi_connection)
 
 
 def make_engine(path: Path | None) -> sa.Engine:
