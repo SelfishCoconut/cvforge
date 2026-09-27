@@ -4,14 +4,15 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-09-26
+Last updated: 2026-09-27
 
 ---
 
 ## Where we are
 
 **Phase: M0 complete. M1 (knowledge spine) in progress — M1a (the storage half)
-is delivered in PR #68; M1b (agent layer) and M1c (UI) are planned.**
+is merged (`1e19192`, PR #68); M1b (agent layer) and M1c (UI) are planned and
+starting now.**
 
 Done:
 - Design spec approved: `docs/superpowers/specs/2026-09-12-cvforge-design.md`.
@@ -37,8 +38,17 @@ Done:
   provenance (SQLAlchemy Core + Alembic), `kb/apply.py` as the single writer,
   the deterministic classifier (`new | known | duplicate | conflict`), read
   queries, the review/commit API, the NFR-09 export, and the write-path invariant
-  test. No model is involved yet. Closes #5–#8, #12–#14, #48, #62; #10 and #16
-  are partial (agent tools and chat intake are M1b).
+  test. No model is involved yet. Closed #5–#8, #12–#14, #48, #62, #69; #10 and
+  #16 are partial (agent tools and chat intake are M1b).
+- **M1a review pass:** the three PR-review agents found and fixed, on the same
+  PR: review/commit not serialised against concurrent requests (`BEGIN
+  IMMEDIATE`), an accepted edge conflict silently nulling unstated columns, a
+  test suite that opened the real `data/cvforge.db`, an invariant-2 scanner that
+  missed most write idioms, and a pre-commit ruff pinned behind the locked one
+  (#69). ADR-0010 records the storage/gate policies this surfaced. Deliberately
+  deferred to M1b, because unreachable until it lands: `record_proposal` trusts
+  the caller's classification (plan task B3.0, first in that package) and the
+  API has no Host/Origin check (task B1.4).
 - MkDocs site with mkdocstrings API pages and authored C4/ER/flow diagrams.
 - `.claude` toolkit: 11 skills, 4 agents, 4 hooks, plugin set enabled
   (Semgrep deliberately dropped). The two gating hooks are Python files that
@@ -46,7 +56,7 @@ Done:
 
 ## Next action
 
-Execute `docs/superpowers/plans/2026-09-26-m1b-agent-layer.md`, package by
+Executing `docs/superpowers/plans/2026-09-26-m1b-agent-layer.md`, package by
 package, in this order: **B1** provider layer and settings (FR-38, FR-39, NFR-01,
 NFR-02, NFR-08) → **B2** embeddings and `sqlite-vec` similarity (FR-40, FR-05) →
 **B3** `record_proposal` classifying for itself (audit F2, first), then read-only
@@ -54,6 +64,14 @@ tools, `IngestAgent` and the chat endpoint (FR-06, FR-07, FR-11, FR-12) → **B4
 **C1** the chat, review, knowledge and settings UI (FR-13, frontend). Each package
 is one PR with `Closes #<n>` for the FR issues it delivers. The plan records the
 decisions it takes (D-A to D-G) and the ADR each one gets.
+
+**In flight now: package B1, task B1.1** — the "no live traffic" test guard
+(network policy + a static check that no test imports a live provider client),
+on branch `feat/fr-38-provider-settings`. Executed natively in-session (not
+subagent-driven): the tasks are small and sequential within a package, and the
+project's own PR-review agents (`provenance-auditor`, `regression-guard`,
+`doc-curator`) still gate each package's PR, which is where independent review
+adds the most value here.
 
 Still open from the M1 tracker and not scheduled by that plan: #50
 (`sync_issues.py`) and #53–#58 (CI and docs hygiene). NFR-07 (#46) is M2's.
