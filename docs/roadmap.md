@@ -4,7 +4,7 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-09-27
+Last updated: 2026-09-29
 
 ---
 
@@ -84,8 +84,10 @@ as ADR-0011 says it should, the new CHECK constraints proven live against a
 migrated database rather than only text-diffed, plus several smaller test
 gaps). Awaiting merge.
 
-**Next: package B2 — embeddings and `sqlite-vec` similarity search** (FR-40,
-FR-05; closes #44, #9), branch `feat/fr-40-embeddings`. Executed natively
+**Package B2 — embeddings and `sqlite-vec` similarity search** (FR-40, FR-05;
+closes #44, #9) is implemented on `feat/fr-40-embeddings` (2026-09-29): the full
+gate is green; PR open and awaiting the three review agents. **Next: package B3**,
+starting with B3.0 (`record_proposal` classifies for itself). B2 was executed natively
 in-session, not subagent-driven: tasks stay small and sequential within a
 package, and the project's own PR-review agents (`provenance-auditor`,
 `regression-guard`, `doc-curator`) gate each package's PR, which is where
