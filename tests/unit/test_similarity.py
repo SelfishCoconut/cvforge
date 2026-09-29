@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 
 import pytest
 import sqlalchemy as sa
+from sqlite_vec import serialize_float32
 from tests.support.fake_embeddings import FakeEmbeddingProvider
 
 from cvforge.kb import apply
@@ -184,3 +185,41 @@ def test_find_similar_truncates_to_limit(kb: sa.Engine, propose: Propose) -> Non
     hits = find_similar(kb, provider, "rust programmer", threshold=0.0, limit=2)
 
     assert len(hits) == 2
+
+
+def test_index_entities_mixes_a_failing_provider_and_a_missing_entity(
+    kb: sa.Engine, propose: Propose
+) -> None:
+    rust = _entity(kb, propose, name="rust programmer")
+
+    assert sorted(index_entities(kb, _FailingProvider(), [rust, 9999])) == [rust, 9999]
+
+
+def test_a_missing_entity_is_reported_and_a_real_one_is_still_indexed(
+    kb: sa.Engine, propose: Propose
+) -> None:
+    provider = FakeEmbeddingProvider(dimension=8)
+    rust = _entity(kb, propose, name="rust programmer")
+
+    assert index_entities(kb, provider, [rust, 9999]) == [9999]
+    assert [h.entity_id for h in find_similar(kb, provider, "rust programmer", threshold=0.5)] == [
+        rust
+    ]
+
+
+def test_an_orphan_index_row_is_skipped_and_does_not_hide_a_real_hit(
+    kb: sa.Engine, propose: Propose
+) -> None:
+    provider = FakeEmbeddingProvider(dimension=8)
+    rust = _entity(kb, propose, name="rust programmer")
+    index_entities(kb, provider, [rust])
+    (vector,) = provider.embed(["rust programmer"])
+    with kb.begin() as conn:  # an index row whose entity no longer exists
+        conn.exec_driver_sql(
+            "INSERT INTO entity_vec(entity_id, embedding) VALUES (?, ?)",
+            (9999, serialize_float32(vector)),
+        )
+
+    hits = find_similar(kb, provider, "rust programmer", threshold=0.5)
+
+    assert [h.entity_id for h in hits] == [rust]
