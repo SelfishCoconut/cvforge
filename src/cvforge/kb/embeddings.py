@@ -108,7 +108,13 @@ _DIMENSION_PATTERN = re.compile(r"float\[(\d+)\]", re.I)
 
 @dataclass(frozen=True)
 class SimilarHit:
-    """One candidate match, ranked by how close it is to the query text."""
+    """One candidate match, ranked by how close it is to the query text.
+
+    Attributes:
+        entity_id: The matching entity.
+        name: Its name.
+        score: Cosine similarity to the query, ``1 - distance``.
+    """
 
     entity_id: int
     name: str
@@ -157,7 +163,12 @@ def ensure_index(engine: sa.Engine, dimension: int) -> None:
     Args:
         engine: The knowledge-base engine.
         dimension: The vector length every row must have.
+
+    Raises:
+        ValueError: If `dimension` is not positive.
     """
+    if dimension < 1:
+        raise ValueError(f"embedding dimension must be positive, got {dimension}")
     with _write_transaction(engine) as conn:
         if _current_dimension(conn) == dimension:
             return
@@ -193,7 +204,10 @@ def index_entities(
         The ids that failed to embed; every other id's row is written or kept
         exactly as it was.
     """
-    ensure_index(engine, provider.dimension)
+    try:
+        ensure_index(engine, provider.dimension)  # the first call may probe the embedder
+    except EmbeddingError:
+        return list(entity_ids)
     with engine.connect() as conn:
         records = [queries.get_entity(conn, eid) for eid in entity_ids]
     present = [
@@ -221,10 +235,13 @@ def reindex_missing(engine: sa.Engine, provider: EmbeddingProvider) -> int:
 
     Args:
         engine: The knowledge-base engine.
-        provider: What turns a name into a vector.
+        provider: What turns an entity's name and summary into a vector.
 
     Returns:
         How many entities were newly indexed.
+
+    Raises:
+        EmbeddingError: If the embedder cannot report its vector dimension.
     """
     with engine.connect() as conn:
         all_ids = {record.id for record in queries.list_entities(conn)}
@@ -253,7 +270,7 @@ def find_similar(
 
     Args:
         engine: The knowledge-base engine.
-        provider: What turns `text` and every candidate's name into a vector.
+        provider: What turns `text` and every candidate's name and summary into a vector.
         text: The candidate name or summary to compare against.
         kind: Only consider entities of this kind.
         threshold: The minimum cosine similarity to report, in [0, 1].

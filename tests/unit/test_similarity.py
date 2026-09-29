@@ -10,6 +10,7 @@ from cvforge.kb import apply
 from cvforge.kb.embeddings import (
     EmbeddingError,
     SimilarHit,
+    ensure_index,
     find_similar,
     index_entities,
     reindex_missing,
@@ -33,6 +34,30 @@ def _entity(kb: sa.Engine, propose: Propose, *, kind: str = "skill", name: str) 
         kb, propose({"op_type": "create_entity", "kind": kind, "name": name}, accept=True)
     )
     return result.entity_ids[0]
+
+
+class _UnprobeableProvider:
+    """An embedder that is down before its dimension has ever been probed."""
+
+    @property
+    def dimension(self) -> int:
+        raise EmbeddingError("cannot probe the dimension")
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        raise EmbeddingError("the embedding endpoint is down")
+
+
+def test_index_entities_reports_ids_when_the_dimension_probe_fails(
+    kb: sa.Engine, propose: Propose
+) -> None:
+    rust = _entity(kb, propose, name="rust programmer")
+
+    assert index_entities(kb, _UnprobeableProvider(), [rust]) == [rust]
+
+
+def test_a_non_positive_dimension_is_refused_before_any_sql(kb: sa.Engine) -> None:
+    with pytest.raises(ValueError, match="positive"):
+        ensure_index(kb, 0)
 
 
 def test_find_similar_ranks_a_candidate_above_the_threshold(

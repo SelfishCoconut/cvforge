@@ -84,9 +84,14 @@ flowchart LR
   R -->|review_operation| W
   R -->|commit_proposal| W
   W -->|entity, edge, assertion:<br/>one transaction, only after approval| KB
+  R -->|after commit, outside the lock:<br/>index new entity ids| E[kb/embeddings.py<br/>embed, then entity_vec]
+  E -->|derived data only;<br/>failures returned as index_pending| KB
 ```
 
-Nothing else writes. Intake and proposal storage record *what was said and what
+No other module writes knowledge. The similarity index (`entity_vec`) is derived
+data written by the registered writer `kb/embeddings.py` (ADR-0011, ADR-0013),
+after the commit has finished; it never touches an entity, edge or assertion row.
+Intake and proposal storage record *what was said and what
 is proposed* before review; only `commit_proposal` writes entity, edge and
 assertion rows, and only after Álvaro has reviewed every operation. A database
 write introduced anywhere outside `kb/apply.py` is a bug caught by the
