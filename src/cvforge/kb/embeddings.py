@@ -181,8 +181,7 @@ def ensure_index(engine: sa.Engine, dimension: int) -> None:
 
 
 def _indexed_ids(conn: sa.Connection) -> set[int]:
-    # `_TABLE` is the fixed module constant "entity_vec", never external input.
-    return {row[0] for row in conn.exec_driver_sql(f"SELECT entity_id FROM {_TABLE}")}  # noqa: S608
+    return {row[0] for row in conn.exec_driver_sql("SELECT entity_id FROM entity_vec")}
 
 
 def _index_text(record: queries.EntityRecord) -> str:
@@ -222,9 +221,8 @@ def index_entities(
         return [eid for eid, _text in present] + missing
     with _write_transaction(engine) as conn:
         for (eid, _text), vector in zip(present, vectors, strict=True):
-            # `_TABLE` is the fixed constant "entity_vec", never external input.
             conn.exec_driver_sql(
-                f"INSERT OR REPLACE INTO {_TABLE}(entity_id, embedding) VALUES (?, ?)",  # noqa: S608
+                "INSERT OR REPLACE INTO entity_vec(entity_id, embedding) VALUES (?, ?)",
                 (eid, serialize_float32(vector)),
             )
     return missing
@@ -286,13 +284,11 @@ def find_similar(
     (vector,) = provider.embed([text])
     hits: list[SimilarHit] = []
     with engine.connect() as conn:
-        # `_TABLE` is the fixed constant "entity_vec" on both queries below, never
-        # external input.
-        row_count = conn.exec_driver_sql(f"SELECT COUNT(*) FROM {_TABLE}").scalar()  # noqa: S608
+        row_count = conn.exec_driver_sql("SELECT COUNT(*) FROM entity_vec").scalar()
         if row_count == 0:
             return hits
         rows = conn.exec_driver_sql(
-            f"SELECT entity_id, distance FROM {_TABLE} WHERE embedding MATCH ? "  # noqa: S608
+            "SELECT entity_id, distance FROM entity_vec WHERE embedding MATCH ? "
             "AND k = ? ORDER BY distance",
             (serialize_float32(vector), row_count),
         ).fetchall()
