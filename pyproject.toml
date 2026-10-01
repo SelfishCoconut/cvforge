@@ -21,7 +21,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ruff>=0.8",
+    "ruff>=0.16.9",
     "mypy>=1.13",
     "pytest>=8.3",
     "pytest-cov>=6.0",
@@ -30,14 +30,14 @@ dev = [
     "radon>=6.0",
     "xenon>=0.9",
     "vulture>=2.13",
-    "pylint>=3.3",
+    "pylint>=4.0.9",
     # Documentation site.
     "mkdocs-material>=9.5",
-    "mkdocstrings[python]>=0.27",
+    "mkdocstrings[python]>=1.0.6",
 ]
 
 [build-system]
-requires = ["uv_build>=0.5,<1"]
+requires = ["uv_build>=0.12.19,<1"]
 build-backend = "uv_build"
 
 # ---------------------------------------------------------------- ruff
