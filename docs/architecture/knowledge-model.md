@@ -84,9 +84,14 @@ flowchart LR
   R -->|review_operation| W
   R -->|commit_proposal| W
   W -->|entity, edge, assertion:<br/>one transaction, only after approval| KB
+  R -->|after commit, outside the lock:<br/>index new entity ids| E[kb/embeddings.py<br/>embed, then entity_vec]
+  E -->|derived data only;<br/>failures returned as index_pending| KB
 ```
 
-Nothing else writes. Intake and proposal storage record *what was said and what
+No other module writes knowledge. The similarity index (`entity_vec`) is derived
+data written by the registered writer `kb/embeddings.py` (ADR-0011, ADR-0013),
+after the commit has finished; it never touches an entity, edge or assertion row.
+Intake and proposal storage record *what was said and what
 is proposed* before review; only `commit_proposal` writes entity, edge and
 assertion rows, and only after Álvaro has reviewed every operation. A database
 write introduced anywhere outside `kb/apply.py` is a bug caught by the
@@ -114,7 +119,7 @@ decide this.
 |---|---|---|
 | `new` | Nothing stored covers it | Creates or changes rows |
 | `known` | Already recorded (same kind and normalized name, field value or edge) | Adds evidence to the existing record |
-| `duplicate` | A differently named record is probably the same thing (needs similarity search, M1b — nothing emits it until then) | Links to that record |
+| `duplicate` | A differently named record is probably the same thing, found by `kb/embeddings.py`'s `sqlite-vec` similarity index at or above the configured threshold (FR-05, ADR-0013) | Links to that record |
 | `conflict` | Recorded with a different value | Replaces the value; the old assertion stays as history |
 
 ## Backup, export and migrations (NFR-09)
@@ -147,3 +152,11 @@ and no provenance — it is one row of process configuration, not a fact about
 writer** (ADR-0011), never by `kb/apply.py`. The distinction matters for
 `table_counts` and any tool that treats "everything in `cvforge.db`" as
 knowledge: `app_setting` is deliberately outside that count.
+
+`entity_vec` (a `sqlite-vec` `vec0` virtual table of entity name embeddings,
+`cvforge.kb.embeddings`) is the same kind of non-knowledge state: it carries
+no assertion or evidence either, only a derived vector per entity, and is
+disposable — dropping it and re-running `reindex_missing` rebuilds it from the
+entities that already exist. It is written by `kb/embeddings.py`, also a
+registered writer, and rebuilt whenever the configured embedding dimension
+changes (ADR-0013).

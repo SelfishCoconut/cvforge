@@ -47,6 +47,7 @@ EXEMPT_DIRS = (SRC / "kb" / "migrations",)
 SQLITE3_MODULES = (SRC / "kb" / "db.py", SRC / "kb" / "export.py")
 REGISTERED_WRITERS: dict[str, frozenset[str]] = {
     "llm/settings_store.py": frozenset({"app_setting"}),
+    "kb/embeddings.py": frozenset({"entity_vec"}),
 }
 KNOWLEDGE_TABLES = frozenset(schema.metadata.tables) - frozenset().union(
     *REGISTERED_WRITERS.values()
@@ -282,7 +283,7 @@ def test_a_registered_writer_never_touches_a_knowledge_table(rel: str) -> None:
 
 def test_registering_a_writer_is_a_visible_change() -> None:
     """Edit this set deliberately, in review — it is exactly the point of the registry."""
-    assert set(REGISTERED_WRITERS) == {"llm/settings_store.py"}
+    assert set(REGISTERED_WRITERS) == {"llm/settings_store.py", "kb/embeddings.py"}
 
 
 # A fixed reference set, independent of KNOWLEDGE_TABLES' own derivation from
