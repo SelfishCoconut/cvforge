@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
 from cvforge.kb import apply, queries, schema
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.vocab import SourceKind, TargetKind
 
 Propose = Callable[..., int]
@@ -104,7 +104,7 @@ def test_a_chat_message_is_a_source_and_an_evidence_row(kb: sa.Engine) -> None:
 
 def test_an_operation_citing_missing_evidence_never_reaches_review(kb: sa.Engine) -> None:
     source = apply.record_source(kb, SourceKind.CONVERSATION, "chat")
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
@@ -118,7 +118,6 @@ def test_an_operation_citing_missing_evidence_never_reaches_review(kb: sa.Engine
                         "name": "Go",
                         "evidence_id": 42,
                     },
-                    "classification": "new",
                 }
             ],
         }

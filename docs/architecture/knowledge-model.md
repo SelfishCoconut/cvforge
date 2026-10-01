@@ -102,7 +102,7 @@ write introduced anywhere outside `kb/apply.py` is a bug caught by the
 | Stage | Function in `kb/apply.py` | Writes |
 |---|---|---|
 | Intake | `record_source`, `record_evidence` | `source`, `evidence` (what was said, not what is true) |
-| Proposal | `record_proposal` | `proposal`, `operation` (all `pending`) |
+| Proposal | `record_proposal` | `proposal`, `operation` (all `pending`, classified by the database) |
 | Review | `review_operation` | one operation's status, plus `edited_payload_json` for an edit |
 | Commit | `commit_proposal` | `entity`, kind tables, `edge`, `assertion`, `commit_log`, in one transaction |
 
@@ -113,7 +113,13 @@ any of them fails.
 ### The four classifications
 
 `kb/classify.py` compares each candidate with stored rows. The model does not
-decide this.
+decide this, and neither does the caller: `record_proposal` takes operations with
+no classification or target (`ProposalInput`) and computes both itself. Similarity,
+which can call the embedder, runs before the write lock is taken; the write phase
+then re-classifies against the locked state. At commit, a `known`, `duplicate` or
+`conflict` operation is checked again against its target (same kind, same name for
+`known`, same entity or edge triple), and a mismatch raises
+`StaleClassificationError` (409) and rolls the proposal back.
 
 | Value | Means | Accepting it |
 |---|---|---|

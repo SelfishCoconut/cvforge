@@ -190,12 +190,7 @@ def test_accepting_known_adds_evidence_and_creates_nothing(
     apply.commit_proposal(
         kb,
         propose(
-            (
-                {"op_type": "create_entity", "kind": "skill", "name": "rust"},
-                "known",
-                "entity",
-                stored["rust"],
-            ),
+            {"op_type": "create_entity", "kind": "skill", "name": "rust"},
             {
                 "op_type": "add_edge",
                 "src": {"op": 0},
@@ -227,7 +222,7 @@ def test_accepting_a_conflict_replaces_the_value_and_keeps_history(
         "field": "summary",
         "value": "web",
     }
-    apply.commit_proposal(kb, propose((update, "conflict", "entity", stored["rust"]), accept=True))
+    apply.commit_proposal(kb, propose(update, accept=True))
     with kb.connect() as conn:
         entity = queries.get_entity(conn, stored["rust"])
         history = [
@@ -249,7 +244,7 @@ def test_accepting_an_edge_conflict_updates_the_stored_edge(
         "dst": stored["parser"],
         "started_at": "2019-01-01",
     }
-    apply.commit_proposal(kb, propose((edge, "conflict", "edge", stored["edge"]), accept=True))
+    apply.commit_proposal(kb, propose(edge, accept=True))
     with kb.connect() as conn:
         updated = queries.find_edge(conn, stored["rust"], "used_in", stored["parser"])
         count = queries.table_counts(conn)["edge"]

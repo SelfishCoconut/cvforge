@@ -14,7 +14,7 @@ import pytest
 import sqlalchemy as sa
 
 from cvforge.kb import apply, queries, schema
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.vocab import SourceKind
 
 pytestmark = pytest.mark.integration
@@ -25,25 +25,16 @@ def db(tmp_path: Path, open_db: Callable[..., sa.Engine]) -> sa.Engine:
     return open_db(tmp_path / "cvforge.db")
 
 
-def _commit(
-    engine: sa.Engine, *ops: tuple[dict[str, object], str, str | None, int | None]
-) -> apply.CommitResult:
+def _commit(engine: sa.Engine, *ops: dict[str, object]) -> apply.CommitResult:
     source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
     evidence = apply.record_evidence(engine, source, "message:1", "synthetic")
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
             "summary": "s",
             "operations": [
-                {
-                    "seq": i,
-                    "payload": {"evidence_id": evidence, **p},
-                    "classification": c,
-                    "target_kind": tk,
-                    "target_id": ti,
-                }
-                for i, (p, c, tk, ti) in enumerate(ops)
+                {"seq": i, "payload": {"evidence_id": evidence, **p}} for i, p in enumerate(ops)
             ],
         }
     )
@@ -56,10 +47,6 @@ def _commit(
     return apply.commit_proposal(engine, proposal)
 
 
-def _new(payload: dict[str, object]) -> tuple[dict[str, object], str, None, None]:
-    return (payload, "new", None, None)
-
-
 def _clean(engine: sa.Engine) -> bool:
     with engine.connect() as conn:
         return queries.orphans(conn).clean
@@ -68,17 +55,15 @@ def _clean(engine: sa.Engine) -> bool:
 def test_every_write_path_leaves_zero_orphans(db: sa.Engine) -> None:
     ids = _commit(
         db,
-        _new(
-            {
-                "op_type": "create_entity",
-                "kind": "skill",
-                "name": "Rust",
-                "attributes": {"category": "language"},
-            }
-        ),
-        _new({"op_type": "create_entity", "kind": "organization", "name": "Acme"}),
-        _new({"op_type": "create_entity", "kind": "role", "name": "Engineer"}),
-        _new({"op_type": "add_edge", "src": {"op": 2}, "rel": "at_organization", "dst": {"op": 1}}),
+        {
+            "op_type": "create_entity",
+            "kind": "skill",
+            "name": "Rust",
+            "attributes": {"category": "language"},
+        },
+        {"op_type": "create_entity", "kind": "organization", "name": "Acme"},
+        {"op_type": "create_entity", "kind": "role", "name": "Engineer"},
+        {"op_type": "add_edge", "src": {"op": 2}, "rel": "at_organization", "dst": {"op": 1}},
     ).entity_ids
     assert _clean(db)
     rust, acme, role = ids[0], ids[1], ids[2]
@@ -87,35 +72,23 @@ def test_every_write_path_leaves_zero_orphans(db: sa.Engine) -> None:
     assert edge is not None
     _commit(
         db,
-        ({"op_type": "create_entity", "kind": "skill", "name": "rust"}, "known", "entity", rust),
-        (
-            {"op_type": "update_field", "entity_id": rust, "field": "category", "value": "tool"},
-            "conflict",
-            "entity",
-            rust,
-        ),
-        _new(
-            {
-                "op_type": "update_field",
-                "entity_id": role,
-                "field": "title",
-                "value": "Senior engineer",
-            }
-        ),
-        _new({"op_type": "set_state", "entity": rust, "state": "archived"}),
-        _new({"op_type": "attach_evidence", "target_kind": "edge", "target_id": edge.id}),
-        (
-            {
-                "op_type": "add_edge",
-                "src": role,
-                "rel": "at_organization",
-                "dst": acme,
-                "started_at": "2020-01-01",
-            },
-            "conflict",
-            "edge",
-            edge.id,
-        ),
+        {"op_type": "create_entity", "kind": "skill", "name": "rust"},
+        {"op_type": "update_field", "entity_id": rust, "field": "category", "value": "tool"},
+        {
+            "op_type": "update_field",
+            "entity_id": role,
+            "field": "title",
+            "value": "Senior engineer",
+        },
+        {"op_type": "set_state", "entity": rust, "state": "archived"},
+        {"op_type": "attach_evidence", "target_kind": "edge", "target_id": edge.id},
+        {
+            "op_type": "add_edge",
+            "src": role,
+            "rel": "at_organization",
+            "dst": acme,
+            "started_at": "2020-01-01",
+        },
     )
     assert _clean(db)
 
@@ -143,8 +116,8 @@ def test_the_report_sees_an_edge_without_an_assertion_and_a_dangling_assertion(
 ) -> None:
     ids = _commit(
         db,
-        _new({"op_type": "create_entity", "kind": "skill", "name": "Rust"}),
-        _new({"op_type": "create_entity", "kind": "project", "name": "Parser"}),
+        {"op_type": "create_entity", "kind": "skill", "name": "Rust"},
+        {"op_type": "create_entity", "kind": "project", "name": "Parser"},
     ).entity_ids
     with db.begin() as conn:
         conn.execute(sa.insert(schema.edge).values(src_id=ids[0], rel="used_in", dst_id=ids[1]))

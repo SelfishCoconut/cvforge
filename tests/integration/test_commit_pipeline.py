@@ -7,7 +7,7 @@ import pytest
 import sqlalchemy as sa
 
 from cvforge.kb import apply, queries, schema
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.vocab import SourceKind
 
 pytestmark = pytest.mark.integration
@@ -21,13 +21,13 @@ def db(tmp_path: Path, open_db: Callable[..., sa.Engine]) -> sa.Engine:
 def _propose(engine: sa.Engine, payloads: list[dict[str, object]]) -> int:
     source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
     evidence = apply.record_evidence(engine, source, "message:1", "synthetic statement")
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
             "summary": "synthetic",
             "operations": [
-                {"seq": i, "payload": {"evidence_id": evidence, **p}, "classification": "new"}
+                {"seq": i, "payload": {"evidence_id": evidence, **p}}
                 for i, p in enumerate(payloads)
             ],
         }

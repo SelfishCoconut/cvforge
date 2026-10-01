@@ -15,10 +15,12 @@ from pydantic_ai import models as pydantic_ai_models
 
 from cvforge.app import create_app
 from cvforge.kb import apply, migrate, queries
+from cvforge.kb.classify import SimilarFinder
 from cvforge.kb.db import make_engine
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.schema import evidence as evidence_table
 from cvforge.kb.schema import metadata
+from cvforge.kb.schema import operation as operation_table
 from cvforge.kb.vocab import SourceKind
 
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
@@ -191,35 +193,61 @@ def propose(kb: sa.Engine, evidence_id: int) -> Propose:
     """Record a chat proposal from bare payload dicts; returns the proposal id.
 
     Each positional argument is a payload dict (`evidence_id` is filled in when
-    absent) or an `(payload, classification, target_kind, target_id)` tuple for a
-    non-`new` operation. With `accept=True` every operation is accepted.
+    absent). The database classifies each one (ADR-0009), so a test that wants a
+    `known` or `conflict` operation first builds the stored state that makes the
+    classifier say so. With `accept=True` every operation is accepted; `similar`
+    is passed through to `record_proposal`.
     """
 
-    def build(*ops: object, accept: bool = False) -> int:
-        operations = []
-        for seq, op in enumerate(ops):
-            payload, classification, target_kind, target_id = (
-                op if isinstance(op, tuple) else (op, "new", None, None)
-            )
-            operations.append(
-                {
-                    "seq": seq,
-                    "payload": {"evidence_id": evidence_id, **payload},
-                    "classification": classification,
-                    "target_kind": target_kind,
-                    "target_id": target_id,
-                }
-            )
-        source_id = _source_of(kb, evidence_id)
-        draft = ProposalDraft.model_validate(
-            {"origin": "chat", "source_id": source_id, "summary": "test", "operations": operations}
+    def build(
+        *payloads: dict[str, Any],
+        accept: bool = False,
+        similar: SimilarFinder | None = None,
+    ) -> int:
+        draft = ProposalInput.model_validate(
+            {
+                "origin": "chat",
+                "source_id": _source_of(kb, evidence_id),
+                "summary": "test",
+                "operations": [
+                    {"seq": seq, "payload": {"evidence_id": evidence_id, **payload}}
+                    for seq, payload in enumerate(payloads)
+                ],
+            }
         )
-        proposal_id = apply.record_proposal(kb, draft)
+        proposal_id = apply.record_proposal(kb, draft, similar=similar)
         if accept:
             _accept_all(kb, proposal_id)
         return proposal_id
 
     return build
+
+
+Forge = Callable[..., None]
+
+
+@pytest.fixture
+def forge(kb: sa.Engine) -> Forge:
+    """Overwrite a stored operation's classification and target, as a tampered database would.
+
+    `record_proposal` computes these itself, so this is the only way a test can
+    reach the commit path's defences against a row that disagrees with the database.
+    """
+
+    def overwrite(
+        proposal_id: int,
+        classification: str,
+        target_kind: str | None = None,
+        target_id: int | None = None,
+    ) -> None:
+        with kb.begin() as conn:
+            conn.execute(
+                sa.update(operation_table)
+                .where(operation_table.c.proposal_id == proposal_id)
+                .values(classification=classification, target_kind=target_kind, target_id=target_id)
+            )
+
+    return overwrite
 
 
 def _source_of(engine: sa.Engine, evidence: int) -> int:
