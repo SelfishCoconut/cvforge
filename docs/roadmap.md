@@ -91,12 +91,16 @@ the `entity_vec` index, post-commit indexing that never fails a commit
 `kb.classify`'s first genuine `duplicate`. ADR-0013 part 1 is `proposed`. The
 PR also bumped `urllib3`/`virtualenv` to clear new pip-audit advisories.
 
-**Next: package B3** (`feat/fr-11-ingest-agent`), starting with B3.0
-(`record_proposal` classifies for itself). B3.0 carries one open decision for
-Álvaro: stale vectors — an entity renamed or re-summarised by `update_field`
-keeps its old vector, and fixing it changes `commit_proposal`'s return value
-(plan Step 1b). Known gap, not scheduled: the write-path scanner does not
-cover DDL.
+**Package B3** is in progress on `feat/fr-11-ingest-agent` (pushed, no PR yet; it
+closes #10, #11, #15, #16). **B3.0 is done:** `record_proposal` takes
+`ProposalInput` and classifies for itself (similarity before the write lock,
+re-classified under it); commit refuses a stale `known`/`duplicate`/`conflict`
+with `StaleClassificationError` (409). **The stale-vector bug is fixed** (Álvaro
+chose the internal-only option): `CommitResult.reindex_ids`, re-embedded by the
+commit route. That also fixed a latent B2 bug — re-indexing an existing entity
+failed, because sqlite-vec's `vec0` rejects `INSERT OR REPLACE`. **Next: B3.1**
+(read-only agent tools, then `IngestAgent` and the chat endpoint) — see the plan.
+Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 Still open from the M1 tracker and not scheduled by that plan: #50
 (`sync_issues.py`) and #53–#58 (CI and docs hygiene). NFR-07 (#46) is M2's.
