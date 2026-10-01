@@ -223,3 +223,22 @@ def test_an_orphan_index_row_is_skipped_and_does_not_hide_a_real_hit(
     hits = find_similar(kb, provider, "rust programmer", threshold=0.5)
 
     assert [h.entity_id for h in hits] == [rust]
+
+
+def test_reindexing_an_entity_replaces_its_vector(kb: sa.Engine, propose: Propose) -> None:
+    provider = FakeEmbeddingProvider(dimension=8)
+    entity = _entity(kb, propose, name="rust programmer")
+    index_entities(kb, provider, [entity])
+    rename = {
+        "op_type": "update_field",
+        "entity_id": entity,
+        "field": "name",
+        "value": "pastry chef",
+    }
+    apply.commit_proposal(kb, propose(rename, accept=True))
+
+    assert index_entities(kb, provider, [entity]) == []
+
+    hits = find_similar(kb, provider, "pastry chef", threshold=0.99)
+    assert [hit.entity_id for hit in hits] == [entity]
+    assert find_similar(kb, provider, "rust programmer", threshold=0.99) == []

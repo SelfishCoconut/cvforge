@@ -54,6 +54,8 @@ from cvforge.kb.vocab import (
 
 AnyPayload = CreateEntity | UpdateField | AddEdge | AttachEvidence | MergeDuplicate | SetState
 Decision = Literal["accept", "edit", "reject"]
+EMBEDDED_FIELDS = frozenset({"name", "summary"})
+"""The entity fields the similarity index embeds (`kb/embeddings.py`)."""
 
 
 class ApplyError(Exception):
@@ -93,11 +95,15 @@ class CommitResult:
         applied_operation_ids: Operations applied, in `seq` order.
         entity_ids: For each applied `create_entity` seq, the entity it resolved to
             (a new row, or the existing one for `known`/`duplicate`).
+        reindex_ids: Existing entities whose `name` or `summary` an applied
+            `update_field` changed, so their similarity vectors are now stale.
+            Not part of the HTTP response; the commit route re-embeds them.
     """
 
     commit_id: int
     applied_operation_ids: list[int]
     entity_ids: dict[int, int]
+    reindex_ids: list[int]
 
 
 def _now() -> datetime:
@@ -427,7 +433,9 @@ def commit_proposal(engine: sa.Engine, proposal_id: int) -> CommitResult:
                 )
             )
         )
-        return CommitResult(commit_id, applied, dict(committer.entity_ids))
+        return CommitResult(
+            commit_id, applied, dict(committer.entity_ids), sorted(committer.reindex_ids)
+        )
 
 
 class _Committer:
@@ -436,6 +444,7 @@ class _Committer:
     def __init__(self, conn: sa.Connection) -> None:
         self.conn = conn
         self.entity_ids: dict[int, int] = {}
+        self.reindex_ids: set[int] = set()
 
     def apply(self, op: sa.Row[Any]) -> None:
         payload = parse_payload(op.edited_payload_json or op.payload_json)
@@ -587,6 +596,8 @@ class _Committer:
                 .where(schema.entity.c.id == payload.entity_id)
                 .values(updated_at=now)
             )
+        if payload.field in EMBEDDED_FIELDS:
+            self.reindex_ids.add(payload.entity_id)
         self._assert(TargetKind.ENTITY, payload.entity_id, payload.field, payload.value, payload)
 
     def _add_or_replace_edge(self, payload: AddEdge, conflict_edge: int | None) -> None:

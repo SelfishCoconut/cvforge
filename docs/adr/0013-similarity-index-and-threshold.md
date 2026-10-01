@@ -51,7 +51,10 @@ inside a write transaction that holds the knowledge base's write lock.**
   INSERT itself — never around the `provider.embed(...)` call.
 - **Indexing happens after `commit_proposal` returns, never inside it.**
   `api/proposals.py`'s commit route calls `index_entities` on the newly
-  created entity ids once the commit transaction has already closed. A failed
+  created entity ids, plus the existing ones whose `name` or `summary` an
+  applied `update_field` changed (`CommitResult.reindex_ids`, found by the
+  B3.0 stale-vector fix; a renamed entity otherwise kept its old vector), once
+  the commit transaction has already closed. A failed
   embedding call never fails the commit or loses data: `index_entities` never
   raises `EmbeddingError`, only reports the ids it couldn't embed, and the
   commit response carries them as `index_pending` — the commit stands, and

@@ -84,7 +84,7 @@ flowchart LR
   R -->|review_operation| W
   R -->|commit_proposal| W
   W -->|entity, edge, assertion:<br/>one transaction, only after approval| KB
-  R -->|after commit, outside the lock:<br/>index new entity ids| E[kb/embeddings.py<br/>embed, then entity_vec]
+  R -->|after commit, outside the lock:<br/>index new and changed entity ids| E[kb/embeddings.py<br/>embed, then entity_vec]
   E -->|derived data only;<br/>failures returned as index_pending| KB
 ```
 

@@ -31,7 +31,7 @@ C4Container
   ContainerDb(db, "cvforge.db", "SQLite + sqlite-vec", "Entities, edges, assertions, proposals, jobs, CVs")
   System_Ext(ollama, "Ollama", "Embedding endpoint")
   Rel(alvaro, spa, "Uses", "HTTPS on 127.0.0.1")
-  Rel(kb, ollama, "Embeds new entities after commit", "HTTP, localhost")
+  Rel(kb, ollama, "Embeds new and renamed entities after commit", "HTTP, localhost")
   Rel(spa, api, "Calls", "JSON over /api")
   Rel(api, agents, "Requests a proposal or an analysis")
   Rel(agents, kb, "Reads only")
