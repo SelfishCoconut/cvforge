@@ -98,8 +98,9 @@ re-classified under it); commit refuses a stale `known`/`duplicate`/`conflict`
 with `StaleClassificationError` (409). **The stale-vector bug is fixed** (Álvaro
 chose the internal-only option): `CommitResult.reindex_ids`, re-embedded by the
 commit route. That also fixed a latent B2 bug — re-indexing an existing entity
-failed, because sqlite-vec's `vec0` rejects `INSERT OR REPLACE`. **Next: B3.1**
-(read-only agent tools, then `IngestAgent` and the chat endpoint) — see the plan.
+failed, because sqlite-vec's `vec0` rejects `INSERT OR REPLACE`. **B3.1 is done:** `kb/intake.propose` returns an `Intake(proposal_id,
+similarity_available)` or `None` for an empty batch. **Next: B3.2** (fact schema
+and converter), then B3.3 tools and `IngestAgent`, B3.4 chat endpoint — see the plan.
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 Still open from the M1 tracker and not scheduled by that plan: #50
