@@ -4,7 +4,7 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-09-29
+Last updated: 2026-10-01
 
 ---
 
@@ -85,13 +85,18 @@ migrated database rather than only text-diffed, plus several smaller test
 gaps). Awaiting merge.
 
 **Package B2 — embeddings and `sqlite-vec` similarity search** (FR-40, FR-05;
-closes #44, #9) is implemented on `feat/fr-40-embeddings` (2026-09-29): the full
-gate is green; PR open and awaiting the three review agents. **Next: package B3**,
-starting with B3.0 (`record_proposal` classifies for itself). B2 was executed natively
-in-session, not subagent-driven: tasks stay small and sequential within a
-package, and the project's own PR-review agents (`provenance-auditor`,
-`regression-guard`, `doc-curator`) gate each package's PR, which is where
-independent review adds the most value here.
+closes #44, #9) is **merged** (PR #74, `30d651b`, 2026-10-01): `EmbeddingProvider`,
+the `entity_vec` index, post-commit indexing that never fails a commit
+(`index_pending`), startup re-indexing, and a real `SimilarFinder` behind
+`kb.classify`'s first genuine `duplicate`. ADR-0013 part 1 is `proposed`. The
+PR also bumped `urllib3`/`virtualenv` to clear new pip-audit advisories.
+
+**Next: package B3** (`feat/fr-11-ingest-agent`), starting with B3.0
+(`record_proposal` classifies for itself). B3.0 carries one open decision for
+Álvaro: stale vectors — an entity renamed or re-summarised by `update_field`
+keeps its old vector, and fixing it changes `commit_proposal`'s return value
+(plan Step 1b). Known gap, not scheduled: the write-path scanner does not
+cover DDL.
 
 Still open from the M1 tracker and not scheduled by that plan: #50
 (`sync_issues.py`) and #53–#58 (CI and docs hygiene). NFR-07 (#46) is M2's.
