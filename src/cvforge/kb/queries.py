@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 from cvforge.kb import schema
 from cvforge.kb.models import normalize_name
-from cvforge.kb.vocab import EntityKind, KnowledgeState, TargetKind
+from cvforge.kb.vocab import EntityKind, KnowledgeState, SourceKind, TargetKind
 
 
 @dataclass(frozen=True)
@@ -396,3 +396,25 @@ def table_counts(conn: sa.Connection) -> dict[str, int]:
         ).scalar_one()
         for name in names
     }
+
+
+def message_count(conn: sa.Connection, source_id: int) -> int | None:
+    """Count the evidence spans of a conversation source (its stored messages).
+
+    Args:
+        conn: An open connection.
+        source_id: The source id.
+
+    Returns:
+        The number of spans, or None if `source_id` is not a conversation source.
+    """
+    kind = conn.execute(
+        sa.select(schema.source.c.kind).where(schema.source.c.id == source_id)
+    ).scalar_one_or_none()
+    if kind != SourceKind.CONVERSATION.value:
+        return None
+    return conn.execute(
+        sa.select(sa.func.count())
+        .select_from(schema.evidence)
+        .where(schema.evidence.c.source_id == source_id)
+    ).scalar_one()

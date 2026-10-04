@@ -1,6 +1,74 @@
 {
   "components": {
     "schemas": {
+      "ChatRequest": {
+        "additionalProperties": false,
+        "description": "One user message. The text is stored literally, not trimmed.\n\nAttributes:\n    conversation_id: An existing conversation to continue; a new one when omitted.\n    text: The message, 1 to 20 000 characters, not blank.",
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "text": {
+            "maxLength": 20000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
+      "ChatResponse": {
+        "description": "What the user sees after sending a message.\n\nAttributes:\n    conversation_id: The conversation (a `source` id) the message belongs to.\n    message_id: The evidence id of the stored message.\n    reply: The agent's acknowledgement.\n    proposal: The pending proposal, if any.\n    rejected: Agent output that was dropped, and why.\n    similarity_available: False when duplicate detection could not run.",
+        "properties": {
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "integer"
+          },
+          "message_id": {
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalView"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedView"
+            },
+            "title": "Rejected",
+            "type": "array"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "similarity_available": {
+            "title": "Similarity Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "message_id",
+          "reply",
+          "proposal",
+          "rejected",
+          "similarity_available"
+        ],
+        "title": "ChatResponse",
+        "type": "object"
+      },
       "Committed": {
         "description": "What a commit wrote.\n\nAttributes:\n    commit_id: The `commit_log` row.\n    applied_operation_ids: Applied operations, in order.\n    entity_ids: For each applied `create_entity` seq, the entity it resolved to.\n    index_pending: Entity ids the similarity index could not embed yet (the\n        embedder was unavailable). The commit still happened; only the\n        search index is behind — `reindex_missing` catches these up later.",
         "properties": {
@@ -370,6 +438,92 @@
         "title": "ProposalRecord",
         "type": "object"
       },
+      "ProposalView": {
+        "description": "The proposal a message produced; `id` is None when it produced nothing.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedOperation"
+            },
+            "title": "Operations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "operations"
+        ],
+        "title": "ProposalView",
+        "type": "object"
+      },
+      "ProposedOperation": {
+        "description": "One pending operation of the stored proposal.\n\nAttributes:\n    id: The operation id, as used by the review endpoints.\n    seq: Its position in the proposal.\n    op_type: The operation type.\n    payload: The typed payload as stored.\n    classification: `new`, `known`, `duplicate` or `conflict`.\n    target_kind: What it refers to, unless `new`.\n    target_id: The id of that target, unless `new`.",
+        "properties": {
+          "classification": {
+            "title": "Classification",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "op_type": {
+            "title": "Op Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "target_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kind"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "op_type",
+          "payload",
+          "classification",
+          "target_kind",
+          "target_id"
+        ],
+        "title": "ProposedOperation",
+        "type": "object"
+      },
       "ProvenanceRecord": {
         "description": "One assertion resolved back to the literal evidence it cites (FR-03).",
         "properties": {
@@ -497,6 +651,25 @@
         "title": "ProviderSettings",
         "type": "object"
       },
+      "RejectedView": {
+        "description": "Something the agent produced that could not become an operation.",
+        "properties": {
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "reason"
+        ],
+        "title": "RejectedView",
+        "type": "object"
+      },
       "Review": {
         "additionalProperties": false,
         "description": "A reviewer's decision on one operation.\n\nAttributes:\n    decision: ``accept``, ``edit`` or ``reject``.\n    edited_payload: The replacement payload, for ``edit`` only.",
@@ -605,6 +778,48 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/chat/messages": {
+      "post": {
+        "description": "Store a message, extract facts from it, and record them as a pending proposal.\n\nThe message is written as provenance before the model runs; a model failure\nafterwards leaves the message and no proposal.\n\nArgs:\n    db: The knowledge-base engine.\n    body: The message.\n    embedder: Used for similarity, if configured.\n    model_factory: Builds the model for this request.\n\nReturns:\n    The reply, the pending proposal and anything the agent produced that was dropped.\n\nRaises:\n    HTTPException: 404 for an unknown conversation; 502 if the model fails.",
+        "operationId": "post_message_api_chat_messages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Message",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
     "/api/entities": {
       "get": {
         "description": "List entities, optionally filtered by kind and knowledge state.\n\nArgs:\n    conn: Read connection.\n    kind: Only this kind.\n    state: Only this knowledge state.\n\nReturns:\n    Matching entities.",

@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import cvforge
+from cvforge.api.chat import router as chat_router
 from cvforge.api.errors import install_error_handlers
 from cvforge.api.health import router as health_router
 from cvforge.api.knowledge import router as knowledge_router
@@ -24,6 +25,7 @@ from cvforge.kb.embeddings import (
     reindex_missing,
 )
 from cvforge.kb.migrate import open_database
+from cvforge.llm.provider import build_model
 from cvforge.llm.settings_store import ProviderSettings, load_settings
 
 logger = logging.getLogger(__name__)
@@ -97,9 +99,11 @@ def create_app(
 
     app = FastAPI(title="CVForge", version=cvforge.__version__, lifespan=lifespan)
     app.state.settings = settings
+    app.state.model_factory = build_model
     install_security_middleware(app)
     install_error_handlers(app)
     app.include_router(health_router, prefix="/api")
+    app.include_router(chat_router, prefix="/api")
     app.include_router(knowledge_router, prefix="/api")
     app.include_router(proposals_router, prefix="/api")
     app.include_router(settings_router, prefix="/api")
