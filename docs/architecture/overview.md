@@ -55,3 +55,24 @@ and are barred from ever touching a knowledge table. See
 [ADR-0009](../adr/0009-review-pipeline-semantics.md),
 [ADR-0011](../adr/0011-registered-writers-for-non-knowledge-state.md) and
 [ADR-0013](../adr/0013-similarity-index-and-threshold.md).
+
+## Chat intake
+
+A message is stored as provenance first; the model only ever sees it as data, and
+what it extracts is stored as a pending proposal (ADR-0013 part 2).
+
+```mermaid
+sequenceDiagram
+  participant U as Álvaro
+  participant A as POST /api/chat/messages
+  participant K as kb/apply.py
+  participant G as IngestAgent (read-only tools)
+  U->>A: text
+  A->>K: record_evidence(message:n, literal text)
+  A->>G: run(text)
+  G-->>A: IngestResult (facts, edges, reply)
+  A->>A: to_payloads(evidence_id) — rejects what does not fit
+  A->>K: record_proposal (the database classifies)
+  A-->>U: reply, pending proposal, rejected items
+  Note over U,K: Nothing is in the knowledge until review and commit
+```

@@ -79,3 +79,23 @@ Generated from docstrings. Update the docstring, not this page.
 ### Building a model
 
 ::: cvforge.llm.provider
+
+### Agents and tools
+
+::: cvforge.llm.agents.ingest
+
+::: cvforge.llm.tools
+
+### Agent output and conversion
+
+::: cvforge.llm.schemas
+
+::: cvforge.llm.convert
+
+### Intake
+
+::: cvforge.kb.intake
+
+### Chat endpoint
+
+::: cvforge.api.chat

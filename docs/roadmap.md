@@ -4,7 +4,7 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-10-01
+Last updated: 2026-10-04
 
 ---
 
@@ -91,16 +91,13 @@ the `entity_vec` index, post-commit indexing that never fails a commit
 `kb.classify`'s first genuine `duplicate`. ADR-0013 part 1 is `proposed`. The
 PR also bumped `urllib3`/`virtualenv` to clear new pip-audit advisories.
 
-**Package B3** is in progress on `feat/fr-11-ingest-agent` (pushed, no PR yet; it
-closes #10, #11, #15, #16). **B3.0 is done:** `record_proposal` takes
-`ProposalInput` and classifies for itself (similarity before the write lock,
-re-classified under it); commit refuses a stale `known`/`duplicate`/`conflict`
-with `StaleClassificationError` (409). **The stale-vector bug is fixed** (Álvaro
-chose the internal-only option): `CommitResult.reindex_ids`, re-embedded by the
-commit route. That also fixed a latent B2 bug — re-indexing an existing entity
-failed, because sqlite-vec's `vec0` rejects `INSERT OR REPLACE`. **B3.1 is done:** `kb/intake.propose` returns an `Intake(proposal_id,
-similarity_available)` or `None` for an empty batch. **Next: B3.2** (fact schema
-and converter), then B3.3 tools and `IngestAgent`, B3.4 chat endpoint — see the plan.
+**Package B3** is complete on `feat/fr-11-ingest-agent` (PR open; closes #10, #11, #15,
+#16): B3.0 `record_proposal` classifies for itself (and the stale-vector fix),
+B3.1 `kb/intake.propose`, B3.2 the fact schema and converter
+(`llm/schemas.py`, `llm/convert.py`), B3.3 the read-only tools and `IngestAgent`
+(`llm/tools.py`, `llm/agents/`), B3.4 `POST /api/chat/messages`, B3.5 the golden
+replay (`tests/golden/test_chat_ingest.py`), `make demo-chat-ingest` and ADR-0013
+part 2 (D-C). **Next: B4** (streaming NDJSON chat) once B3 is merged.
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 Still open from the M1 tracker and not scheduled by that plan: #50

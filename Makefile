@@ -1,6 +1,6 @@
 .PHONY: lint format typecheck complexity test test-unit test-integration test-golden \
         update-golden test-demos sanity docs docs-serve build-ui dev-ui ui-install \
-        ui-lint ui-test run demo-health demo-review-pipeline migration clean
+        ui-lint ui-test run demo-health demo-review-pipeline demo-chat-ingest migration clean
 
 # --- python quality ---
 lint:
@@ -44,7 +44,10 @@ demo-health:
 demo-review-pipeline:
 	uv run python scripts/demo/review_pipeline.py
 
-test-demos: demo-health demo-review-pipeline
+demo-chat-ingest:
+	uv run python scripts/demo/chat_ingest.py
+
+test-demos: demo-health demo-review-pipeline demo-chat-ingest
 	@echo "all offline demos ran clean"
 
 # --- mechanical quality signals ---
