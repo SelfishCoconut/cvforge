@@ -13,7 +13,8 @@ const NEUTRAL = "bg-transparent text-ink-muted ring-1 ring-inset ring-line";
  * values render as neutral raw text.
  */
 export function ClassificationBadge({ value }: { value: string }) {
-  const tone = TONES[value] ?? NEUTRAL;
+  // Own keys only: an API string like "constructor" must not resolve through the prototype.
+  const tone = Object.hasOwn(TONES, value) ? (TONES[value] ?? NEUTRAL) : NEUTRAL;
   return (
     <span
       className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium leading-none ${tone}`}
