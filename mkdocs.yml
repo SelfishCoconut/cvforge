@@ -76,6 +76,7 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - Knowledge model: architecture/knowledge-model.md
+      - Frontend: architecture/frontend.md
   - Decisions:
       - Index: adr/README.md
       - 0001 SQLite knowledge store: adr/0001-sqlite-knowledge-store.md
@@ -92,6 +93,7 @@ nav:
       - 0012 API keys are never persisted: adr/0012-api-keys-are-never-persisted.md
       - 0013 Similarity index and threshold: adr/0013-similarity-index-and-threshold.md
       - 0014 NDJSON streaming: adr/0014-ndjson-streaming-and-unpersisted-replies.md
+      - 0015 Frontend stack and direction: adr/0015-frontend-radix-editorial-router-query.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md

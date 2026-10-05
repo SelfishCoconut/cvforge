@@ -99,6 +99,12 @@ ADR-0014 — is PR #82 (it replaced #80, which GitHub auto-closed when #79's bra
 deleted). B5 — the real-model latency benchmark, NFR-10 — is PR #81, closing #47. The
 benchmark ships as a tool: a recorded real-model run in `docs/sanity/` is still to do.
 **Next: C1**, the chat, review, knowledge and settings UI (FR-13 frontend half, #17).
+**C1 in progress, local only (not pushed, not merged):** PR0, the backend additions
+(`GET /api/proposals`, evidence lookup, SPA history fallback), and PR1, the frontend
+foundation (generated API types with a CI drift gate, typed client and NDJSON reader,
+design tokens, app shell, routes, query client, ADR-0015 `proposed`,
+`docs/architecture/frontend.md`), are done on stacked local branches. **Next action:
+the chat view (PR2, Task 7), then review, knowledge and settings.**
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 **M1 infra backlog cleared (2026-10-05):** `mkdocs<2` ceiling (#57), Dependabot npm
