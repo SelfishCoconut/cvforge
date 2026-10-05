@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 from cvforge.api.errors import connection, engine
 from cvforge.kb import apply, queries
 from cvforge.kb.embeddings import EmbeddingProvider, index_entities
+from cvforge.kb.vocab import ProposalStatus
 
 router = APIRouter(tags=["review"])
 Conn = Annotated[sa.Connection, Depends(connection)]
@@ -72,6 +73,22 @@ def _proposal(conn: sa.Connection, proposal_id: int) -> queries.ProposalRecord:
     if found is None:
         raise HTTPException(404, f"proposal {proposal_id} does not exist")
     return found
+
+
+@router.get("/proposals")
+def list_proposals(
+    conn: Conn, status: ProposalStatus | None = None
+) -> list[queries.ProposalSummary]:
+    """List proposals newest first, each with its pending-operation count.
+
+    Args:
+        conn: Read connection.
+        status: ``open`` or ``committed``; omit for all.
+
+    Returns:
+        The proposal summaries.
+    """
+    return queries.list_proposals(conn, status=status)
 
 
 @router.get("/proposals/{proposal_id}")

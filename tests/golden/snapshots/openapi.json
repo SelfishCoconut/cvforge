@@ -244,6 +244,45 @@
         "title": "EntityRecord",
         "type": "object"
       },
+      "EvidenceRecord": {
+        "description": "One evidence span resolved to its source.\n\nAttributes:\n    id: The evidence id.\n    source_id: The source it was cut from.\n    source_kind: The source's kind.\n    source_label: The source's human label.\n    locator: Where in the source the span sits.\n    excerpt: The literal text of the span.",
+        "properties": {
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "source_kind",
+          "source_label",
+          "locator",
+          "excerpt"
+        ],
+        "title": "EvidenceRecord",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -436,6 +475,73 @@
           "operations"
         ],
         "title": "ProposalRecord",
+        "type": "object"
+      },
+      "ProposalStatus": {
+        "description": "Lifecycle of a proposal: open for review, then committed exactly once.",
+        "enum": [
+          "open",
+          "committed"
+        ],
+        "title": "ProposalStatus",
+        "type": "string"
+      },
+      "ProposalSummary": {
+        "description": "A proposal as a row in the review queue, without its operations.\n\nAttributes:\n    id: The proposal id.\n    origin: Which flow produced it (``chat``, ``document``, ...).\n    status: ``open`` or ``committed``.\n    summary: The agent's one-line description.\n    created_at: When it was recorded.\n    applied_at: When it was committed, or None while open.\n    operation_count: How many operations it holds.\n    pending_count: How many of them still await a decision.",
+        "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "operation_count": {
+            "title": "Operation Count",
+            "type": "integer"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "status",
+          "summary",
+          "created_at",
+          "applied_at",
+          "operation_count",
+          "pending_count"
+        ],
+        "title": "ProposalSummary",
         "type": "object"
       },
       "ProposalView": {
@@ -1020,6 +1126,49 @@
         ]
       }
     },
+    "/api/evidence/{evidence_id}": {
+      "get": {
+        "description": "Return an evidence span's literal excerpt and its source (FR-03).\n\nArgs:\n    conn: Read connection.\n    evidence_id: The evidence id an operation payload carries.\n\nReturns:\n    The evidence record.\n\nRaises:\n    HTTPException: 404 if the evidence does not exist.",
+        "operationId": "get_evidence_api_evidence__evidence_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidence_id",
+            "required": true,
+            "schema": {
+              "title": "Evidence Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evidence",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "description": "Report that the process is serving, and which version is running.\n\nReturns:\n    The liveness payload.",
@@ -1039,6 +1188,60 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/proposals": {
+      "get": {
+        "description": "List proposals newest first, each with its pending-operation count.\n\nArgs:\n    conn: Read connection.\n    status: ``open`` or ``committed``; omit for all.\n\nReturns:\n    The proposal summaries.",
+        "operationId": "list_proposals_api_proposals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ProposalStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalSummary"
+                  },
+                  "title": "Response List Proposals Api Proposals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Proposals",
+        "tags": [
+          "review"
         ]
       }
     },

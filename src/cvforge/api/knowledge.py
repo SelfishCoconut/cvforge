@@ -85,3 +85,23 @@ def provenance(
     if not records:
         raise HTTPException(404, f"no assertions about {target_kind} {target_id}")
     return records
+
+
+@router.get("/evidence/{evidence_id}")
+def get_evidence(conn: Conn, evidence_id: int) -> queries.EvidenceRecord:
+    """Return an evidence span's literal excerpt and its source (FR-03).
+
+    Args:
+        conn: Read connection.
+        evidence_id: The evidence id an operation payload carries.
+
+    Returns:
+        The evidence record.
+
+    Raises:
+        HTTPException: 404 if the evidence does not exist.
+    """
+    found = queries.get_evidence(conn, evidence_id)
+    if found is None:
+        raise HTTPException(404, f"evidence {evidence_id} does not exist")
+    return found

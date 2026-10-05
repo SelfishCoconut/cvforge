@@ -55,7 +55,9 @@ def main() -> int:
 
     with TestClient(create_app(engine=engine), base_url="http://127.0.0.1") as client:
         empty = client.get("/api/entities").json()
+        queue = client.get("/api/proposals").json()
         operations = client.get(f"/api/proposals/{proposal}").json()["operations"]
+        quoted = client.get(f"/api/evidence/{operations[0]['payload']['evidence_id']}").json()
         for op in operations:
             # The reviewer drops the employer, and the edge that needed it.
             decision = "reject" if op["seq"] in (2, 4) else "accept"
@@ -76,6 +78,8 @@ def main() -> int:
 
     ok = (
         empty == []
+        and [(q["id"], q["pending_count"]) for q in queue] == [(proposal, len(ops))]
+        and quoted["excerpt"] == STATEMENT
         and [e["name"] for e in entities] == ["Rust", "Log parser"]
         and origin["excerpt"] == STATEMENT
     )

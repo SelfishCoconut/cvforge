@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 from cvforge.kb import schema
 from cvforge.kb.models import normalize_name
-from cvforge.kb.vocab import EntityKind, KnowledgeState, SourceKind, TargetKind
+from cvforge.kb.vocab import EntityKind, KnowledgeState, ProposalStatus, SourceKind, TargetKind
 
 
 @dataclass(frozen=True)
@@ -87,6 +87,52 @@ class ProposalRecord:
     created_at: datetime
     applied_at: datetime | None
     operations: list[OperationRecord]
+
+
+@dataclass(frozen=True)
+class ProposalSummary:
+    """A proposal as a row in the review queue, without its operations.
+
+    Attributes:
+        id: The proposal id.
+        origin: Which flow produced it (``chat``, ``document``, ...).
+        status: ``open`` or ``committed``.
+        summary: The agent's one-line description.
+        created_at: When it was recorded.
+        applied_at: When it was committed, or None while open.
+        operation_count: How many operations it holds.
+        pending_count: How many of them still await a decision.
+    """
+
+    id: int
+    origin: str
+    status: str
+    summary: str
+    created_at: datetime
+    applied_at: datetime | None
+    operation_count: int
+    pending_count: int
+
+
+@dataclass(frozen=True)
+class EvidenceRecord:
+    """One evidence span resolved to its source.
+
+    Attributes:
+        id: The evidence id.
+        source_id: The source it was cut from.
+        source_kind: The source's kind.
+        source_label: The source's human label.
+        locator: Where in the source the span sits.
+        excerpt: The literal text of the span.
+    """
+
+    id: int
+    source_id: int
+    source_kind: str
+    source_label: str
+    locator: str
+    excerpt: str
 
 
 @dataclass(frozen=True)
@@ -286,6 +332,83 @@ def provenance(
         )
         for row in conn.execute(query)
     ]
+
+
+def list_proposals(
+    conn: sa.Connection, *, status: ProposalStatus | None = None
+) -> list[ProposalSummary]:
+    """List proposals newest first, with how many operations await review.
+
+    Args:
+        conn: An open connection.
+        status: Keep only proposals in this status; None keeps all.
+
+    Returns:
+        One summary per proposal, highest id first.
+    """
+    op = schema.operation.c
+    counts = (
+        sa.select(
+            op.proposal_id,
+            sa.func.count().label("total"),
+            sa.func.sum(sa.case((op.status == "pending", 1), else_=0)).label("pending"),
+        )
+        .group_by(op.proposal_id)
+        .subquery()
+    )
+    p = schema.proposal.c
+    query = (
+        sa.select(
+            schema.proposal,
+            sa.func.coalesce(counts.c.total, 0).label("total"),
+            sa.func.coalesce(counts.c.pending, 0).label("pending"),
+        )
+        .select_from(schema.proposal.outerjoin(counts, counts.c.proposal_id == p.id))
+        .order_by(p.id.desc())
+    )
+    if status is not None:
+        query = query.where(p.status == status.value)
+    return [
+        ProposalSummary(
+            id=row.id,
+            origin=row.origin,
+            status=row.status,
+            summary=row.summary,
+            created_at=row.created_at,
+            applied_at=row.applied_at,
+            operation_count=row.total,
+            pending_count=row.pending,
+        )
+        for row in conn.execute(query)
+    ]
+
+
+def get_evidence(conn: sa.Connection, evidence_id: int) -> EvidenceRecord | None:
+    """Resolve an evidence id to its excerpt and source.
+
+    Args:
+        conn: An open connection.
+        evidence_id: The evidence id an operation payload carries.
+
+    Returns:
+        The record, or None if no such evidence exists.
+    """
+    ev, src = schema.evidence.c, schema.source.c
+    row = conn.execute(
+        sa.select(ev.id, ev.source_id, src.kind, src.label, ev.locator, ev.excerpt)
+        .select_from(schema.evidence.join(schema.source, src.id == ev.source_id))
+        .where(ev.id == evidence_id)
+    ).first()
+    if row is None:
+        return None
+    return EvidenceRecord(
+        id=row.id,
+        source_id=row.source_id,
+        source_kind=row.kind,
+        source_label=row.label,
+        locator=row.locator,
+        excerpt=row.excerpt,
+    )
 
 
 def get_proposal(conn: sa.Connection, proposal_id: int) -> ProposalRecord | None:
