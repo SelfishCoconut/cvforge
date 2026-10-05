@@ -55,7 +55,7 @@ describe("App shell", () => {
     ["/review", "Review queue"],
     ["/review/3", "Review proposal"],
     ["/knowledge", "Knowledge"],
-    ["/knowledge/7", "Entity"],
+    ["/knowledge/abc", "Entity not found"],
     ["/settings", "Settings"],
   ])("routes %s to its page", (route, heading) => {
     stubHealthy();
