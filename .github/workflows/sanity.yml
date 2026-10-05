@@ -17,21 +17,31 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - name: Collect metrics report
+        # Findings are expected (report-only) but a tool CRASH (ModuleNotFoundError,
+        # missing binary, bad usage) must turn the job red (#54). Each exit code is
+        # recorded in the report; `crashed` is set for crash-class codes only.
         run: |
+          crashed=0
+          section() { # title, "ok codes" predicate name, command...
+            local title=$1 ok=$2; shift 2
+            echo; echo "## $title"; echo '```'
+            set +e; "$@"; local rc=$?; set -e
+            echo '```'; echo "exit code: $rc"
+            if ! "$ok" "$rc"; then echo "**TOOL CRASHED**"; crashed=1; fi
+          }
+          ok_radon() { [ "$1" -eq 0 ]; }                  # radon reports via stdout, always 0
+          ok_vulture() { [ "$1" -eq 0 ] || [ "$1" -eq 3 ]; }  # 3 = dead code found
+          ok_pylint() { [ "$1" -lt 64 ] && [ $(($1 & 33)) -eq 0 ]; }  # bit 1 fatal, 32 usage
           {
             echo "# Sanity metrics — $(date -u +%F)"
-            echo; echo "## Cyclomatic complexity (radon)"; echo '```'
-            uv run radon cc -s -a src || true
-            echo '```'
-            echo; echo "## Dead code candidates (vulture)"; echo '```'
-            uv run vulture src --min-confidence 80 || true
-            echo '```'
-            echo; echo "## Duplication (pylint)"; echo '```'
-            uv run pylint --disable=all --enable=duplicate-code src || true
-            echo '```'
+            section "Cyclomatic complexity (radon)" ok_radon uv run radon cc -s -a src
+            section "Dead code candidates (vulture)" ok_vulture uv run vulture src --min-confidence 80
+            section "Duplication (pylint)" ok_pylint uv run pylint --disable=all --enable=duplicate-code src
           } > sanity-report.md
           cat sanity-report.md
+          exit "$crashed"
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: sanity-report
           path: sanity-report.md
