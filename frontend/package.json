@@ -7,13 +7,19 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "gen:api": "openapi-typescript ../tests/golden/snapshots/openapi.json -o src/api/schema.d.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-switch": "^1.3.7",
+    "@radix-ui/react-tabs": "^1.1.21",
+    "@tanstack/react-query": "^5.104.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-router": "^8.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -30,6 +36,7 @@
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^15.14.0",
     "jsdom": "^25.0.1",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.71.0",
