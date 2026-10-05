@@ -76,13 +76,13 @@ tools, `IngestAgent` and the chat endpoint (FR-06, FR-07, FR-11, FR-12) → **B4
 is one PR with `Closes #<n>` for the FR issues it delivers. The plan records the
 decisions it takes (D-A to D-G) and the ADR each one gets.
 
-**Package B1 is done (PR #72, on `feat/fr-38-provider-settings`), reviewed by
+**Package B1 is done (PR #72, merged), reviewed by
 the three PR-review agents, and hardened once more against their combined
 findings** (a knowledge-table guard on the writer registry independent of its
 own derivation, the sqlite3-import bar actually applying to registered writers
 as ADR-0011 says it should, the new CHECK constraints proven live against a
 migrated database rather than only text-diffed, plus several smaller test
-gaps). Awaiting merge.
+gaps). Merged.
 
 **Package B2 — embeddings and `sqlite-vec` similarity search** (FR-40, FR-05;
 closes #44, #9) is **merged** (PR #74, `30d651b`, 2026-10-01): `EmbeddingProvider`,
@@ -91,26 +91,28 @@ the `entity_vec` index, post-commit indexing that never fails a commit
 `kb.classify`'s first genuine `duplicate`. ADR-0013 part 1 is `proposed`. The
 PR also bumped `urllib3`/`virtualenv` to clear new pip-audit advisories.
 
-**Package B3** is complete on `feat/fr-11-ingest-agent` (PR open; closes #10, #11, #15,
-#16): B3.0 `record_proposal` classifies for itself (and the stale-vector fix),
-B3.1 `kb/intake.propose`, B3.2 the fact schema and converter
-(`llm/schemas.py`, `llm/convert.py`), B3.3 the read-only tools and `IngestAgent`
-(`llm/tools.py`, `llm/agents/`), B3.4 `POST /api/chat/messages`, B3.5 the golden
-replay (`tests/golden/test_chat_ingest.py`), `make demo-chat-ingest` and ADR-0013
-part 2 (D-C). PR #79, CI green, **awaiting merge** (the auto-mode classifier denied an
-agent-issued merge; Álvaro merges).
-
-**Package B4** (streaming, `POST /api/chat/messages/stream`, ADR-0014) is done on
-`feat/fr-13-streaming` (PR #80), stacked on B3's branch.
-
-**Package B5** (real-model latency benchmark, NFR-10, closes #47) is done on
-`feat/nfr-10-latency-bench`, stacked on B4: `scripts/bench/latency.py`,
-`docs/guides/benchmarks.md`. **Next: C1** (the UI), once #79, #80 and B5 are merged
-in that order.
+**M1b backend is merged (2026-10-05).** B3 — `record_proposal` classifying for
+itself, `kb/intake.propose`, the fact schema and converter, the read-only tools and
+`IngestAgent`, `POST /api/chat/messages`, the golden replay, `make demo-chat-ingest`,
+ADR-0013 part 2 — is PR #79. B4 — NDJSON streaming, `POST /api/chat/messages/stream`,
+ADR-0014 — is PR #82 (it replaced #80, which GitHub auto-closed when #79's branch was
+deleted). B5 — the real-model latency benchmark, NFR-10 — is PR #81, closing #47. The
+benchmark ships as a tool: a recorded real-model run in `docs/sanity/` is still to do.
+**Next: C1**, the chat, review, knowledge and settings UI (FR-13 frontend half, #17).
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
-Still open from the M1 tracker and not scheduled by that plan: #50
-(`sync_issues.py`) and #53–#58 (CI and docs hygiene). NFR-07 (#46) is M2's.
+**M1 infra backlog cleared (2026-10-05):** `mkdocs<2` ceiling (#57), Dependabot npm
+majors individually (#53), CI hygiene (#54), nightly `pytest -m system` workflow (#56;
+`tests/system/` is still empty), vitest 3.x with one vite major (#55), and
+`scripts/sync_issues.py` (#50; `--check` is green, run it after every SRS edit).
+Dependabot PR #71 (13 bundled majors, frontend branch coverage 80% < 90%) was
+cancelled in favour of individual major bumps. Dependency bumps merged: uvicorn,
+fastapi, pydantic-ai ≥2.52, SQLAlchemy 2.1.
+
+Still open from M1: #58 is a **draft PR (#91)** awaiting Álvaro's confirmation of the
+SRS wording changes; #73 stays open on purpose as the reference for the two
+environment-dependent skips in `test_app_bind.py` (never observed to fire). The M2–M8
+requirement issues (#18–#41, #45, #46) stay open as the backlog; NFR-07 (#46) is M2's.
 
 One decision is waiting on Álvaro: #64, the personal email address in public git
 history. It is deliberately left alone — rewriting public history is not
