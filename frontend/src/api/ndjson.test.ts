@@ -1,22 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { streamOf, streamOfBytes } from "../test-utils";
 import { readChatEvents, readNdjson, StreamError } from "./ndjson";
 
 const enc = new TextEncoder();
-
-function streamOfBytes(chunks: Uint8Array[]): Response {
-  return new Response(
-    new ReadableStream<Uint8Array>({
-      start(c) {
-        chunks.forEach((b) => c.enqueue(b));
-        c.close();
-      },
-    }),
-  );
-}
-
-function streamOf(chunks: string[]): Response {
-  return streamOfBytes(chunks.map((s) => enc.encode(s)));
-}
 
 async function collect<T>(it: AsyncIterable<T>): Promise<T[]> {
   const out: T[] = [];

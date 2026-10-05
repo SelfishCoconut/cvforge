@@ -1,18 +1,92 @@
 @import "tailwindcss";
 
+/*
+ * CVForge design tokens. Editorial direction: a pale, faintly warm paper with
+ * graphite ink; a single fountain-pen blue accent; four semantic colours for
+ * proposal classifications, each paired with a soft background so a badge is
+ * always label-on-tint (never colour alone). System font stacks only: the app
+ * is local-first and must not fetch remote fonts.
+ *
+ * Every text/surface pair here is chosen to clear WCAG AA (4.5:1) in both
+ * schemes.
+ */
 @theme {
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --color-surface: oklch(98.5% 0.004 260);
-  --color-ink: oklch(22% 0.02 260);
-  --color-ink-muted: oklch(52% 0.02 260);
-  --color-danger: oklch(55% 0.19 25);
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-sans: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --color-surface: oklch(97.6% 0.006 85);
+  --color-card: oklch(99.4% 0.003 85);
+  --color-line: oklch(88% 0.01 80);
+  --color-ink: oklch(24% 0.012 70);
+  --color-ink-muted: oklch(48% 0.014 70);
+  --color-accent: oklch(44% 0.12 258);
+  --color-danger: oklch(50% 0.17 28);
+
+  --color-new: oklch(43% 0.1 150);
+  --color-new-soft: oklch(94% 0.04 150);
+  --color-known: oklch(43% 0.015 250);
+  --color-known-soft: oklch(93% 0.008 250);
+  --color-duplicate: oklch(46% 0.095 70);
+  --color-duplicate-soft: oklch(94% 0.045 85);
+  --color-conflict: oklch(48% 0.16 25);
+  --color-conflict-soft: oklch(94% 0.035 25);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-surface: oklch(18% 0.012 260);
-    --color-ink: oklch(95% 0.006 260);
-    --color-ink-muted: oklch(68% 0.014 260);
-    --color-danger: oklch(68% 0.17 25);
+    --color-surface: oklch(19.5% 0.008 70);
+    --color-card: oklch(23% 0.009 70);
+    --color-line: oklch(34% 0.01 70);
+    --color-ink: oklch(93% 0.01 85);
+    --color-ink-muted: oklch(72% 0.012 80);
+    --color-accent: oklch(78% 0.09 255);
+    --color-danger: oklch(74% 0.14 28);
+
+    --color-new: oklch(82% 0.11 150);
+    --color-new-soft: oklch(30% 0.045 150);
+    --color-known: oklch(82% 0.02 250);
+    --color-known-soft: oklch(31% 0.012 250);
+    --color-duplicate: oklch(84% 0.1 80);
+    --color-duplicate-soft: oklch(31% 0.045 75);
+    --color-conflict: oklch(80% 0.11 25);
+    --color-conflict-soft: oklch(31% 0.06 25);
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  body {
+    background-color: var(--color-surface);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
   }
 }
