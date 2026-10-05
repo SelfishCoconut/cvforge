@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchHealth, type Health } from "./api";
+import { api, type Health } from "./api/client";
 
 type BackendState =
   | { kind: "loading" }
@@ -11,7 +11,7 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchHealth()
+    api.health()
       .then((health) => {
         if (!cancelled) setBackend({ kind: "ok", health });
       })
