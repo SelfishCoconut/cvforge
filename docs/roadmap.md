@@ -97,7 +97,12 @@ B3.1 `kb/intake.propose`, B3.2 the fact schema and converter
 (`llm/schemas.py`, `llm/convert.py`), B3.3 the read-only tools and `IngestAgent`
 (`llm/tools.py`, `llm/agents/`), B3.4 `POST /api/chat/messages`, B3.5 the golden
 replay (`tests/golden/test_chat_ingest.py`), `make demo-chat-ingest` and ADR-0013
-part 2 (D-C). **Next: B4** (streaming NDJSON chat) once B3 is merged.
+part 2 (D-C). PR #79, CI green, **awaiting merge** (the auto-mode classifier denied an
+agent-issued merge; Álvaro merges).
+
+**Package B4** (streaming, `POST /api/chat/messages/stream`, ADR-0014) is done on
+`feat/fr-13-streaming`, stacked on B3's branch. **Next: B5** (latency benchmark, #47),
+then C1 (UI).
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 Still open from the M1 tracker and not scheduled by that plan: #50

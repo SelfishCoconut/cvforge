@@ -91,6 +91,7 @@ nav:
       - 0011 Registered writers for non-knowledge state: adr/0011-registered-writers-for-non-knowledge-state.md
       - 0012 API keys are never persisted: adr/0012-api-keys-are-never-persisted.md
       - 0013 Similarity index and threshold: adr/0013-similarity-index-and-threshold.md
+      - 0014 NDJSON streaming: adr/0014-ndjson-streaming-and-unpersisted-replies.md
   - Guides:
       - LLM providers: guides/providers.md
   - API reference: reference/api.md
