@@ -1,0 +1,20 @@
+I worked as a backend engineer at Acme Logistics from 2019 to 2022.
+I built a log parser in Rust that processes two gigabytes per second.
+I use Python every day, mostly FastAPI and SQLAlchemy.
+In 2021 I led a migration from MySQL to PostgreSQL for the billing service.
+I have a master's degree in computer science from the University of Valencia.
+I got the AWS Solutions Architect Associate certification in March 2023.
+At Northwind I reduced deploy time from forty minutes to six by caching builds.
+I'm comfortable with Kubernetes, though only for small clusters.
+I taught an introductory Go course for a bootcamp in 2020.
+My side project is a recipe manager written in TypeScript and React.
+I was responsible for on-call rotation and incident reviews on the payments team.
+I mentored three junior developers during my time at Acme Logistics.
+I know Docker, Terraform and GitHub Actions well enough to set up CI from scratch.
+Between 2017 and 2019 I was a data analyst at Fabrikam, mostly SQL and dashboards.
+I presented a talk on property-based testing at a local meetup in 2022.
+I have used Redis for caching and for rate limiting.
+ok
+thanks
+I speak Spanish natively and I am fluent in English.
+I optimised a nightly ETL job so it finished in ten minutes instead of three hours.

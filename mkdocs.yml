@@ -94,4 +94,5 @@ nav:
       - 0014 NDJSON streaming: adr/0014-ndjson-streaming-and-unpersisted-replies.md
   - Guides:
       - LLM providers: guides/providers.md
+      - Benchmarks: guides/benchmarks.md
   - API reference: reference/api.md
