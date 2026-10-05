@@ -1,0 +1,33 @@
+# .github/workflows/system.yml
+name: System tests
+
+# Nightly end-to-end tests (`pytest -m system`). Deliberately NOT a required
+# context: they may need a browser or an external service and must not gate merges.
+on:
+  schedule:
+    - cron: "0 3 * * *" # nightly 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  system:
+    name: System tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Run system tests
+        # pytest exits 5 when no test is collected. tests/system/ is still empty (the
+        # first candidate is the M1 ingest round-trip, tracing to FR-11 and NFR-10),
+        # so 5 passes until it exists; any real failure (1, 2, 3, 4) fails the job.
+        run: |
+          set +e
+          uv run pytest -m system --no-cov
+          rc=$?
+          if [ "$rc" -eq 5 ]; then echo "No system tests collected yet (#56)."; exit 0; fi
+          exit "$rc"
