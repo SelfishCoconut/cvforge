@@ -21,10 +21,12 @@ const SENTENCES: ReadonlyMap<string, string> = new Map([
  * One sentence explaining what accepting an operation does (ADR-0009).
  *
  * @param classification - The operation's classification; any string is tolerated.
- * @param _opType - The operation type; the table is keyed by classification alone today.
+ * @param opType - The operation type. ADR-0009's table is keyed by classification alone
+ *   today; the parameter is part of the interface so op-specific wording can be added.
  * @returns The sentence, or "Unclassified operation." for an unknown classification.
  */
-export function explain(classification: string, _opType: string): string {
+export function explain(classification: string, opType: string): string {
+  void opType; // reserved by the interface; see the doc comment
   return SENTENCES.get(classification) ?? "Unclassified operation.";
 }
 
@@ -51,4 +53,27 @@ export function canCommit(
     return { ok: false, reason: "Accept or edit at least one operation." };
   }
   return { ok: true };
+}
+
+/** The payload the operation will apply: the reviewer's edit if there is one. */
+export function effectivePayload(op: OperationRecord): Record<string, unknown> {
+  return op.edited_payload ?? op.payload;
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/**
+ * A human line for an operation: its op type plus the payload's name or field.
+ *
+ * @param op - The operation; its effective (edited, if any) payload is used.
+ * @returns For example "Create entity: Backend engineer", or "Create entity" alone.
+ */
+export function summarise(op: OperationRecord): string {
+  const words = op.op_type.replaceAll("_", " ").trim();
+  const kind = words === "" ? "Operation" : words.charAt(0).toUpperCase() + words.slice(1);
+  const p = effectivePayload(op);
+  const subject = nonEmptyString(p["name"]) ?? nonEmptyString(p["field"]);
+  return subject === null ? kind : `${kind}: ${subject}`;
 }

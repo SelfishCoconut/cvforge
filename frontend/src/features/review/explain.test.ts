@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OperationRecord } from "../../api/types";
-import { canCommit, explain } from "./explain";
+import { canCommit, explain, summarise } from "./explain";
 
 function op(status: string, id = 1): OperationRecord {
   return {
@@ -67,5 +67,24 @@ describe("explain", () => {
     for (const odd of ["", "mystery", "constructor", "__proto__", "toString"]) {
       expect(explain(odd, "create_entity")).toBe("Unclassified operation.");
     }
+  });
+});
+
+describe("summarise", () => {
+  it("joins the humanised op type with the payload name", () => {
+    expect(summarise(op("pending"))).toBe("Create entity");
+    expect(summarise({ ...op("pending"), payload: { name: "Backend engineer" } })).toBe(
+      "Create entity: Backend engineer",
+    );
+  });
+
+  it("falls back to the field, prefers the edited payload, and ignores non-string values", () => {
+    const base = { ...op("edited"), op_type: "update_field" };
+    expect(summarise({ ...base, payload: { field: "end_date" } })).toBe("Update field: end_date");
+    expect(
+      summarise({ ...base, payload: { name: "Old" }, edited_payload: { name: "New" } }),
+    ).toBe("Update field: New");
+    expect(summarise({ ...base, payload: { name: 3, field: "" } })).toBe("Update field");
+    expect(summarise({ ...base, op_type: "" })).toBe("Operation");
   });
 });
