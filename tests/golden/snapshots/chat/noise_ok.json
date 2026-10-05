@@ -1,0 +1,23 @@
+{
+  "body": {
+    "conversation_id": 1,
+    "message_id": 1,
+    "proposal": {
+      "id": null,
+      "operations": []
+    },
+    "rejected": [],
+    "reply": "Glad to help.",
+    "similarity_available": false
+  },
+  "counts": {
+    "assertion": 0,
+    "edge": 0,
+    "entity": 0,
+    "evidence": 1,
+    "operation": 0,
+    "proposal": 0,
+    "source": 1
+  },
+  "status": 200
+}

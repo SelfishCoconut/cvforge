@@ -1,0 +1,85 @@
+{
+  "body": {
+    "conversation_id": 1,
+    "message_id": 1,
+    "proposal": {
+      "id": 1,
+      "operations": [
+        {
+          "classification": "new",
+          "id": 1,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {
+              "title": "Backend engineer"
+            },
+            "evidence_id": 1,
+            "kind": "role",
+            "name": "Backend engineer",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 0,
+          "target_id": null,
+          "target_kind": null
+        },
+        {
+          "classification": "new",
+          "id": 2,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {
+              "org_type": "employer"
+            },
+            "evidence_id": 1,
+            "kind": "organization",
+            "name": "Acme Logistics",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 1,
+          "target_id": null,
+          "target_kind": null
+        },
+        {
+          "classification": "new",
+          "id": 3,
+          "op_type": "add_edge",
+          "payload": {
+            "confidence": null,
+            "dst": {
+              "op": 1
+            },
+            "ended_at": null,
+            "evidence_id": 1,
+            "note": null,
+            "op_type": "add_edge",
+            "rel": "at_organization",
+            "src": {
+              "op": 0
+            },
+            "started_at": null
+          },
+          "seq": 2,
+          "target_id": null,
+          "target_kind": null
+        }
+      ]
+    },
+    "rejected": [],
+    "reply": "Noted: backend engineer at Acme Logistics.",
+    "similarity_available": true
+  },
+  "counts": {
+    "assertion": 0,
+    "edge": 0,
+    "entity": 0,
+    "evidence": 1,
+    "operation": 3,
+    "proposal": 1,
+    "source": 1
+  },
+  "status": 200
+}

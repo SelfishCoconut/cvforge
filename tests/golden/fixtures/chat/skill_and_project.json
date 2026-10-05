@@ -1,0 +1,33 @@
+{
+  "text": "I built a log parser in Rust.",
+  "model_output": {
+    "reply": "Noted: a log parser, built with Rust.",
+    "facts": [
+      {
+        "local_id": "s",
+        "kind": "skill",
+        "name": "Rust",
+        "attributes": {
+          "category": "language"
+        }
+      },
+      {
+        "local_id": "p",
+        "kind": "project",
+        "name": "Log parser"
+      }
+    ],
+    "edges": [
+      {
+        "src": "s",
+        "rel": "used_in",
+        "dst": "p"
+      },
+      {
+        "src": "p",
+        "rel": "used_in",
+        "dst": "ghost"
+      }
+    ]
+  }
+}

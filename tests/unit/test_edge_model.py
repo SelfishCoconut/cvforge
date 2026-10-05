@@ -11,6 +11,7 @@ from cvforge.kb import apply, queries
 from cvforge.kb.models import AddEdge
 
 Propose = Callable[..., int]
+Forge = Callable[..., None]
 
 
 def _two_entities(kb: sa.Engine, propose: Propose) -> tuple[int, int]:
@@ -54,12 +55,17 @@ def test_rel_outside_the_vocabulary_is_rejected() -> None:
         AddEdge.model_validate({"src": 1, "rel": "loves", "dst": 2, "evidence_id": 1})
 
 
-def test_duplicate_triple_violates_the_unique_constraint(kb: sa.Engine, propose: Propose) -> None:
+def test_duplicate_triple_violates_the_unique_constraint(
+    kb: sa.Engine, propose: Propose, forge: Forge
+) -> None:
+    """Recording classifies a repeat as `known`; a forged `new` still hits the constraint."""
     rust, parser = _two_entities(kb, propose)
     edge = {"op_type": "add_edge", "src": rust, "rel": "used_in", "dst": parser}
     apply.commit_proposal(kb, propose(edge, accept=True))
+    repeat = propose(edge, accept=True)
+    forge(repeat, "new")
     with pytest.raises(sa.exc.IntegrityError, match="UNIQUE"):
-        apply.commit_proposal(kb, propose(edge, accept=True))
+        apply.commit_proposal(kb, repeat)
 
 
 def test_inverted_dates_are_rejected() -> None:

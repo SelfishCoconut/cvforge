@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from cvforge.app import create_app
 from cvforge.kb import apply
 from cvforge.kb.db import make_engine
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.schema import metadata
 from cvforge.kb.vocab import SourceKind
 
@@ -40,14 +40,13 @@ def main() -> int:
         {"op_type": "add_edge", "src": {"op": 0}, "rel": "used_in", "dst": {"op": 1}},
         {"op_type": "add_edge", "src": {"op": 1}, "rel": "at_organization", "dst": {"op": 2}},
     ]
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
             "summary": "Rust, a log parser, and Acme Logistics",
             "operations": [
-                {"seq": i, "payload": {**op, "evidence_id": evidence}, "classification": "new"}
-                for i, op in enumerate(ops)
+                {"seq": i, "payload": {**op, "evidence_id": evidence}} for i, op in enumerate(ops)
             ],
         }
     )

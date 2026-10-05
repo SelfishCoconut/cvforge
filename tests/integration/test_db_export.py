@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from cvforge.app import create_app
 from cvforge.config import Settings
 from cvforge.kb import apply, export, queries
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.vocab import SourceKind
 
 pytestmark = pytest.mark.integration
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.integration
 def _populate(engine: sa.Engine) -> None:
     source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
     evidence = apply.record_evidence(engine, source, "message:1", "I used Rust at Acme.")
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
@@ -33,7 +33,6 @@ def _populate(engine: sa.Engine) -> None:
                         "name": "Rust",
                         "evidence_id": evidence,
                     },
-                    "classification": "new",
                 },
                 {
                     "seq": 1,
@@ -43,7 +42,6 @@ def _populate(engine: sa.Engine) -> None:
                         "name": "Acme",
                         "evidence_id": evidence,
                     },
-                    "classification": "new",
                 },
                 {
                     "seq": 2,
@@ -54,7 +52,6 @@ def _populate(engine: sa.Engine) -> None:
                         "dst": {"op": 1},
                         "evidence_id": evidence,
                     },
-                    "classification": "new",
                 },
             ],
         }

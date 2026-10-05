@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from cvforge.kb import apply, queries
 
 Propose = Callable[..., int]
+Forge = Callable[..., None]
 
 SKILL = {"op_type": "create_entity", "kind": "skill", "name": "Rust"}
 
@@ -46,9 +47,9 @@ def test_an_operation_this_version_cannot_apply_is_a_422(
 
 
 def test_a_commit_the_database_rejects_is_a_409_that_writes_nothing(
-    client: TestClient, kb: sa.Engine, propose: Propose
+    client: TestClient, kb: sa.Engine, propose: Propose, forge: Forge
 ) -> None:
-    """A dishonest `new` classification for an edge that exists trips the UNIQUE constraint."""
+    """A forged `new` classification for an edge that exists trips the UNIQUE constraint."""
     first = apply.commit_proposal(
         kb,
         propose(
@@ -61,6 +62,7 @@ def test_a_commit_the_database_rejects_is_a_409_that_writes_nothing(
     rust, parser = first.entity_ids[0], first.entity_ids[1]
     duplicate_edge = {"op_type": "add_edge", "src": rust, "rel": "used_in", "dst": parser}
     proposal = propose(duplicate_edge, accept=True)
+    forge(proposal, "new")
     with kb.connect() as conn:
         before = queries.table_counts(conn)
 
@@ -71,5 +73,23 @@ def test_a_commit_the_database_rejects_is_a_409_that_writes_nothing(
     assert "nothing was written" in detail
     assert "UNIQUE constraint failed" in detail
     assert "INSERT INTO" not in detail  # the driver's reason, not the SQL and its parameters
+    with kb.connect() as conn:
+        assert queries.table_counts(conn) == before
+
+
+def test_a_stale_classification_is_a_409_that_writes_nothing(
+    client: TestClient, kb: sa.Engine, propose: Propose
+) -> None:
+    rust = apply.commit_proposal(kb, propose(SKILL, accept=True)).entity_ids[0]
+    stale = propose(SKILL, accept=True)  # recorded as `known` against `rust`
+    rename = {"op_type": "update_field", "entity_id": rust, "field": "name", "value": "Ferrous"}
+    apply.commit_proposal(kb, propose(rename, accept=True))
+    with kb.connect() as conn:
+        before = queries.table_counts(conn)
+
+    response = client.post(_commit_url(stale))
+
+    assert response.status_code == 409
+    assert "no longer matches" in response.json()["detail"]
     with kb.connect() as conn:
         assert queries.table_counts(conn) == before

@@ -26,6 +26,7 @@ import sqlalchemy as sa
 from pydantic import JsonValue, ValidationError
 
 from cvforge.kb import schema
+from cvforge.kb.classify import NAME_IS_IDENTITY, NEW, SimilarFinder, Verdict, classify
 from cvforge.kb.models import (
     COMMON_FIELDS,
     KIND_ATTRIBUTES,
@@ -35,7 +36,7 @@ from cvforge.kb.models import (
     EntityRef,
     MergeDuplicate,
     OpRef,
-    ProposalDraft,
+    ProposalInput,
     SetState,
     UpdateField,
     normalize_name,
@@ -53,6 +54,8 @@ from cvforge.kb.vocab import (
 
 AnyPayload = CreateEntity | UpdateField | AddEdge | AttachEvidence | MergeDuplicate | SetState
 Decision = Literal["accept", "edit", "reject"]
+EMBEDDED_FIELDS = frozenset({"name", "summary"})
+"""The entity fields the similarity index embeds (`kb/embeddings.py`)."""
 
 
 class ApplyError(Exception):
@@ -75,6 +78,10 @@ class InvalidEditError(ApplyError):
     """A reviewer's edit does not fit the operation it replaces."""
 
 
+class StaleClassificationError(ApplyError):
+    """A stored classification no longer describes what is in the database."""
+
+
 class UnsupportedOperationError(ApplyError):
     """The operation is valid but this version cannot apply it yet."""
 
@@ -88,11 +95,15 @@ class CommitResult:
         applied_operation_ids: Operations applied, in `seq` order.
         entity_ids: For each applied `create_entity` seq, the entity it resolved to
             (a new row, or the existing one for `known`/`duplicate`).
+        reindex_ids: Existing entities whose `name` or `summary` an applied
+            `update_field` changed, so their similarity vectors are now stale.
+            Not part of the HTTP response; the commit route re-embeds them.
     """
 
     commit_id: int
     applied_operation_ids: list[int]
     entity_ids: dict[int, int]
+    reindex_ids: list[int]
 
 
 def _now() -> datetime:
@@ -206,15 +217,26 @@ def record_evidence(engine: sa.Engine, source_id: int, locator: str, excerpt: st
 # --- review ---------------------------------------------------------------------
 
 
-def record_proposal(engine: sa.Engine, draft: ProposalDraft) -> int:
-    """Store a proposal and its operations, all `pending`, for review.
+def record_proposal(
+    engine: sa.Engine, draft: ProposalInput, *, similar: SimilarFinder | None = None
+) -> int:
+    """Classify a proposal against the database, then store it, all `pending`.
+
+    The caller supplies operations only; the classification and the target are
+    computed here from stored rows (ADR-0009), so no intake can mislabel one.
+    Similarity may embed text over the network, so it runs first, on a plain
+    read connection and before any lock is taken. The write phase then
+    re-classifies without it against the locked state, because the database may
+    have moved in between.
 
     Every operation must cite evidence that already exists: an operation with no
     source behind it never reaches review (FR-12).
 
     Args:
         engine: The knowledge-base engine.
-        draft: The validated proposal.
+        draft: The validated proposal, without classifications.
+        similar: Optional similarity lookup, the source of `duplicate`. An
+            exception it raises propagates and nothing is stored.
 
     Returns:
         The new proposal id.
@@ -222,7 +244,9 @@ def record_proposal(engine: sa.Engine, draft: ProposalDraft) -> int:
     Raises:
         NotFoundError: If the source or any cited evidence row does not exist.
     """
-    with engine.begin() as conn:
+    with engine.connect() as conn:
+        first = {op.seq: classify(conn, op.payload, similar=similar) for op in draft.operations}
+    with _write_transaction(engine) as conn:
         _require(conn, schema.source, draft.source_id, "source")
         for op in draft.operations:
             _require(conn, schema.evidence, op.payload.evidence_id, "evidence")
@@ -238,20 +262,28 @@ def record_proposal(engine: sa.Engine, draft: ProposalDraft) -> int:
             )
         )
         for op in sorted(draft.operations, key=lambda o: o.seq):
+            verdict = _settled(first[op.seq], classify(conn, op.payload))
             conn.execute(
                 sa.insert(schema.operation).values(
                     proposal_id=proposal_id,
                     seq=op.seq,
                     op_type=op.payload.op_type.value,
                     payload_json=op.payload.model_dump(mode="json"),
-                    classification=op.classification.value,
-                    target_kind=op.target_kind.value if op.target_kind else None,
-                    target_id=op.target_id,
+                    classification=verdict.classification.value,
+                    target_kind=verdict.target_kind.value if verdict.target_kind else None,
+                    target_id=verdict.target_id,
                     status=OpStatus.PENDING.value,
                     rationale=op.rationale,
                 )
             )
         return proposal_id
+
+
+def _settled(unlocked: Verdict, locked: Verdict) -> Verdict:
+    """Prefer the locked answer: the database moved. Keep a `duplicate` it cannot re-derive."""
+    if unlocked.classification is Classification.DUPLICATE and locked is NEW:
+        return unlocked  # similarity needs I/O, which is not allowed under the lock
+    return locked
 
 
 def review_operation(
@@ -401,7 +433,9 @@ def commit_proposal(engine: sa.Engine, proposal_id: int) -> CommitResult:
                 )
             )
         )
-        return CommitResult(commit_id, applied, dict(committer.entity_ids))
+        return CommitResult(
+            commit_id, applied, dict(committer.entity_ids), sorted(committer.reindex_ids)
+        )
 
 
 class _Committer:
@@ -410,10 +444,13 @@ class _Committer:
     def __init__(self, conn: sa.Connection) -> None:
         self.conn = conn
         self.entity_ids: dict[int, int] = {}
+        self.reindex_ids: set[int] = set()
 
     def apply(self, op: sa.Row[Any]) -> None:
         payload = parse_payload(op.edited_payload_json or op.payload_json)
         classification = Classification(op.classification)
+        if classification is not Classification.NEW:
+            self._recheck(op, payload, classification)
         if classification in (Classification.KNOWN, Classification.DUPLICATE):
             self._support(op, payload)
         elif isinstance(payload, CreateEntity):
@@ -433,6 +470,61 @@ class _Committer:
             raise UnsupportedOperationError(
                 f"{OpType.MERGE_DUPLICATE} is applied from M1b onwards (ADR-0009)"
             )
+
+    # A classification was computed when the proposal was recorded; the database may
+    # have changed since. A target that is gone is NotFound; one that no longer
+    # matches what the operation says is stale, and the whole commit rolls back.
+    def _recheck(
+        self, op: sa.Row[Any], payload: AnyPayload, classification: Classification
+    ) -> None:
+        kind = TargetKind(op.target_kind)
+        self._require_target(kind, op.target_id)
+        if not self._still_matches(kind, op.target_id, payload, classification):
+            raise StaleClassificationError(
+                f"operation {op.seq} was classified {classification} against {kind} "
+                f"{op.target_id}, which no longer matches it; record the proposal again"
+            )
+
+    def _still_matches(
+        self, kind: TargetKind, target_id: int, payload: AnyPayload, classification: Classification
+    ) -> bool:
+        if isinstance(payload, CreateEntity):
+            return self._entity_matches(kind, target_id, payload, classification)
+        if isinstance(payload, UpdateField):
+            return (kind, target_id) == (TargetKind.ENTITY, payload.entity_id)
+        if isinstance(payload, SetState):
+            return (kind, target_id) == (TargetKind.ENTITY, payload.entity)
+        if isinstance(payload, AddEdge):
+            return kind is TargetKind.EDGE and self._edge_matches(target_id, payload)
+        return True
+
+    def _entity_matches(
+        self,
+        kind: TargetKind,
+        target_id: int,
+        payload: CreateEntity,
+        classification: Classification,
+    ) -> bool:
+        if kind is not TargetKind.ENTITY:
+            return False
+        row = self.conn.execute(
+            sa.select(schema.entity.c.kind, schema.entity.c.normalized_name).where(
+                schema.entity.c.id == target_id
+            )
+        ).one()
+        if row.kind != payload.kind.value:
+            return False
+        if classification is Classification.KNOWN and payload.kind in NAME_IS_IDENTITY:
+            return bool(row.normalized_name == normalize_name(payload.name))
+        return True
+
+    def _edge_matches(self, edge_id: int, payload: AddEdge) -> bool:
+        row = self.conn.execute(
+            sa.select(schema.edge.c.src_id, schema.edge.c.rel, schema.edge.c.dst_id).where(
+                schema.edge.c.id == edge_id
+            )
+        ).one()
+        return (row.src_id, row.rel, row.dst_id) == (payload.src, payload.rel.value, payload.dst)
 
     # known / duplicate: the fact is already recorded, so accepting it only adds
     # this evidence to the existing target (ADR-0009). No new entity or edge row.
@@ -504,6 +596,8 @@ class _Committer:
                 .where(schema.entity.c.id == payload.entity_id)
                 .values(updated_at=now)
             )
+        if payload.field in EMBEDDED_FIELDS:
+            self.reindex_ids.add(payload.entity_id)
         self._assert(TargetKind.ENTITY, payload.entity_id, payload.field, payload.value, payload)
 
     def _add_or_replace_edge(self, payload: AddEdge, conflict_edge: int | None) -> None:

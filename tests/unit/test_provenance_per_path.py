@@ -74,7 +74,7 @@ def test_a_known_update_asserts_the_field_and_the_value_it_confirms(
     rust_id = rust.entity_ids[0]
     same = {"op_type": "update_field", "entity_id": rust_id, "field": "summary", "value": "Systems"}
 
-    apply.commit_proposal(kb, propose((same, "known", "entity", rust_id), accept=True))
+    apply.commit_proposal(kb, propose(same, accept=True))
 
     assert _facts(kb, TargetKind.ENTITY, rust_id)[-1] == ("summary", "Systems")
 
@@ -89,7 +89,7 @@ def test_attaching_evidence_keeps_the_field_it_supports(kb: sa.Engine, propose: 
         "target_id": rust,
         "field": "name",
     }
-    apply.commit_proposal(kb, propose((attach, "known", "entity", rust), accept=True))
+    apply.commit_proposal(kb, propose(attach, accept=True))
 
     assert _assertions(kb) == before + 1
     assert _facts(kb, TargetKind.ENTITY, rust)[-1] == ("name", None)

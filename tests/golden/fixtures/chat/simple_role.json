@@ -1,0 +1,31 @@
+{
+  "text": "I was a backend engineer at Acme Logistics.",
+  "model_output": {
+    "reply": "Noted: backend engineer at Acme Logistics.",
+    "facts": [
+      {
+        "local_id": "r",
+        "kind": "role",
+        "name": "Backend engineer",
+        "attributes": {
+          "title": "Backend engineer"
+        }
+      },
+      {
+        "local_id": "o",
+        "kind": "organization",
+        "name": "Acme Logistics",
+        "attributes": {
+          "org_type": "employer"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "src": "r",
+        "rel": "at_organization",
+        "dst": "o"
+      }
+    ]
+  }
+}

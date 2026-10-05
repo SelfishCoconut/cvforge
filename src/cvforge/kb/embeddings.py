@@ -221,8 +221,10 @@ def index_entities(
         return [eid for eid, _text in present] + missing
     with _write_transaction(engine) as conn:
         for (eid, _text), vector in zip(present, vectors, strict=True):
+            # `vec0` rejects INSERT OR REPLACE on an existing key, so replace by hand.
+            conn.exec_driver_sql("DELETE FROM entity_vec WHERE entity_id = ?", (eid,))
             conn.exec_driver_sql(
-                "INSERT OR REPLACE INTO entity_vec(entity_id, embedding) VALUES (?, ?)",
+                "INSERT INTO entity_vec(entity_id, embedding) VALUES (?, ?)",
                 (eid, serialize_float32(vector)),
             )
     return missing

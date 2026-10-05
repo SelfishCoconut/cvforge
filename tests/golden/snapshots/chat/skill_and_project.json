@@ -1,0 +1,88 @@
+{
+  "body": {
+    "conversation_id": 1,
+    "message_id": 1,
+    "proposal": {
+      "id": 1,
+      "operations": [
+        {
+          "classification": "new",
+          "id": 1,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {
+              "category": "language"
+            },
+            "evidence_id": 1,
+            "kind": "skill",
+            "name": "Rust",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 0,
+          "target_id": null,
+          "target_kind": null
+        },
+        {
+          "classification": "new",
+          "id": 2,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {},
+            "evidence_id": 1,
+            "kind": "project",
+            "name": "Log parser",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 1,
+          "target_id": null,
+          "target_kind": null
+        },
+        {
+          "classification": "new",
+          "id": 3,
+          "op_type": "add_edge",
+          "payload": {
+            "confidence": null,
+            "dst": {
+              "op": 1
+            },
+            "ended_at": null,
+            "evidence_id": 1,
+            "note": null,
+            "op_type": "add_edge",
+            "rel": "used_in",
+            "src": {
+              "op": 0
+            },
+            "started_at": null
+          },
+          "seq": 2,
+          "target_id": null,
+          "target_kind": null
+        }
+      ]
+    },
+    "rejected": [
+      {
+        "item": "edge p -[used_in]-> ghost",
+        "reason": "unknown local id 'ghost'"
+      }
+    ],
+    "reply": "Noted: a log parser, built with Rust.",
+    "similarity_available": true
+  },
+  "counts": {
+    "assertion": 0,
+    "edge": 0,
+    "entity": 0,
+    "evidence": 1,
+    "operation": 3,
+    "proposal": 1,
+    "source": 1
+  },
+  "status": 200
+}

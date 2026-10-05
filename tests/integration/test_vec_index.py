@@ -9,7 +9,7 @@ from tests.support.fake_embeddings import FakeEmbeddingProvider
 
 from cvforge.kb import apply, queries
 from cvforge.kb.embeddings import find_similar, index_entities, reindex_missing
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.vocab import SourceKind
 
 pytestmark = pytest.mark.integration
@@ -20,7 +20,7 @@ OpenDb = Callable[..., sa.Engine]
 def _create_entity(engine: sa.Engine, name: str) -> int:
     source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
     evidence = apply.record_evidence(engine, source, "message:1", name)
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
@@ -34,9 +34,6 @@ def _create_entity(engine: sa.Engine, name: str) -> int:
                         "kind": "skill",
                         "name": name,
                     },
-                    "classification": "new",
-                    "target_kind": None,
-                    "target_id": None,
                 }
             ],
         }

@@ -11,6 +11,7 @@ from cvforge.kb.db import make_engine
 from cvforge.kb.vocab import TargetKind
 
 Propose = Callable[..., int]
+Forge = Callable[..., None]
 
 
 @pytest.fixture
@@ -117,7 +118,7 @@ def test_attach_evidence_to_a_missing_target_is_not_found(kb: sa.Engine, propose
         ({"op_type": "attach_evidence", "target_kind": "entity", "field": "name"}, "name", None),
     ],
 )
-def test_known_operations_add_a_field_level_assertion(
+def test_field_level_operations_add_a_field_level_assertion(
     kb: sa.Engine,
     propose: Propose,
     rust: int,
@@ -130,31 +131,28 @@ def test_known_operations_add_a_field_level_assertion(
         if payload["op_type"] == "set_state"
         else {**payload, "target_id": rust}
     )
-    apply.commit_proposal(kb, propose((body, "known", "entity", rust), accept=True))
+    apply.commit_proposal(kb, propose(body, accept=True))
     with kb.connect() as conn:
         last = queries.provenance(conn, TargetKind.ENTITY, rust)[-1]
     assert (last.field, last.value) == (field, value)
 
 
 def test_a_known_operation_whose_target_vanished_is_not_found(
-    kb: sa.Engine, propose: Propose
+    kb: sa.Engine, propose: Propose, forge: Forge
 ) -> None:
-    known = ({"op_type": "create_entity", "kind": "skill", "name": "Go"}, "known", "entity", 77)
+    proposal = propose({"op_type": "create_entity", "kind": "skill", "name": "Go"}, accept=True)
+    forge(proposal, "known", "entity", 77)
     with pytest.raises(apply.NotFoundError, match="entity 77"):
-        apply.commit_proposal(kb, propose(known, accept=True))
+        apply.commit_proposal(kb, proposal)
 
 
 def test_a_create_entity_cannot_be_applied_as_a_conflict(
-    kb: sa.Engine, propose: Propose, rust: int
+    kb: sa.Engine, propose: Propose, rust: int, forge: Forge
 ) -> None:
-    conflict = (
-        {"op_type": "create_entity", "kind": "skill", "name": "Go"},
-        "conflict",
-        "entity",
-        rust,
-    )
+    proposal = propose({"op_type": "create_entity", "kind": "skill", "name": "Go"}, accept=True)
+    forge(proposal, "conflict", "entity", rust)
     with pytest.raises(apply.UnsupportedOperationError, match="conflict"):
-        apply.commit_proposal(kb, propose(conflict, accept=True))
+        apply.commit_proposal(kb, proposal)
 
 
 def test_set_state_on_a_missing_entity_is_not_found(kb: sa.Engine, propose: Propose) -> None:

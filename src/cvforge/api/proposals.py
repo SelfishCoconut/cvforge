@@ -124,13 +124,14 @@ def review(db: Engine, proposal_id: int, operation_id: int, body: Review) -> que
 def commit(db: Engine, embedder: Embedder, proposal_id: int) -> Committed:
     """Apply the accepted and edited operations in one transaction.
 
-    Newly created entities are indexed for similarity search right after
-    (never inside the write transaction — D-D). A failed embedding call never
-    fails the commit: the affected ids come back as `index_pending` instead.
+    New entities, and existing ones whose name or summary just changed, are
+    indexed for similarity search right after (never inside the write
+    transaction — D-D). A failed embedding call never fails the commit: the
+    affected ids come back as `index_pending` instead.
 
     Args:
         db: The engine.
-        embedder: What indexes the new entities; `None` skips indexing.
+        embedder: What indexes new and changed entities; `None` skips indexing.
         proposal_id: The proposal.
 
     Returns:
@@ -148,8 +149,9 @@ def commit(db: Engine, embedder: Embedder, proposal_id: int) -> Committed:
     """
     result = apply.commit_proposal(db, proposal_id)
     index_pending: list[int] = []
-    if embedder is not None and result.entity_ids:
-        index_pending = index_entities(db, embedder, list(result.entity_ids.values()))
+    to_index = sorted({*result.entity_ids.values(), *result.reindex_ids})
+    if embedder is not None and to_index:
+        index_pending = index_entities(db, embedder, to_index)
     return Committed(
         commit_id=result.commit_id,
         applied_operation_ids=result.applied_operation_ids,

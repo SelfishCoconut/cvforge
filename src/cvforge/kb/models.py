@@ -297,7 +297,7 @@ class OperationDraft(_Strict):
 
 
 class ProposalDraft(_Strict):
-    """A proposal as produced by an intake: ordered, classified operations."""
+    """A proposal as stored: ordered, classified operations. Built inside `apply`."""
 
     origin: Origin
     source_id: int
@@ -306,18 +306,45 @@ class ProposalDraft(_Strict):
 
     @model_validator(mode="after")
     def _references_resolve(self) -> Self:
-        seqs = [op.seq for op in self.operations]
-        if len(seqs) != len(set(seqs)):
-            raise ValueError("operation seq values must be unique within a proposal")
-        creates = {op.seq for op in self.operations if isinstance(op.payload, CreateEntity)}
-        for op in self.operations:
-            for ref in _op_refs(op.payload):
-                if ref.op not in creates or ref.op >= op.seq:
-                    raise ValueError(
-                        f"operation {op.seq} refers to op {ref.op}, which is not an earlier "
-                        "create_entity in this proposal"
-                    )
+        _check_references([(op.seq, op.payload) for op in self.operations])
         return self
+
+
+class OperationInput(_Strict):
+    """One operation as an intake proposes it. It states no classification and no target."""
+
+    seq: int = Field(ge=0)
+    payload: Payload
+    rationale: str | None = None
+
+
+class ProposalInput(_Strict):
+    """What an intake hands `apply.record_proposal`; the database classifies it (ADR-0009)."""
+
+    origin: Origin
+    source_id: int
+    summary: str
+    operations: list[OperationInput]
+
+    @model_validator(mode="after")
+    def _references_resolve(self) -> Self:
+        _check_references([(op.seq, op.payload) for op in self.operations])
+        return self
+
+
+def _check_references(ops: list[tuple[int, Any]]) -> None:
+    """Refuse duplicate seqs and any reference that is not to an earlier create_entity."""
+    seqs = [seq for seq, _ in ops]
+    if len(seqs) != len(set(seqs)):
+        raise ValueError("operation seq values must be unique within a proposal")
+    creates = {seq for seq, payload in ops if isinstance(payload, CreateEntity)}
+    for seq, payload in ops:
+        for ref in _op_refs(payload):
+            if ref.op not in creates or ref.op >= seq:
+                raise ValueError(
+                    f"operation {seq} refers to op {ref.op}, which is not an earlier "
+                    "create_entity in this proposal"
+                )
 
 
 def _op_refs(payload: BaseModel) -> list[OpRef]:

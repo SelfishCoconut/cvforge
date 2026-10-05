@@ -12,7 +12,7 @@ from pydantic import JsonValue
 from sqlalchemy.pool import StaticPool
 
 from cvforge.kb import apply, queries
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.schema import metadata
 from cvforge.kb.vocab import SourceKind, TargetKind
 
@@ -62,7 +62,7 @@ def test_an_edge_conflict_changes_only_the_stated_columns_and_records_the_values
         "dst": parser,
         "started_at": "2020-06-01",
     }
-    apply.commit_proposal(kb, propose((contest_start, "conflict", "edge", before.id), accept=True))
+    apply.commit_proposal(kb, propose(contest_start, accept=True))
 
     with kb.connect() as conn:
         after = queries.find_edge(conn, rust, "used_in", parser)
@@ -122,7 +122,7 @@ def _assert_commit_refused_without_foreign_keys(engine: sa.Engine) -> None:
     metadata.create_all(engine)
     source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
     evidence = apply.record_evidence(engine, source, "message:1", "I use Rust.")
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
@@ -136,7 +136,6 @@ def _assert_commit_refused_without_foreign_keys(engine: sa.Engine) -> None:
                         "name": "Rust",
                         "evidence_id": evidence,
                     },
-                    "classification": "new",
                 }
             ],
         }

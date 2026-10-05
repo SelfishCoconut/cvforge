@@ -5,7 +5,7 @@ The contract every route shares:
 | Refusal | Status |
 |---|---|
 | `NotFoundError` | 404 |
-| `ProposalNotOpenError`, `OperationsPendingError` | 409 |
+| `ProposalNotOpenError`, `OperationsPendingError`, `StaleClassificationError` | 409 |
 | `InvalidEditError`, `UnsupportedOperationError` | 422 |
 | any other `ApplyError` | 400 |
 | `sqlalchemy.exc.IntegrityError` (the database rejected the change) | 409 |
@@ -28,6 +28,7 @@ from cvforge.kb.apply import (
     NotFoundError,
     OperationsPendingError,
     ProposalNotOpenError,
+    StaleClassificationError,
     UnsupportedOperationError,
 )
 
@@ -35,6 +36,7 @@ _STATUS: dict[type[ApplyError], int] = {
     NotFoundError: 404,
     ProposalNotOpenError: 409,
     OperationsPendingError: 409,
+    StaleClassificationError: 409,
     InvalidEditError: 422,
     UnsupportedOperationError: 422,
 }

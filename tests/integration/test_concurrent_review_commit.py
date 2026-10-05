@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 
 from cvforge.app import create_app
 from cvforge.kb import apply, queries, schema
-from cvforge.kb.models import ProposalDraft
+from cvforge.kb.models import ProposalInput
 from cvforge.kb.vocab import SourceKind
 
 pytestmark = pytest.mark.integration
@@ -36,7 +36,7 @@ def _open_proposal(engine: sa.Engine) -> tuple[int, int]:
     """One open proposal holding a single `create_entity Rust`; returns (proposal, operation)."""
     source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
     evidence = apply.record_evidence(engine, source, "message:1", "I use Rust.")
-    draft = ProposalDraft.model_validate(
+    draft = ProposalInput.model_validate(
         {
             "origin": "chat",
             "source_id": source,
@@ -50,7 +50,6 @@ def _open_proposal(engine: sa.Engine) -> tuple[int, int]:
                         "name": "Rust",
                         "evidence_id": evidence,
                     },
-                    "classification": "new",
                 }
             ],
         }

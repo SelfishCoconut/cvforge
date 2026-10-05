@@ -5,9 +5,8 @@ Status: proposed — in force from 2026-09-27 under Álvaro's `/goal` delegation
 the necessary decisions"); not yet reviewed by him. Confirm to mark it accepted.
 
 > Part 1 covers D-D and D-G, decided for package B2 (embeddings and
-> similarity search). Part 2 will add D-C, decided for package B3 (the
-> `IngestAgent` and the chat endpoint), as an addendum to this same file
-> when that package lands.
+> similarity search). Part 2 (at the end of this file) adds D-C, decided for
+> package B3 (the `IngestAgent` and the chat endpoint).
 
 ## Context
 
@@ -51,7 +50,10 @@ inside a write transaction that holds the knowledge base's write lock.**
   INSERT itself — never around the `provider.embed(...)` call.
 - **Indexing happens after `commit_proposal` returns, never inside it.**
   `api/proposals.py`'s commit route calls `index_entities` on the newly
-  created entity ids once the commit transaction has already closed. A failed
+  created entity ids, plus the existing ones whose `name` or `summary` an
+  applied `update_field` changed (`CommitResult.reindex_ids`, found by the
+  B3.0 stale-vector fix; a renamed entity otherwise kept its old vector), once
+  the commit transaction has already closed. A failed
   embedding call never fails the commit or loses data: `index_entities` never
   raises `EmbeddingError`, only reports the ids it couldn't embed, and the
   commit response carries them as `index_pending` — the commit stands, and
@@ -121,3 +123,52 @@ labelled dataset of "same skill, different name" pairs to tune it against yet.
 - `similarity_threshold` has no enforcement beyond Pydantic's `ge=0, le=1` on
   `ProviderSettings` (already covered by B1.3's own tests) — this ADR does not
   add a new constraint, only a rationale for the shipped default.
+
+---
+
+# Part 2 — D-C: the model never picks evidence
+
+Decided for package B3, 2026-10-04. Same status as part 1: in force under Álvaro's
+delegation, awaiting his confirmation.
+
+## Context
+
+Invariant 3 says no entity or edge exists without an assertion bound to an
+evidence span, and FR-12 says that span must be the user's own words. An agent
+that emitted `evidence_id` itself could cite a span that does not support the fact
+it claims, or one from another conversation, and nothing downstream could tell.
+
+## Decision
+
+**The server, not the model, records each user message as evidence and stamps
+every operation with that id.**
+
+- `POST /api/chat/messages` writes the message as an `evidence` row
+  (`message:<n>`, the literal text, untrimmed) in a `conversation` source *before*
+  the model runs. `llm.schemas.ExtractedFact`/`ExtractedEdge` have no evidence
+  field at all; `llm.convert.to_payloads` takes `evidence_id` as an argument and
+  puts it on every payload.
+- The agent's tools are read-only (`llm.tools.READ_TOOLS`) and a test iterates the
+  agent registry asserting that the tools actually offered to the model are
+  exactly that set. The request body has no apply/commit flag.
+- Output that does not fit (an unknown local id, attributes that do not fit the
+  kind, a duplicate local id, an invalid edge) is returned as `rejected` rather
+  than dropped silently or failing the message; the rest of the proposal stands.
+  Kinds and relationships outside the closed vocabulary fail at parse time.
+- A model failure after the message is stored leaves the message and no proposal,
+  and returns 502.
+
+## Alternatives considered
+
+- **Let the model return the evidence span it relied on.** Rejected: it makes the
+  model the author of provenance, which is the thing invariant 3 exists to prevent.
+- **Store the message only if the model produced a proposal.** Rejected: a message
+  that produced nothing is still something the user said, and ADR-0009 already has
+  intake writing provenance.
+
+## Consequences
+
+- Every operation in a chat proposal cites the whole message, not a sub-span;
+  finer spans would need a deterministic way to locate them and are not needed yet.
+- Messages are stored even when the model fails, so a retry creates a second
+  evidence row for the same text.
