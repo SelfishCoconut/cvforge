@@ -4,7 +4,7 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-10-04
+Last updated: 2026-10-05
 
 ---
 
@@ -101,8 +101,12 @@ part 2 (D-C). PR #79, CI green, **awaiting merge** (the auto-mode classifier den
 agent-issued merge; Álvaro merges).
 
 **Package B4** (streaming, `POST /api/chat/messages/stream`, ADR-0014) is done on
-`feat/fr-13-streaming`, stacked on B3's branch. **Next: B5** (latency benchmark, #47),
-then C1 (UI).
+`feat/fr-13-streaming` (PR #80), stacked on B3's branch.
+
+**Package B5** (real-model latency benchmark, NFR-10, closes #47) is done on
+`feat/nfr-10-latency-bench`, stacked on B4: `scripts/bench/latency.py`,
+`docs/guides/benchmarks.md`. **Next: C1** (the UI), once #79, #80 and B5 are merged
+in that order.
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 Still open from the M1 tracker and not scheduled by that plan: #50
