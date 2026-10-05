@@ -96,7 +96,7 @@ export function ReviewPage() {
               key={op.id}
               op={op}
               proposalOpen={open}
-              busy={r.busyOpId === op.id}
+              busy={r.reviewing}
               error={r.errors.get(op.id) ?? null}
               onDecide={(decision, edited) => r.decide(op.id, decision, edited)}
             />
@@ -106,7 +106,7 @@ export function ReviewPage() {
           <CommitPanel
             ops={ops}
             open={open}
-            pending={commit.isPending}
+            pending={commit.isPending || r.reviewing}
             error={commit.error?.message ?? null}
             onCommit={() => commit.mutate()}
           />

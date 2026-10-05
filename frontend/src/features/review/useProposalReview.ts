@@ -81,7 +81,8 @@ export function useProposalReview(id: number | null) {
     proposal,
     decide,
     errors,
-    busyOpId: review.isPending ? review.variables.opId : null,
+    /** A review is in flight; its answer replaces the whole proposal, so all decisions wait. */
+    reviewing: review.isPending,
     commit,
     committed,
   };

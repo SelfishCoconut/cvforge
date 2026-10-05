@@ -104,6 +104,31 @@ describe("ReviewPage", () => {
     expect(screen.queryByRole("button", { name: /accept/i })).toBeNull();
   });
 
+  it("locks every decision and Commit while a review is in flight", async () => {
+    let answer!: (r: Response) => void;
+    const after = makeProposal({
+      operations: [
+        makeOp({ id: 11, seq: 1, status: "accepted", payload: { name: "First", evidence_id: 40 } }),
+        makeOp({ id: 12, seq: 2, payload: { name: "Second", evidence_id: 40 } }),
+      ],
+    });
+    fakeApi({
+      [GET]: [json(two)],
+      [review(11)]: [() => new Promise<Response>((resolve) => (answer = resolve))],
+      ...EVIDENCE,
+    });
+    renderPage();
+    await screen.findByRole("heading", { level: 1, name: two.summary });
+    const user = userEvent.setup();
+    await user.click(within(cardNamed("First")).getByRole("button", { name: "Accept" }));
+    for (const b of within(cardNamed("Second")).getAllByRole("button")) expect(b).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Commit" })).toBeDisabled();
+    answer(json(after));
+    await waitFor(() =>
+      expect(within(cardNamed("Second")).getByRole("button", { name: "Accept" })).toBeEnabled(),
+    );
+  });
+
   it("shows a failed review's detail next to its card and leaves state unchanged", async () => {
     fakeApi({
       [GET]: [json(two)],

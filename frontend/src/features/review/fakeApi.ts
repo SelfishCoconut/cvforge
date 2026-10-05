@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-type Reply = Response | (() => Response) | Error;
+type Reply = Response | (() => Promise<Response>) | Error;
 
 /**
  * A fetch stub routed by "METHOD path". Each route takes a list of replies,
@@ -15,7 +15,7 @@ export function fakeApi(routes: Record<string, Reply[]>) {
     const next = queue && (queue.length > 1 ? queue.shift() : queue[0]);
     if (next === undefined) return Promise.resolve(new Response(key, { status: 599 }));
     if (next instanceof Error) return Promise.reject(next);
-    return Promise.resolve(typeof next === "function" ? next() : next.clone());
+    return typeof next === "function" ? next() : Promise.resolve(next.clone());
   });
   vi.stubGlobal("fetch", fn);
   const calls = (key: string) =>

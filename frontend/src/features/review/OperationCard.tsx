@@ -25,7 +25,7 @@ const STATUS_TEXT: ReadonlyMap<string, string> = new Map([
 interface Props {
   op: OperationRecord;
   proposalOpen: boolean;
-  /** A decision on this operation is in flight. */
+  /** A decision is in flight; buttons are disabled until it settles. */
   busy: boolean;
   /** The server's reason the last decision on this card failed. */
   error: string | null;
