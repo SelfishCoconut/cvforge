@@ -95,4 +95,5 @@ nav:
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md
+      - Requirement sync: guides/requirements-sync.md
   - API reference: reference/api.md
