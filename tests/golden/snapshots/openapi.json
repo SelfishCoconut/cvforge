@@ -820,6 +820,46 @@
         ]
       }
     },
+    "/api/chat/messages/stream": {
+      "post": {
+        "description": "Like `post_message`, but streams the reply as NDJSON (FR-13).\n\nEvents, one JSON object per line: `delta` (growth of the reply), `proposal`\n(the stored proposal, rejected items and ids), `done`; or `error`, after which\nthe stream ends. Streaming does not retry an invalid final output: it is an\n`error` event (ADR-0014). Size and conversation checks happen before the stream\nstarts, so they are ordinary 422/404 responses.\n\nArgs:\n    db: The knowledge-base engine.\n    body: The message.\n    embedder: Used for similarity, if configured.\n    model_factory: Builds the model for this request.\n\nReturns:\n    An `application/x-ndjson` stream.",
+        "operationId": "post_message_stream_api_chat_messages_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Message Stream",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
     "/api/entities": {
       "get": {
         "description": "List entities, optionally filtered by kind and knowledge state.\n\nArgs:\n    conn: Read connection.\n    kind: Only this kind.\n    state: Only this knowledge state.\n\nReturns:\n    Matching entities.",
