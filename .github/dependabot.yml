@@ -16,13 +16,15 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+        # Majors arrive as individual PRs so one broken member cannot block the rest (#53).
+        update-types: ["minor", "patch"]
     ignore:
-      # typescript-eslint still caps its peer range below TypeScript 7, so a
-      # TS 7 bump fails `npm ci` with ERESOLVE and takes the whole
-      # dev-dependencies group down with it. Version-scoped on purpose: DELETE
-      # this entry — do not widen it — once typescript-eslint supports TS 7.
+      # typescript-eslint's peer range is `typescript >=4.8.4 <6.1.0` (verified with
+      # `npm view typescript-eslint peerDependencies`, 8.71.1), so a TypeScript 6.1+
+      # bump fails `npm ci` with ERESOLVE. Version-scoped on purpose: DELETE this
+      # entry — do not widen it — once typescript-eslint supports TypeScript 6.1.
       - dependency-name: typescript
-        versions: ["7.x"]
+        versions: [">=6.1.0"]
 
   - package-ecosystem: github-actions
     directory: /
