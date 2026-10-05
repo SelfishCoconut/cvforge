@@ -5,12 +5,17 @@ as provenance, the agent reads it as data, and whatever it extracts is only ever
 recorded as a pending proposal (invariant 4).
 """
 
+import asyncio
+import contextlib
+import json
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
 from typing import Annotated
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 from pydantic_ai.models import Model
 
@@ -21,6 +26,7 @@ from cvforge.kb.embeddings import EmbeddingProvider
 from cvforge.kb.vocab import Origin, SourceKind
 from cvforge.llm.agents.ingest import build_ingest_agent
 from cvforge.llm.convert import to_payloads
+from cvforge.llm.schemas import IngestResult
 from cvforge.llm.settings_store import load_settings
 from cvforge.llm.tools import KbDeps
 
@@ -164,6 +170,38 @@ def _view(db: sa.Engine, proposal_id: int | None) -> ProposalView:
     )
 
 
+def _finish(
+    db: sa.Engine,
+    embedder: EmbeddingProvider | None,
+    conversation: int,
+    evidence: int,
+    result: IngestResult,
+) -> ChatResponse:
+    """Convert the agent's result and store it as a pending proposal (shared by both routes)."""
+    converted = to_payloads(result, evidence_id=evidence)
+    finder = (
+        make_similar_finder(db, embedder, load_settings(db).similarity_threshold)
+        if embedder is not None
+        else None
+    )
+    stored = intake.propose(
+        db,
+        origin=Origin.CHAT,
+        source_id=conversation,
+        summary=result.reply[:200] or "chat message",
+        payloads=converted.payloads,
+        similar=finder,
+    )
+    return ChatResponse(
+        conversation_id=conversation,
+        message_id=evidence,
+        reply=result.reply,
+        proposal=_view(db, stored.proposal_id if stored else None),
+        rejected=[RejectedView(item=r.item, reason=r.reason) for r in converted.rejected],
+        similarity_available=stored.similarity_available if stored else embedder is not None,
+    )
+
+
 @router.post("/chat/messages")
 def post_message(
     db: Engine, body: ChatRequest, embedder: Embedder, model_factory: Factory
@@ -192,25 +230,107 @@ def post_message(
     except Exception as exc:
         logger.warning("ingest agent failed: %s", exc)
         raise HTTPException(502, f"the model could not process the message: {exc}") from exc
-    converted = to_payloads(result, evidence_id=evidence)
-    finder = (
-        make_similar_finder(db, embedder, load_settings(db).similarity_threshold)
-        if embedder is not None
-        else None
+    return _finish(db, embedder, conversation, evidence, result)
+
+
+def _line(event: dict[str, object]) -> str:
+    return json.dumps(event, ensure_ascii=False) + "\n"
+
+
+async def _produce(
+    queue: asyncio.Queue[str | None],
+    db: sa.Engine,
+    embedder: EmbeddingProvider | None,
+    model_factory: ModelFactory,
+    text: str,
+    conversation: int,
+    evidence: int,
+) -> None:
+    """Run the agent, putting NDJSON lines on `queue`; `None` marks the end."""
+    try:
+        agent = build_ingest_agent(model_factory(db))
+        sent = ""
+        async with agent.run_stream(text, deps=KbDeps(db, embedder)) as run:
+            async for partial in run.stream_output(debounce_by=None):
+                if partial.reply.startswith(sent) and len(partial.reply) > len(sent):
+                    await queue.put(_line({"type": "delta", "text": partial.reply[len(sent) :]}))
+                    sent = partial.reply
+            result = await run.get_output()
+        if result.reply.startswith(sent) and len(result.reply) > len(sent):
+            await queue.put(_line({"type": "delta", "text": result.reply[len(sent) :]}))
+        response = await run_in_threadpool(_finish, db, embedder, conversation, evidence, result)
+        await queue.put(_line({"type": "proposal", **response.model_dump(exclude={"reply"})}))
+        await queue.put(_line({"type": "done"}))
+    except Exception as exc:
+        logger.warning("ingest stream failed: %s", exc)
+        message = f"the model could not process the message: {exc}"
+        await queue.put(_line({"type": "error", "message": message}))
+    finally:
+        await queue.put(None)
+
+
+async def stream_events(
+    db: sa.Engine,
+    embedder: EmbeddingProvider | None,
+    model_factory: ModelFactory,
+    text: str,
+    conversation: int,
+    evidence: int,
+) -> AsyncGenerator[str]:
+    """Yield NDJSON lines: `delta`s of the reply, then `proposal`, then `done`.
+
+    Any failure yields one `error` event and ends the stream. Nothing is stored
+    unless the whole output validated, so a failure or a disconnect part-way never
+    leaves a half-written proposal. The agent runs in its own task so that closing
+    the stream (a disconnect) cancels it cleanly.
+
+    Args:
+        db: The knowledge-base engine.
+        embedder: Used for similarity, if configured.
+        model_factory: Builds the model for this request.
+        text: The user's message.
+        conversation: The conversation the message was stored in.
+        evidence: The stored message's evidence id.
+
+    Yields:
+        One JSON object per line.
+    """
+    queue: asyncio.Queue[str | None] = asyncio.Queue()
+    task = asyncio.create_task(
+        _produce(queue, db, embedder, model_factory, text, conversation, evidence)
     )
-    stored = intake.propose(
-        db,
-        origin=Origin.CHAT,
-        source_id=conversation,
-        summary=result.reply[:200] or "chat message",
-        payloads=converted.payloads,
-        similar=finder,
-    )
-    return ChatResponse(
-        conversation_id=conversation,
-        message_id=evidence,
-        reply=result.reply,
-        proposal=_view(db, stored.proposal_id if stored else None),
-        rejected=[RejectedView(item=r.item, reason=r.reason) for r in converted.rejected],
-        similarity_available=stored.similarity_available if stored else embedder is not None,
+    try:
+        while (line := await queue.get()) is not None:
+            yield line
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
+@router.post("/chat/messages/stream")
+async def post_message_stream(
+    db: Engine, body: ChatRequest, embedder: Embedder, model_factory: Factory
+) -> StreamingResponse:
+    """Like `post_message`, but streams the reply as NDJSON (FR-13).
+
+    Events, one JSON object per line: `delta` (growth of the reply), `proposal`
+    (the stored proposal, rejected items and ids), `done`; or `error`, after which
+    the stream ends. Streaming does not retry an invalid final output: it is an
+    `error` event (ADR-0014). Size and conversation checks happen before the stream
+    starts, so they are ordinary 422/404 responses.
+
+    Args:
+        db: The knowledge-base engine.
+        body: The message.
+        embedder: Used for similarity, if configured.
+        model_factory: Builds the model for this request.
+
+    Returns:
+        An `application/x-ndjson` stream.
+    """
+    conversation, evidence = await run_in_threadpool(_store_message, db, body)
+    return StreamingResponse(
+        stream_events(db, embedder, model_factory, body.text, conversation, evidence),
+        media_type="application/x-ndjson",
     )

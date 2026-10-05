@@ -23,3 +23,4 @@ was decided, and when, is the whole point.
 | [0011](0011-registered-writers-for-non-knowledge-state.md) | Registered writers may write specific non-knowledge tables outside `kb/apply.py` | proposed | 2026-09-27 |
 | [0012](0012-api-keys-are-never-persisted.md) | API keys are never persisted; only the name of the environment variable that holds one | proposed | 2026-09-27 |
 | [0013](0013-similarity-index-and-threshold.md) | The similarity index is derived state, built lazily and rebuilt on a dimension change; the duplicate threshold is a tunable setting | proposed | 2026-09-27 |
+| [0014](0014-ndjson-streaming-and-unpersisted-replies.md) | Chat streams as NDJSON over a POST, and assistant replies are not persisted | proposed | 2026-10-05 |
