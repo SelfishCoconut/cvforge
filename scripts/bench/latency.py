@@ -1,7 +1,7 @@
 """Benchmark (NFR-10): the chat round-trip against a real local model.
 
 Drives the real pipeline (the chat endpoint, the agent, intake) against the
-configured **local** Ollama endpoint with an empty in-memory knowledge base, and
+configured **local** Ollama endpoint with an empty temporary knowledge base, and
 reports p50/p95 of message-to-proposal time. Exits non-zero when p95 exceeds 30 s,
 and refuses to run against an external provider (NFR-10 criterion 3).
 
@@ -11,6 +11,7 @@ live model (NFR-08). Run it by hand: `uv run python scripts/bench/latency.py`.
 
 import argparse
 import math
+import tempfile
 import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
@@ -95,7 +96,12 @@ def measure(send: Callable[[str], None], messages: Sequence[str], runs: int) -> 
 
 @contextmanager
 def _real_sender(model: str, base_url: str) -> Iterator[Callable[[str], None]]:
-    """Build a sender over the real app, an empty in-memory database and local Ollama."""
+    """Build a sender over the real app, an empty temporary database file and local Ollama.
+
+    A file, not `make_engine(None)`: the in-memory engine shares one connection, so the
+    agent's work and the post-commit indexing collide on `BEGIN IMMEDIATE`. The app
+    itself always runs on a file with one connection per caller.
+    """
     from fastapi.testclient import TestClient
 
     from cvforge.app import create_app
@@ -104,7 +110,8 @@ def _real_sender(model: str, base_url: str) -> Iterator[Callable[[str], None]]:
     from cvforge.kb.schema import metadata
     from cvforge.llm.settings_store import load_settings, save_settings
 
-    engine = make_engine(None)
+    tmp = tempfile.TemporaryDirectory()
+    engine = make_engine(Path(tmp.name) / "bench.db")
     metadata.create_all(engine)
     settings = load_settings(engine).model_copy(update={"model": model, "base_url": base_url})
     require_local(settings)
@@ -117,7 +124,11 @@ def _real_sender(model: str, base_url: str) -> Iterator[Callable[[str], None]]:
         def send(text: str) -> None:
             client.post("/api/chat/messages", json={"text": text}).raise_for_status()
 
-        yield send
+        try:
+            yield send
+        finally:
+            engine.dispose()
+            tmp.cleanup()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
