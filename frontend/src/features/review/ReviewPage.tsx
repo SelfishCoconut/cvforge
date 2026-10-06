@@ -51,6 +51,11 @@ function Header({ p }: { p: ProposalRecord }) {
 /** One proposal under review: a card per operation and the commit gate. */
 export function ReviewPage() {
   const id = parseId(useParams().id);
+  // Per-proposal state (commit result, per-card errors) must not follow a route change.
+  return <ReviewBody key={id ?? "invalid"} id={id} />;
+}
+
+function ReviewBody({ id }: { id: number | null }) {
   const location = useLocation();
   const r = useProposalReview(id);
   const { proposal, commit, committed } = r;
@@ -107,9 +112,13 @@ export function ReviewPage() {
             ops={ops}
             open={open}
             pending={commit.isPending || r.reviewing}
-            error={commit.error?.message ?? null}
             onCommit={() => commit.mutate()}
           />
+        )}
+        {commit.error !== null && (
+          <p role="alert" className={`mt-3 text-sm text-danger ${WRAP}`}>
+            {commit.error.message}
+          </p>
         )}
       </>
     );
