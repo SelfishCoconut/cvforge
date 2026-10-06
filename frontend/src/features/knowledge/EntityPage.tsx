@@ -175,7 +175,7 @@ function Loaded({ id }: { id: number }) {
       </p>
     );
   }
-  return <Detail entity={q.data} />;
+  return <Detail key={q.data.id} entity={q.data} />;
 }
 
 /** Read-only detail for one entity: attributes, relationships and the "why?" evidence drawer. */

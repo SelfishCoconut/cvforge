@@ -1,6 +1,6 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route, Routes } from "react-router";
+import { Route, Routes, useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "../../test-utils";
 import { makeEdge, makeEntity, makeProvenance } from "../../test/knowledge";
@@ -154,6 +154,43 @@ describe("EntityPage", () => {
     await user.click(await screen.findByRole("button", { name: "why?" }));
     expect(await screen.findByText("Edge excerpt")).toBeInTheDocument();
     expect(api.calls("GET /api/provenance/edge/7")).toHaveLength(1);
+  });
+
+  it("closes the drawer and shows no stale provenance when the route moves to another entity", async () => {
+    const api = fakeApi({
+      [ENTITY]: [json(makeEntity())],
+      [EDGES]: [json([makeEdge()])],
+      "GET /api/entities/4": [json(makeEntity({ id: 4, name: "Example Corp", summary: null }))],
+      "GET /api/entities/4/edges": [json([])],
+      "GET /api/provenance/entity/3": [json([makeProvenance({ excerpt: "Only about Python" })])],
+      "GET /api/provenance/entity/4": [json([makeProvenance({ excerpt: "About Example Corp" })])],
+    });
+    let go: (to: string) => void = () => undefined;
+    function Capture() {
+      go = useNavigate();
+      return null;
+    }
+    renderApp(
+      <>
+        <Capture />
+        <Routes>
+          <Route path="/knowledge/:id" element={<EntityPage />} />
+        </Routes>
+      </>,
+      { route: "/knowledge/3" },
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Why do we know this?" }));
+    expect(await screen.findByText("Only about Python")).toBeInTheDocument();
+    // Entity 4 is already cached by the edge row, so the page swaps without a loading state.
+    await waitFor(() => expect(api.calls("GET /api/entities/4")).toHaveLength(1));
+    await act(async () => undefined);
+    act(() => go("/knowledge/4"));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Example Corp", hidden: true }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Only about Python")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("has no mutation controls", async () => {
