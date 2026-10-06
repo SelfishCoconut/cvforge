@@ -6,8 +6,8 @@ import { Time } from "../../ui/Time";
 import { CommitPanel, CommitResult } from "./CommitPanel";
 import { OperationCard } from "./OperationCard";
 import { useProposalReview } from "./useProposalReview";
+import { WRAP } from "../../ui/text";
 
-const WRAP = "break-words [overflow-wrap:anywhere]";
 
 function parseId(raw: string | undefined): number | null {
   return raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : null;

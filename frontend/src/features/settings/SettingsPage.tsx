@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { WRAP } from "../knowledge/vocab";
+import { WRAP } from "../../ui/text";
 import { SettingsForm } from "./SettingsForm";
 
 /** LLM provider settings: which model runs, and whether text may leave this machine. */

@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router";
 import { api, ApiError } from "../../api/client";
 import type { EdgeRecord, EntityRecord } from "../../api/types";
 import { WhyDrawer } from "./WhyDrawer";
-import { WRAP } from "./vocab";
+import { WRAP } from "../../ui/text";
 
 const LINK = "text-accent underline decoration-1 underline-offset-4";
 const WHY_BUTTON =

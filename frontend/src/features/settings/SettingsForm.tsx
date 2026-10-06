@@ -3,7 +3,7 @@ import { useId, useState, type FormEvent } from "react";
 import { api } from "../../api/client";
 import type { Provider, ProviderSettings, SettingsView } from "../../api/types";
 import { Switch } from "../../ui/Switch";
-import { WRAP } from "../knowledge/vocab";
+import { WRAP } from "../../ui/text";
 
 const PROVIDERS: readonly Provider[] = ["ollama", "anthropic", "openai"];
 const EXTERNAL: readonly Provider[] = ["anthropic", "openai"];

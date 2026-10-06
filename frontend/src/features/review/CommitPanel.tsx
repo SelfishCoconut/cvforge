@@ -1,8 +1,8 @@
 import { useId } from "react";
 import type { Committed, OperationRecord } from "../../api/types";
 import { canCommit } from "./explain";
+import { WRAP } from "../../ui/text";
 
-const WRAP = "break-words [overflow-wrap:anywhere]";
 
 interface Props {
   ops: OperationRecord[];

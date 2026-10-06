@@ -5,8 +5,8 @@ import { allowedDecisions, type Decision } from "./actions";
 import { EditOperationDialog } from "./EditOperationDialog";
 import { Evidence } from "./Evidence";
 import { explain, summarise } from "./explain";
+import { WRAP } from "../../ui/text";
 
-const WRAP = "break-words [overflow-wrap:anywhere]";
 const BUTTON =
   "rounded-sm px-4 py-1.5 text-sm font-medium ring-1 ring-inset disabled:cursor-not-allowed disabled:opacity-40";
 const TONE: Record<Decision, string> = {

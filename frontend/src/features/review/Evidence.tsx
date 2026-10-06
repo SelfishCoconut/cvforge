@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { WRAP } from "../../ui/text";
 
-const WRAP = "break-words [overflow-wrap:anywhere]";
 
 /** The cited evidence excerpt, fetched by id. Untrusted text: rendered as text nodes only. */
 export function Evidence({ evidenceId }: { evidenceId: number | null }) {

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "../../api/client";
 import type { ProvenanceRecord } from "../../api/types";
 import { Drawer } from "../../ui/Drawer";
-import { WRAP } from "./vocab";
+import { WRAP } from "../../ui/text";
 
 interface WhyDrawerProps {
   kind: "entity" | "edge";

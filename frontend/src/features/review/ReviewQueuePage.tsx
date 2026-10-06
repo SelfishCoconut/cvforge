@@ -4,9 +4,9 @@ import { api } from "../../api/client";
 import type { ProposalSummary } from "../../api/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/Tabs";
 import { Time } from "../../ui/Time";
+import { WRAP } from "../../ui/text";
 
 type Status = "open" | "committed";
-const WRAP = "break-words [overflow-wrap:anywhere]";
 
 function counts(p: ProposalSummary): string {
   if (p.status === "open") return `${p.pending_count} of ${p.operation_count} pending`;
