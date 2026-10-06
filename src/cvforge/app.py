@@ -134,7 +134,7 @@ class _SpaFiles(StaticFiles):
             return await super().get_response(path, scope)
         except HTTPException as exc:
             last = path.rsplit("/", 1)[-1]
-            if exc.status_code != 404 or path.startswith("api/") or "." in last:
+            if exc.status_code != 404 or path == "api" or path.startswith("api/") or "." in last:
                 raise
             return await super().get_response("index.html", scope)
 

@@ -80,8 +80,9 @@ flowchart LR
 ```
 
 Dependencies point one way: `api` knows nothing of the UI, `features` use `api` and
-`ui`, and `app` assembles features into routes. A feature never imports another
-feature.
+`ui`, and `app` assembles features into routes. A feature's production code never
+imports another feature; shared code lives in `ui` or `api`. (Feature tests do reuse the
+`review/fakeApi` and `review/fixtures` test helpers.)
 
 ## Chat stream contract
 

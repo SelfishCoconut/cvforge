@@ -37,6 +37,8 @@ Interactive API docs: http://127.0.0.1:8000/docs.
 ## Offline proof, no server needed
 
 `make demo-health` exercises the app in-process and prints the health payload.
+`make demo-ui` serves the built SPA with a scripted model on a throwaway database
+(try the chat without Ollama); `make demo-ui-check` drives the same loop over HTTP.
 `make test-demos` runs every offline demo — CI runs the same target, so a broken
 demo fails the build.
 

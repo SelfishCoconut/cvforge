@@ -3,7 +3,7 @@ import { useId, useState, type FormEvent } from "react";
 import { api } from "../../api/client";
 import type { Provider, ProviderSettings, SettingsView } from "../../api/types";
 import { Switch } from "../../ui/Switch";
-import { WRAP } from "../knowledge/vocab";
+import { WRAP } from "../../ui/text";
 
 const PROVIDERS: readonly Provider[] = ["ollama", "anthropic", "openai"];
 const EXTERNAL: readonly Provider[] = ["anthropic", "openai"];
@@ -103,7 +103,7 @@ export function SettingsForm({ view }: { view: SettingsView }) {
   const next = merge(persisted, draft);
   const dirty = !same(next, persisted);
   const edit = (patch: Partial<Draft>) => {
-    save.reset();
+    if (!save.isPending) save.reset();
     setDraft({ ...draft, ...patch });
   };
   const submit = (e: FormEvent) => {
@@ -145,6 +145,7 @@ export function SettingsForm({ view }: { view: SettingsView }) {
         label="Base URL"
         value={draft.baseUrl}
         onChange={(baseUrl) => edit({ baseUrl })}
+        help="Only used by Ollama. If it is not a local address, your text is sent to that host."
       />
       <Text
         label="API key variable name"

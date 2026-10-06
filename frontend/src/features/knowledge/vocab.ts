@@ -19,6 +19,3 @@ export const STATES: readonly KnowledgeState[] = ["confirmed", "learning", "gap"
 export function pick<T extends string>(allowed: readonly T[], raw: string | null): T | undefined {
   return allowed.find((v) => v === raw);
 }
-
-/** Wrapping classes for untrusted text: long unbroken strings must not overflow. */
-export const WRAP = "break-words [overflow-wrap:anywhere]";

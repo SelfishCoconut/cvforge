@@ -1,6 +1,6 @@
 .PHONY: lint format typecheck complexity test test-unit test-integration test-golden \
         update-golden test-demos sanity docs docs-serve build-ui dev-ui ui-install \
-        ui-lint ui-gen ui-test run demo-health demo-review-pipeline demo-chat-ingest migration clean
+        ui-lint ui-gen ui-test run demo-health demo-review-pipeline demo-chat-ingest demo-ui demo-ui-check migration clean
 
 # --- python quality ---
 lint:
@@ -47,7 +47,15 @@ demo-review-pipeline:
 demo-chat-ingest:
 	uv run python scripts/demo/chat_ingest.py
 
-test-demos: demo-health demo-review-pipeline demo-chat-ingest
+# Serves the built SPA + API with a scripted model on a throwaway DB (run `make build-ui` first).
+demo-ui:
+	uv run python scripts/demo/ui_demo.py
+
+# Same app, driven in process over HTTP; needs no built frontend and no port.
+demo-ui-check:
+	uv run python scripts/demo/ui_demo.py --check
+
+test-demos: demo-health demo-review-pipeline demo-chat-ingest demo-ui-check
 	@echo "all offline demos ran clean"
 
 # --- mechanical quality signals ---

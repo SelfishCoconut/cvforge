@@ -2,18 +2,15 @@ import { useId } from "react";
 import type { Committed, OperationRecord } from "../../api/types";
 import { canCommit } from "./explain";
 
-const WRAP = "break-words [overflow-wrap:anywhere]";
-
 interface Props {
   ops: OperationRecord[];
   open: boolean;
   pending: boolean;
-  error: string | null;
   onCommit: () => void;
 }
 
 /** The commit gate: disabled, with its reason visible, until the proposal can be committed. */
-export function CommitPanel({ ops, open, pending, error, onCommit }: Props) {
+export function CommitPanel({ ops, open, pending, onCommit }: Props) {
   const reasonId = useId();
   const gate = canCommit(ops, open);
   return (
@@ -35,11 +32,6 @@ export function CommitPanel({ ops, open, pending, error, onCommit }: Props) {
           Commit
         </button>
       </div>
-      {error !== null && (
-        <p role="alert" className={`mt-3 text-sm text-danger ${WRAP}`}>
-          {error}
-        </p>
-      )}
     </section>
   );
 }

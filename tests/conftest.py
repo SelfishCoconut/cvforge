@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from pydantic_ai import models as pydantic_ai_models
 
 from cvforge.app import create_app
+from cvforge.config import Settings
 from cvforge.kb import apply, migrate, queries
 from cvforge.kb.classify import SimilarFinder
 from cvforge.kb.db import make_engine
@@ -86,14 +87,18 @@ def evidence_id(kb: sa.Engine) -> int:
 
 
 @pytest.fixture
-def client(kb: sa.Engine) -> Iterator[TestClient]:
+def client(kb: sa.Engine, tmp_path: Path) -> Iterator[TestClient]:
     """A test client over a freshly built application backed by the in-memory `kb`.
 
     `base_url` is a real loopback address, not `TestClient`'s default
     `http://testserver`: the app's Host-header check (audit F6) would refuse
     every request otherwise, since `testserver` names no address it binds.
+
+    `frontend_dist` points at a directory that never exists, so a developer's local
+    `frontend/dist` build cannot make the SPA shadow routes these tests exercise.
     """
-    with TestClient(create_app(engine=kb), base_url="http://127.0.0.1") as test_client:
+    settings = Settings(frontend_dist=tmp_path / "no-dist")
+    with TestClient(create_app(settings, engine=kb), base_url="http://127.0.0.1") as test_client:
         yield test_client
 
 

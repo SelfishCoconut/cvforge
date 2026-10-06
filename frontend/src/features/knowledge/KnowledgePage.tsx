@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router";
 import { api } from "../../api/client";
 import type { EntityRecord } from "../../api/types";
-import { KINDS, pick, STATES, WRAP } from "./vocab";
+import { WRAP } from "../../ui/text";
+import { KINDS, pick, STATES } from "./vocab";
 
 const SELECT = "mt-1 block rounded-sm border border-line bg-card px-2 py-1.5 text-sm text-ink";
 

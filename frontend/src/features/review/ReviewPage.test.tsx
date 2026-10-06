@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route, Routes } from "react-router";
+import { Route, Routes, useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Committed } from "../../api/types";
 import { renderApp } from "../../test-utils";
@@ -225,6 +225,64 @@ describe("ReviewPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/^1 operation\(s\) still pending$/);
     await waitFor(() => expect(api.calls(GET)).toHaveLength(2));
     await waitFor(() => expect(screen.getByRole("button", { name: "Commit" })).toBeDisabled());
+  });
+
+  it("keeps the server's reason visible when a 409 commit flips the proposal to committed", async () => {
+    const ready = makeProposal({ operations: [makeOp({ status: "accepted" })] });
+    const done = makeProposal({
+      status: "committed",
+      applied_at: "2026-10-01T10:00:00Z",
+      operations: [makeOp({ status: "applied" })],
+    });
+    fakeApi({
+      [GET]: [json(ready), json(done)],
+      [COMMIT]: [json({ detail: "proposal 5 is already committed" }, 409)],
+      ...EVIDENCE,
+    });
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Commit" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Commit" })).toBeNull());
+    expect(screen.getByRole("alert")).toHaveTextContent(/^proposal 5 is already committed$/);
+    expect(screen.queryByRole("button", { name: "Accept" })).toBeNull();
+  });
+
+  it("does not carry one proposal's commit state over to the next route id", async () => {
+    const ready = makeProposal({ operations: [makeOp({ status: "accepted" })] });
+    const six = makeProposal({
+      id: 6,
+      summary: "Another proposal",
+      operations: [makeOp({ id: 21, status: "accepted" })],
+    });
+    fakeApi({
+      [GET]: [json(ready)],
+      [COMMIT]: [json(committed)],
+      "GET /api/proposals/6": [json(six)],
+      ...EVIDENCE,
+    });
+    let go: (to: string) => void = () => undefined;
+    function Capture() {
+      go = useNavigate();
+      return null;
+    }
+    renderApp(
+      <>
+        <Capture />
+        <Routes>
+          <Route path="/review/:id" element={<ReviewPage />} />
+        </Routes>
+      </>,
+      { route: "/review/5" },
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Commit" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Committed");
+    act(() => go("/review/6"));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Another proposal" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("button", { name: "Commit" })).toBeEnabled();
   });
 
   it("shows a non-409 commit failure without refetching", async () => {

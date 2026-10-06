@@ -53,7 +53,21 @@ def test_real_asset_still_served(spa_client: TestClient) -> None:
 def test_unknown_api_path_is_still_404_json(spa_client: TestClient) -> None:
     r = spa_client.get("/api/nope")
     assert r.status_code == 404
-    assert "text/html" not in r.headers["content-type"]
+    assert r.headers["content-type"].startswith("application/json")
+    assert r.json() == {"detail": "Not Found"}
+
+
+def test_bare_api_path_is_still_404_json(spa_client: TestClient) -> None:
+    r = spa_client.get("/api")
+    assert r.status_code == 404
+    assert r.headers["content-type"].startswith("application/json")
+
+
+def test_health_outside_api_is_shadowed_by_the_shell(spa_client: TestClient) -> None:
+    """With a build mounted, `/health` is a client-side route: the API lives under `/api`."""
+    r = spa_client.get("/health")
+    assert r.status_code == 200
+    assert '<div id="root">' in r.text
 
 
 def test_missing_asset_file_is_404(spa_client: TestClient) -> None:

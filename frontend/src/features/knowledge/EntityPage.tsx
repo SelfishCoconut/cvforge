@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router";
 import { api, ApiError } from "../../api/client";
 import type { EdgeRecord, EntityRecord } from "../../api/types";
 import { WhyDrawer } from "./WhyDrawer";
-import { WRAP } from "./vocab";
+import { WRAP } from "../../ui/text";
 
 const LINK = "text-accent underline decoration-1 underline-offset-4";
 const WHY_BUTTON =
@@ -38,15 +38,21 @@ function Attributes({ attributes }: { attributes: Record<string, unknown> }) {
   );
 }
 
-function EndName({ id }: { id: number }) {
+/** The display name of an entity, or a placeholder until (or unless) it loads. */
+function useEntityName(id: number): string {
   const q = useQuery({
     queryKey: ["entity", id],
     queryFn: () => api.getEntity(id),
     retry: false,
   });
+  return q.data ? q.data.name : `Entity ${id}`;
+}
+
+function EndName({ id }: { id: number }) {
+  const name = useEntityName(id);
   return (
     <Link to={`/knowledge/${id}`} className={`${LINK} ${WRAP}`}>
-      {q.data ? q.data.name : `Entity ${id}`}
+      {name}
     </Link>
   );
 }
@@ -65,6 +71,8 @@ function EdgeRow({
   entity: EntityRecord;
   onWhy: (edgeId: number) => void;
 }) {
+  const otherId = edge.src_id === entity.id ? edge.dst_id : edge.src_id;
+  const otherName = useEntityName(otherId);
   return (
     <li className="py-3">
       <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -73,7 +81,12 @@ function EdgeRow({
         <span className="font-mono text-sm text-ink-muted">{edge.rel}</span>
         <span className="text-ink-muted">→</span>
         <End id={edge.dst_id} current={entity.id} name={entity.name} />
-        <button type="button" className={`ml-auto ${WHY_BUTTON}`} onClick={() => onWhy(edge.id)}>
+        <button
+          type="button"
+          aria-label={`Why: ${edge.rel} ${otherName}`}
+          className={`ml-auto ${WHY_BUTTON}`}
+          onClick={() => onWhy(edge.id)}
+        >
           why?
         </button>
       </p>
@@ -175,7 +188,7 @@ function Loaded({ id }: { id: number }) {
       </p>
     );
   }
-  return <Detail entity={q.data} />;
+  return <Detail key={q.data.id} entity={q.data} />;
 }
 
 /** Read-only detail for one entity: attributes, relationships and the "why?" evidence drawer. */
