@@ -13,6 +13,13 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message: "Untrusted text must render as text nodes.",
+        },
+      ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
     },
   },

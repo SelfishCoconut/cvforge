@@ -1,6 +1,6 @@
 .PHONY: lint format typecheck complexity test test-unit test-integration test-golden \
         update-golden test-demos sanity docs docs-serve build-ui dev-ui ui-install \
-        ui-lint ui-test run demo-health demo-review-pipeline demo-chat-ingest migration clean
+        ui-lint ui-gen ui-test run demo-health demo-review-pipeline demo-chat-ingest migration clean
 
 # --- python quality ---
 lint:
@@ -70,6 +70,9 @@ ui-install:
 ui-lint:
 	npm --prefix frontend run lint
 	npm --prefix frontend run typecheck
+
+ui-gen:
+	npm --prefix frontend run gen:api
 
 ui-test:
 	npm --prefix frontend run test:coverage
