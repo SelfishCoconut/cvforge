@@ -98,18 +98,22 @@ ADR-0013 part 2 — is PR #79. B4 — NDJSON streaming, `POST /api/chat/messages
 ADR-0014 — is PR #82 (it replaced #80, which GitHub auto-closed when #79's branch was
 deleted). B5 — the real-model latency benchmark, NFR-10 — is PR #81, closing #47. The
 benchmark ships as a tool: a recorded real-model run in `docs/sanity/` is still to do.
-**Next: C1**, the chat, review, knowledge and settings UI (FR-13 frontend half, #17).
-**C1 in progress, local only (not pushed, not merged):** PR0, the backend additions
-(`GET /api/proposals`, evidence lookup, SPA history fallback), and PR1, the frontend
-foundation (generated API types with a CI drift gate, typed client and NDJSON reader,
-design tokens, app shell, routes, query client, ADR-0015 `proposed`,
-`docs/architecture/frontend.md`), are done on stacked local branches. **Next action:
-the chat view (PR2, Task 7), then review, knowledge and settings.**
+**C1 is complete locally, on stacked branches that are not pushed and not merged:**
+the backend additions (`GET /api/proposals`, evidence lookup, SPA history fallback),
+the frontend foundation (ADR-0015 `proposed`, `docs/architecture/frontend.md`), and
+the chat, review, knowledge and settings views, plus `make demo-ui` (the real app
+serving the SPA with a scripted model on a throwaway database) and `make
+demo-ui-check` (the same HTTP loop in process, in `test-demos`), also run by
+`tests/system/test_ui_loop.py`. **Next action: Álvaro reviews and approves the
+stacked PRs in order** — PR0 `feat/api-proposal-list` → PR1 `feat/ui-foundation` →
+PR2 `feat/fr-13-chat-ui` → PR3 `feat/fr-10-review-ui` → PR4 `feat/fr-04-knowledge-ui`
+→ PR5 `feat/fr-39-settings-ui` → PR6 `feat/ui-e2e-demo` — **then the milestone
+close-out via the `release` skill.**
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 **M1 infra backlog cleared (2026-10-05):** `mkdocs<2` ceiling (#57), Dependabot npm
 majors individually (#53), CI hygiene (#54), nightly `pytest -m system` workflow (#56;
-`tests/system/` is still empty), vitest 3.x with one vite major (#55), and
+`tests/system/` gains its first test with PR6), vitest 3.x with one vite major (#55), and
 `scripts/sync_issues.py` (#50; `--check` is green, run it after every SRS edit).
 Dependabot PR #71 (13 bundled majors, frontend branch coverage 80% < 90%) was
 cancelled in favour of individual major bumps. Dependency bumps merged: uvicorn,
