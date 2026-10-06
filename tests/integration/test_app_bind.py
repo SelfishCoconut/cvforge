@@ -11,21 +11,28 @@ import socket
 import threading
 import time
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
 import uvicorn
 
 from cvforge.app import create_app
+from cvforge.config import Settings
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
-def running_app(kb: sa.Engine) -> Iterator[int]:
+def running_app(kb: sa.Engine, tmp_path: Path) -> Iterator[int]:
     """A real uvicorn server bound to 127.0.0.1 on an ephemeral port; yields that port."""
     server = uvicorn.Server(
-        uvicorn.Config(create_app(engine=kb), host="127.0.0.1", port=0, log_level="error")
+        uvicorn.Config(
+            create_app(Settings(frontend_dist=tmp_path / "no-dist"), engine=kb),
+            host="127.0.0.1",
+            port=0,
+            log_level="error",
+        )
     )
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
