@@ -28,4 +28,15 @@ describe("ClassificationBadge", () => {
     for (const value of VALUES) expect(el.className).not.toContain(`text-${value}`);
     expect(el.className).toContain("text-ink-muted");
   });
+
+  it.each(["constructor", "toString", "__proto__", "hasOwnProperty"])(
+    "renders the inherited-property name %s as neutral text, not a prototype lookup",
+    (value) => {
+      const { container } = render(<ClassificationBadge value={value} />);
+      const el = container.firstElementChild as HTMLElement;
+      expect(el).toHaveTextContent(value);
+      expect(el.className).toContain("text-ink-muted");
+      expect(el.className).not.toMatch(/function|\[native code\]|\[object/);
+    },
+  );
 });

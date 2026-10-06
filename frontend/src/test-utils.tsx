@@ -3,12 +3,18 @@ import { render, type RenderResult } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 
-/** Render `ui` inside a fresh, non-retrying query client and an in-memory router. */
-export function renderApp(ui: ReactElement, opts: { route?: string } = {}): RenderResult {
+/**
+ * Render `ui` inside a fresh, non-retrying query client and an in-memory router
+ * at `route`, optionally carrying router `state` (as a `<Link state>` would).
+ */
+export function renderApp(
+  ui: ReactElement,
+  opts: { route?: string; state?: unknown } = {},
+): RenderResult {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[opts.route ?? "/"]}>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[{ pathname: opts.route ?? "/", state: opts.state }]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
