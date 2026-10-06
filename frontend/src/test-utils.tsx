@@ -5,16 +5,18 @@ import { MemoryRouter } from "react-router";
 
 /**
  * Render `ui` inside a fresh, non-retrying query client and an in-memory router
- * at `route`, optionally carrying router `state` (as a `<Link state>` would).
+ * at `route` (a path, optionally with a `?query`), optionally carrying router `state`
+ * (as a `<Link state>` would).
  */
 export function renderApp(
   ui: ReactElement,
   opts: { route?: string; state?: unknown } = {},
 ): RenderResult {
+  const [pathname = "/", search = ""] = (opts.route ?? "/").split(/(?=\?)/);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[{ pathname: opts.route ?? "/", state: opts.state }]}>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[{ pathname, search, state: opts.state }]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }

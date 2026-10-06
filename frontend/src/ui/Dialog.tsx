@@ -19,6 +19,8 @@ interface DialogContentProps {
   description: string;
   /** Placement and size classes; defaults to a centred modal. */
   placement?: string;
+  /** Overrides where focus goes on close, for triggers that are not a `DialogTrigger`. */
+  onCloseAutoFocus?: (event: Event) => void;
   children: ReactNode;
 }
 
@@ -30,12 +32,14 @@ export function DialogContent({
   title,
   description,
   placement = CENTRED,
+  onCloseAutoFocus,
   children,
 }: DialogContentProps) {
   return (
     <RD.Portal>
       <RD.Overlay className="fixed inset-0 bg-ink/40" />
       <RD.Content
+        onCloseAutoFocus={onCloseAutoFocus}
         className={`fixed ${placement} overflow-y-auto rounded-sm bg-card p-6 text-ink shadow-lg ring-1 ring-line`}
       >
         <RD.Title className="text-2xl">{title}</RD.Title>
