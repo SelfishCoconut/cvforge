@@ -11,6 +11,7 @@ export type EdgeRecord = S["EdgeRecord"];
 export type ProvenanceRecord = S["ProvenanceRecord"];
 export type SettingsView = S["SettingsView"];
 export type ProviderSettings = S["ProviderSettings"];
+export type Provider = S["Provider"];
 export type Committed = S["Committed"];
 export type EntityKind = S["EntityKind"];
 export type KnowledgeState = S["KnowledgeState"];
