@@ -151,9 +151,25 @@ describe("EntityPage", () => {
     expect(await screen.findByText("I used Python daily at Example Corp.")).toBeInTheDocument();
     expect(api.calls("GET /api/provenance/entity/3")).toHaveLength(1);
     await user.keyboard("{Escape}");
-    await user.click(await screen.findByRole("button", { name: "why?" }));
+    await user.click(await screen.findByRole("button", { name: "Why: used_in Example Corp" }));
     expect(await screen.findByText("Edge excerpt")).toBeInTheDocument();
     expect(api.calls("GET /api/provenance/edge/7")).toHaveLength(1);
+  });
+
+  it("gives each edge's why button a distinguishing accessible name", async () => {
+    fakeApi({
+      [ENTITY]: [json(makeEntity())],
+      [EDGES]: [json([makeEdge(), makeEdge({ id: 8, src_id: 5, dst_id: 3, rel: "requires" })])],
+      "GET /api/entities/4": [json(makeEntity({ id: 4, name: "Example Corp" }))],
+      "GET /api/entities/5": [json(makeEntity({ id: 5, name: "Backend role" }))],
+    });
+    renderAt("/knowledge/3");
+    expect(
+      await screen.findByRole("button", { name: "Why: used_in Example Corp" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Why: requires Backend role" }),
+    ).toBeInTheDocument();
   });
 
   it("closes the drawer and shows no stale provenance when the route moves to another entity", async () => {
