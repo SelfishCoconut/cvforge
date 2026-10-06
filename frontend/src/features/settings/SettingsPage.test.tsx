@@ -217,6 +217,32 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
+  it("keeps Save locked and still shows a failure when edited while the save is in flight", async () => {
+    let release: (r: Response) => void = () => undefined;
+    const api = fakeApi({
+      [GET]: [json(view())],
+      [PUT]: [() => new Promise<Response>((r) => (release = r))],
+    });
+    renderApp(<SettingsPage />);
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Model"), "x");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("button", { name: "Saving…" })).toBeDisabled();
+    await user.type(screen.getByLabelText("Model"), "y");
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(api.calls(PUT)).toHaveLength(1);
+    release(json({ detail: "refused while editing" }, 422));
+    expect(await screen.findByRole("alert")).toHaveTextContent("refused while editing");
+  });
+
+  it("says the base URL is only used by Ollama and that a remote host receives your text", async () => {
+    fakeApi({ [GET]: [json(view())] });
+    renderApp(<SettingsPage />);
+    expect(await screen.findByText(/Only used by Ollama/)).toHaveTextContent(
+      "Only used by Ollama. If it is not a local address, your text is sent to that host.",
+    );
+  });
+
   it("clears the Saved note once the form is edited again", async () => {
     fakeApi({ [GET]: [json(view())], [PUT]: [json(view({ model: "a" }))] });
     renderApp(<SettingsPage />);

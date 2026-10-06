@@ -103,7 +103,7 @@ export function SettingsForm({ view }: { view: SettingsView }) {
   const next = merge(persisted, draft);
   const dirty = !same(next, persisted);
   const edit = (patch: Partial<Draft>) => {
-    save.reset();
+    if (!save.isPending) save.reset();
     setDraft({ ...draft, ...patch });
   };
   const submit = (e: FormEvent) => {
@@ -145,6 +145,7 @@ export function SettingsForm({ view }: { view: SettingsView }) {
         label="Base URL"
         value={draft.baseUrl}
         onChange={(baseUrl) => edit({ baseUrl })}
+        help="Only used by Ollama. If it is not a local address, your text is sent to that host."
       />
       <Text
         label="API key variable name"
