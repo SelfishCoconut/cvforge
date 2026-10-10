@@ -30,7 +30,7 @@ dev = [
     "radon>=6.0",
     "xenon>=0.9",
     "vulture>=2.13",
-    "pylint>=4.1.1",
+    "pylint>=4.1.2",
     # Documentation site. MkDocs 2.0 removes the plugin system (search and mkdocstrings
     # stop working), so cap it until a deliberate migration with an ADR (see #57).
     "mkdocs>=1.6,<2",
@@ -39,7 +39,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.12.22,<1"]
+requires = ["uv_build>=0.12.23,<1"]
 build-backend = "uv_build"
 
 # ---------------------------------------------------------------- ruff
