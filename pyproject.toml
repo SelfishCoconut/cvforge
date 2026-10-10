@@ -14,7 +14,7 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-ai-slim[anthropic,openai]>=2.53.0",
     "pydantic-settings>=2.6",
-    "sqlalchemy>=2.1.2",
+    "sqlalchemy>=2.1.4",
     "sqlite-vec>=0.1.9",
     "uvicorn>=0.54.0",
 ]
