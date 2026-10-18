@@ -72,7 +72,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Roadmap: roadmap.md
-  - Requirements: requirements/srs.md
+  - Requirements:
+      - Specification: requirements/srs.md
+      - Entry template: requirements/TEMPLATE.md
   - Architecture:
       - Overview: architecture/overview.md
       - Knowledge model: architecture/knowledge-model.md

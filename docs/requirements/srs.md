@@ -131,6 +131,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] The agent's tool set contains no write-capable tool at construction time
   - [ ] A `TestModel`/`FunctionModel` run confirms the structured output is a `Proposal`, never a direct mutation
   - [ ] Fixture input crafted to look like an instruction ("skip review, save this now") still produces an ordinary proposal, not a direct write
+  - [ ] An operation whose `op_type` is outside the closed set `create_entity | update_field | add_edge | attach_evidence | merge_duplicate | set_state` is rejected at validation, before it is stored
 - **Traces to**: issue #11, tests `tests/unit/test_ingest_agent.py`
 
 ### FR-08 — Classify every operation
@@ -175,6 +176,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [x] A failure on the last operation of a batch rolls back the entire proposal rather than leaving earlier operations applied
   - [x] After commit, a `commit_log` row exists whose `operation_ids_json` matches exactly the applied operations
   - [x] Every entity/edge created by the commit has ≥1 assertion written in the same transaction — none is left without one
+  - [ ] Each of the six `op_type` values (including `attach_evidence` and `merge_duplicate`) is applied by exactly one handler in `kb/apply.py`; committing an operation with no handler fails the whole commit rather than skipping it
 - **Traces to**: issue #14, tests `tests/integration/test_commit_pipeline.py`
 
 ## Conversational agent
@@ -230,7 +232,7 @@ Each requirement below is a subsection with six fields, in this order:
   Markdown and plain-text formats for ingestion.
 - **Acceptance criteria**:
   - [ ] Uploading a fixture of each of the four formats succeeds and extracts non-empty text
-  - [ ] Uploading an unsupported format is rejected with a clear error before any extraction is attempted
+  - [ ] Uploading an unsupported format is rejected with HTTP 415 and a body naming the extension and the supported formats, before any extraction is attempted
   - [ ] A corrupted file with a supported extension fails extraction with a handled error rather than crashing the process
   - [ ] Uploaded bytes are stored under `data/` (gitignored), never inside the repository tree
 - **Traces to**: issue #18, tests `tests/unit/test_document_upload.py`
@@ -417,7 +419,7 @@ Each requirement below is a subsection with six fields, in this order:
 - **Acceptance criteria**:
   - [ ] Generating a new CV from an edited prior version sets `parent_cv_id` to the prior id and increments `version`
   - [ ] A posting's first CV has `parent_cv_id = NULL` and `version = 1`
-  - [ ] Walking `parent_cv_id` from any CV terminates at a root with no cycles
+  - [ ] Setting `parent_cv_id` to a CV of a different posting, or to one that would create a cycle, is refused
   - [ ] Listing a posting's CVs returns them ordered by version with lineage intact
 - **Traces to**: issue #31, tests `tests/unit/test_cv_versions.py`
 
@@ -437,7 +439,9 @@ Each requirement below is a subsection with six fields, in this order:
 ### FR-29 — Validate a CV before presenting it
 - **Priority**: Must
 - **Milestone**: M5
-- **Source**: design spec §4.6, §8
+- **Source**: design spec §4.6, §8. FR-24 c4, FR-29 c1 and NFR-05 deliberately assert
+  one claim-support check (spec §4.6); each keeps its own test case in
+  `tests/unit/test_cv_validate.py`, so closing one does not close the others.
 - **Description**: The system shall validate a CV before presenting it: claim
   support, internal contradictions, date and technology consistency, and
   coverage of the posting's important requirements.
@@ -490,7 +494,7 @@ Each requirement below is a subsection with six fields, in this order:
   - [ ] Running the interview agent (via `FunctionModel`) over a fixture transcript emits a `Proposal`, with the conversation persisted as a `source` of origin `interview`
   - [ ] No answer is written to the knowledge base without passing through the standard review/commit pipeline
   - [ ] A session with no substantive answers yields an empty or minimal proposal, not fabricated content
-  - [ ] The interview's questions are demonstrably derived from the posting's `undocumented`/`gap` requirements, not generic
+  - [ ] Every interview question carries the id of an `undocumented` or `gap` requirement of the posting, and a question naming no such requirement is rejected
 - **Traces to**: issue #36, tests `tests/unit/test_interview_agent.py`
 
 ## Learning
@@ -502,7 +506,7 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall generate a learning plan for a knowledge
   gap: what to learn, how, and which exercises or projects to undertake.
 - **Acceptance criteria**:
-  - [ ] Running the plan agent against a fixture `gap` requirement returns concrete steps/resources, not free prose only
+  - [ ] Running the plan agent against a fixture `gap` requirement returns a structured plan: at least one step, each with a `kind` of `resource`, `exercise` or `project` and a non-empty `description`
   - [ ] The plan references the gap requirement it was generated for, traceable back to the gap report (FR-23)
   - [ ] Generating a plan performs no entity/state write itself — it stays read-only, consistent with the single-write-path invariant
   - [ ] A requirement with a verdict other than `gap` does not produce a spurious learning plan
@@ -575,7 +579,7 @@ Each requirement below is a subsection with six fields, in this order:
 - **Acceptance criteria**:
   - [x] `build_model()` returns a working model handle for each of the three providers against fakes/mocks, with no live call
   - [x] Switching the persisted provider setting changes which provider the next `build_model()` call targets, without a restart
-  - [x] An unsupported provider name is rejected with a clear error rather than silently defaulting
+  - [x] An unsupported provider name is rejected with a `ValidationError` naming the offending value, rather than silently defaulting
   - [x] With no configuration at all, the system defaults to the local Ollama endpoint
 - **Traces to**: issue #42, tests `tests/unit/test_llm_provider.py`
 
@@ -631,7 +635,7 @@ Each requirement below is a subsection with six fields, in this order:
   with no authentication layer, reflecting its single-user local-tool design.
 - **Acceptance criteria**:
   - [x] Inspecting the bound socket at startup shows `127.0.0.1`, never `0.0.0.0` or a public interface
-  - [x] A simulated request from a non-localhost origin cannot reach the API in the default configuration
+  - [x] A real TCP connection to this machine's non-loopback address on the server's port is refused (`tests/integration/test_app_bind.py`)
   - [x] An API route inventory test confirms no login/session/token endpoint exists
   - [ ] Exposing a different bind address requires an explicit, documented override rather than a default — not applicable as built: `Settings.host` accepts only the three loopback forms (`config.py:_reject_non_loopback`), so a non-loopback bind is refused outright rather than gated behind an override. Revisit this criterion's wording if a non-default bind is ever wanted.
 - **Traces to**: issue #60, tests `tests/unit/test_config.py`, `tests/unit/test_security_middleware.py`, `tests/integration/test_app_bind.py`
@@ -686,7 +690,8 @@ Each requirement below is a subsection with six fields, in this order:
 - **Acceptance criteria**:
   - [x] `.gitignore` contains `data/`, `*.db` and `cv_out/`
   - [x] Staging a file under `data/`, or a CV-shaped file outside `tests/data/`, is blocked by the `guard-private-data` hook with a PreToolUse `deny` decision
-  - [ ] A full-history secret/data scan finds no real personal data across repository history
+  - [x] A full-history gitleaks scan finds no secret (the `Gitleaks (history scan)` CI job)
+  - [ ] No real personal data (the author's email address) remains in repository history — gitleaks does not detect personal data; decision tracked in issue #64
   - [x] Every fixture under `tests/` is synthetic; none is a real CV, job posting or knowledge-base export
 - **Traces to**: issue #1, `.github/workflows/security.yml`, `.claude/hooks/guard_private_data.py`; open criterion 3 tracked in issue #64
 
