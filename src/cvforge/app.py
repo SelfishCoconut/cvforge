@@ -14,6 +14,7 @@ from starlette.types import Scope
 
 import cvforge
 from cvforge.api.chat import router as chat_router
+from cvforge.api.documents import router as documents_router
 from cvforge.api.errors import install_error_handlers
 from cvforge.api.health import router as health_router
 from cvforge.api.knowledge import router as knowledge_router
@@ -107,6 +108,7 @@ def create_app(
     install_error_handlers(app)
     app.include_router(health_router, prefix="/api")
     app.include_router(chat_router, prefix="/api")
+    app.include_router(documents_router, prefix="/api")
     app.include_router(knowledge_router, prefix="/api")
     app.include_router(proposals_router, prefix="/api")
     app.include_router(settings_router, prefix="/api")
