@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models import Model
 
 from cvforge.api.errors import engine
@@ -229,8 +230,26 @@ def post_message(
         result = agent.run_sync(body.text, deps=KbDeps(db, embedder)).output
     except Exception as exc:
         logger.warning("ingest agent failed: %s", exc)
-        raise HTTPException(502, f"the model could not process the message: {exc}") from exc
+        raise HTTPException(502, _failure_message(exc)) from exc
     return _finish(db, embedder, conversation, evidence, result)
+
+
+def _failure_message(exc: Exception) -> str:
+    """Describe a model failure, naming the usual cause of a truncated reasoning reply.
+
+    pydantic-ai reports `finish_reason == "length"` as a "token limit" error even when
+    no `max_tokens` was set. Against Ollama's OpenAI-compatible endpoint the real cap is
+    the context window (4096 by default), which that endpoint cannot raise per request
+    (#123), so the only remedy is the server's `OLLAMA_CONTEXT_LENGTH`.
+    """
+    message = f"the model could not process the message: {exc}"
+    if isinstance(exc, UnexpectedModelBehavior) and "token limit" in str(exc):
+        message += (
+            " The model most likely ran out of context window while reasoning. "
+            "Start Ollama with OLLAMA_CONTEXT_LENGTH=16384 or higher "
+            "(see docs/guides/providers.md)."
+        )
+    return message
 
 
 def _line(event: dict[str, object]) -> str:
@@ -263,8 +282,7 @@ async def _produce(
         await queue.put(_line({"type": "done"}))
     except Exception as exc:
         logger.warning("ingest stream failed: %s", exc)
-        message = f"the model could not process the message: {exc}"
-        await queue.put(_line({"type": "error", "message": message}))
+        await queue.put(_line({"type": "error", "message": _failure_message(exc)}))
     finally:
         await queue.put(None)
 
