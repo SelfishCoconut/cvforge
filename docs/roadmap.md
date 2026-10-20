@@ -97,7 +97,8 @@ itself, `kb/intake.propose`, the fact schema and converter, the read-only tools 
 ADR-0013 part 2 — is PR #79. B4 — NDJSON streaming, `POST /api/chat/messages/stream`,
 ADR-0014 — is PR #82 (it replaced #80, which GitHub auto-closed when #79's branch was
 deleted). B5 — the real-model latency benchmark, NFR-10 — is PR #81, closing #47. The
-benchmark ships as a tool: a recorded real-model run in `docs/sanity/` is still to do.
+benchmark ships as a tool; its first recorded run is `docs/sanity/2026-10-19-nfr10-latency.md`
+(instruct model p95 8.0 s; the default reasoning model fails on the token limit, #123).
 **C1 is complete locally, on stacked branches that are not pushed and not merged:**
 the backend additions (`GET /api/proposals`, evidence lookup, SPA history fallback),
 the frontend foundation (ADR-0015 `proposed`, `docs/architecture/frontend.md`), and
