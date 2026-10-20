@@ -4,7 +4,7 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-10-05
+Last updated: 2026-10-21
 
 ---
 
@@ -99,17 +99,16 @@ ADR-0014 — is PR #82 (it replaced #80, which GitHub auto-closed when #79's bra
 deleted). B5 — the real-model latency benchmark, NFR-10 — is PR #81, closing #47. The
 benchmark ships as a tool; its first recorded run is `docs/sanity/2026-10-19-nfr10-latency.md`
 (instruct model p95 8.0 s; the default reasoning model fails on the token limit, #123).
-**C1 is complete locally, on stacked branches that are not pushed and not merged:**
-the backend additions (`GET /api/proposals`, evidence lookup, SPA history fallback),
-the frontend foundation (ADR-0015 `proposed`, `docs/architecture/frontend.md`), and
-the chat, review, knowledge and settings views, plus `make demo-ui` (the real app
-serving the SPA with a scripted model on a throwaway database) and `make
-demo-ui-check` (the same HTTP loop in process, in `test-demos`), also run by
-`tests/system/test_ui_loop.py`. **Next action: Álvaro reviews and approves the
-stacked PRs in order** — PR0 `feat/api-proposal-list` → PR1 `feat/ui-foundation` →
-PR2 `feat/fr-13-chat-ui` → PR3 `feat/fr-10-review-ui` → PR4 `feat/fr-04-knowledge-ui`
-→ PR5 `feat/fr-39-settings-ui` → PR6 `feat/ui-e2e-demo` — **then the milestone
-close-out via the `release` skill.**
+**C1 is merged** (the stack ending at #106): the chat, review, knowledge and settings views, the
+ADR-0015 frontend foundation (`proposed`), `make demo-ui` / `make demo-ui-check` and
+`tests/system/test_ui_loop.py`. The NFR-10 benchmark fix is PR #122 (merged).
+**#123 was mis-diagnosed:** the default reasoning model fails because Ollama loads it with a
+4096-token context window and its `/v1` endpoint ignores `options.num_ctx`, not because of
+`max_tokens`. PR #124 makes the 502 name the cause and documents `OLLAMA_CONTEXT_LENGTH`
+(`docs/guides/providers.md`). A native `/api/chat` adapter with a `num_ctx` setting is the
+real fix and needs an ADR. **Next action:** merge #126 (certifi, clears a pip-audit
+advisory) then #124; record the NFR-10 run on the default model with
+`OLLAMA_CONTEXT_LENGTH=16384`; then close M1 via the `release` skill.
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 **M1 infra backlog cleared (2026-10-05):** `mkdocs<2` ceiling (#57), Dependabot npm
