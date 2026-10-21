@@ -326,6 +326,40 @@
         "title": "EvidenceRecord",
         "type": "object"
       },
+      "EvidenceView": {
+        "description": "A span of source text.\n\nAttributes:\n    source_id: The source.\n    source_kind: `conversation`, `document`, `web` or `manual`.\n    source_label: The source's label.\n    locator: Where in the source.\n    excerpt: The literal text.",
+        "properties": {
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "source_kind",
+          "source_label",
+          "locator",
+          "excerpt"
+        ],
+        "title": "EvidenceView",
+        "type": "object"
+      },
       "ExtractionView": {
         "description": "The result of extracting a document.\n\nAttributes:\n    source_id: The document.\n    chunks: How many chunks it was read in.\n    proposal: The pending proposal; empty when nothing was extracted.\n    rejected: What the agent produced that was dropped, and why.\n    similarity_available: False if duplicate detection could not run.",
         "properties": {
@@ -360,6 +394,50 @@
           "similarity_available"
         ],
         "title": "ExtractionView",
+        "type": "object"
+      },
+      "GapView": {
+        "description": "A requirement the knowledge base does not back.\n\nAttributes:\n    requirement_id: The requirement, linking back to the posting.\n    kind: The requirement's kind.\n    text: What the posting asks.\n    verdict: `undocumented` (plausible, unrecorded) or `gap`.\n    score: Closeness of the nearest plausible entity, if any.\n    rationale: Why.",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/RequirementKind"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "requirement_id": {
+            "title": "Requirement Id",
+            "type": "integer"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/MatchVerdict"
+          }
+        },
+        "required": [
+          "requirement_id",
+          "kind",
+          "text",
+          "verdict",
+          "score",
+          "rationale"
+        ],
+        "title": "GapView",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -649,7 +727,7 @@
         "type": "string"
       },
       "MatchView": {
-        "description": "The verdict for one requirement.\n\nAttributes:\n    requirement_id: The requirement judged.\n    kind: The requirement's kind.\n    text: What the posting asks.\n    verdict: `satisfied`, `evidenced`, `undocumented` or `gap`.\n    score: Closeness of the best backing or plausible entity, if any.\n    rationale: Why.\n    support: Backing entity ids; empty for `undocumented` and `gap`.",
+        "description": "The verdict for one requirement.\n\nAttributes:\n    requirement_id: The requirement judged.\n    kind: The requirement's kind.\n    text: What the posting asks.\n    verdict: `satisfied`, `evidenced`, `undocumented` or `gap`.\n    score: Closeness of the best backing or plausible entity, if any.\n    rationale: Why.\n    support: Backing entities with evidence; empty for `undocumented` and `gap`.",
         "properties": {
           "kind": {
             "$ref": "#/components/schemas/RequirementKind"
@@ -675,7 +753,7 @@
           },
           "support": {
             "items": {
-              "type": "integer"
+              "$ref": "#/components/schemas/SupportView"
             },
             "title": "Support",
             "type": "array"
@@ -1269,6 +1347,48 @@
         "title": "SettingsView",
         "type": "object"
       },
+      "SupportView": {
+        "description": "An entity a verdict rests on.\n\nAttributes:\n    entity_id: The entity (fetch it with `GET /api/entities/{id}`).\n    name: Its name.\n    kind: Its kind.\n    state: Its current knowledge state.\n    archived: True if it was archived after the match, so it no longer backs a claim.\n    evidence: Spans stating the entity or one of its recorded uses.",
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "integer"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceView"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id",
+          "name",
+          "kind",
+          "state",
+          "archived",
+          "evidence"
+        ],
+        "title": "SupportView",
+        "type": "object"
+      },
       "TargetKind": {
         "description": "What an assertion or a classification points at.",
         "enum": [
@@ -1833,6 +1953,53 @@
         "summary": "Read Job",
         "tags": [
           "jobs"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}/gaps": {
+      "get": {
+        "description": "List a posting's `undocumented` and `gap` requirements from its stored matches.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The gap report; empty when everything is backed or no match has been run.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
+        "operationId": "read_gaps_api_jobs__posting_id__gaps_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GapView"
+                  },
+                  "title": "Response Read Gaps Api Jobs  Posting Id  Gaps Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Gaps",
+        "tags": [
+          "match"
         ]
       }
     },

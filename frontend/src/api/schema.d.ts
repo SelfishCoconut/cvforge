@@ -362,6 +362,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/{posting_id}/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Gaps
+         * @description List a posting's `undocumented` and `gap` requirements from its stored matches.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The gap report; empty when everything is backed or no match has been run.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such posting (404).
+         */
+        get: operations["read_gaps_api_jobs__posting_id__gaps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/{posting_id}/match": {
         parameters: {
             query?: never;
@@ -796,6 +826,29 @@ export interface components {
             source_label: string;
         };
         /**
+         * EvidenceView
+         * @description A span of source text.
+         *
+         *     Attributes:
+         *         source_id: The source.
+         *         source_kind: `conversation`, `document`, `web` or `manual`.
+         *         source_label: The source's label.
+         *         locator: Where in the source.
+         *         excerpt: The literal text.
+         */
+        EvidenceView: {
+            /** Excerpt */
+            excerpt: string;
+            /** Locator */
+            locator: string;
+            /** Source Id */
+            source_id: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Label */
+            source_label: string;
+        };
+        /**
          * ExtractionView
          * @description The result of extracting a document.
          *
@@ -816,6 +869,30 @@ export interface components {
             similarity_available: boolean;
             /** Source Id */
             source_id: number;
+        };
+        /**
+         * GapView
+         * @description A requirement the knowledge base does not back.
+         *
+         *     Attributes:
+         *         requirement_id: The requirement, linking back to the posting.
+         *         kind: The requirement's kind.
+         *         text: What the posting asks.
+         *         verdict: `undocumented` (plausible, unrecorded) or `gap`.
+         *         score: Closeness of the nearest plausible entity, if any.
+         *         rationale: Why.
+         */
+        GapView: {
+            kind: components["schemas"]["RequirementKind"];
+            /** Rationale */
+            rationale: string;
+            /** Requirement Id */
+            requirement_id: number;
+            /** Score */
+            score: number | null;
+            /** Text */
+            text: string;
+            verdict: components["schemas"]["MatchVerdict"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -956,7 +1033,7 @@ export interface components {
          *         verdict: `satisfied`, `evidenced`, `undocumented` or `gap`.
          *         score: Closeness of the best backing or plausible entity, if any.
          *         rationale: Why.
-         *         support: Backing entity ids; empty for `undocumented` and `gap`.
+         *         support: Backing entities with evidence; empty for `undocumented` and `gap`.
          */
         MatchView: {
             kind: components["schemas"]["RequirementKind"];
@@ -967,7 +1044,7 @@ export interface components {
             /** Score */
             score: number | null;
             /** Support */
-            support: number[];
+            support: components["schemas"]["SupportView"][];
             /** Text */
             text: string;
             verdict: components["schemas"]["MatchVerdict"];
@@ -1272,6 +1349,32 @@ export interface components {
             /** Api Key Configured */
             api_key_configured: boolean;
             settings: components["schemas"]["ProviderSettings"];
+        };
+        /**
+         * SupportView
+         * @description An entity a verdict rests on.
+         *
+         *     Attributes:
+         *         entity_id: The entity (fetch it with `GET /api/entities/{id}`).
+         *         name: Its name.
+         *         kind: Its kind.
+         *         state: Its current knowledge state.
+         *         archived: True if it was archived after the match, so it no longer backs a claim.
+         *         evidence: Spans stating the entity or one of its recorded uses.
+         */
+        SupportView: {
+            /** Archived */
+            archived: boolean;
+            /** Entity Id */
+            entity_id: number;
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceView"][];
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** State */
+            state: string;
         };
         /**
          * TargetKind
@@ -1653,6 +1756,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_gaps_api_jobs__posting_id__gaps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GapView"][];
                 };
             };
             /** @description Validation Error */

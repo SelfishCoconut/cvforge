@@ -47,3 +47,8 @@ state and carry no assertion.
 - Matches go stale when the knowledge changes; running the match again refreshes them.
 - With no embedder configured only exact names can be `satisfied`; everything else is
   `gap`. That errs toward never over-claiming.
+- Reads resolve a verdict's support at request time (`match/evidence.py`): each cited
+  entity comes with the spans stating it and its recorded uses, an entity archived since
+  the match is flagged (`archived`), and one that no longer exists is dropped rather than
+  cited. The gap report (`undocumented` + `gap`) is read from the stored matches, in
+  requirement order, so it is identical until the match is run again.

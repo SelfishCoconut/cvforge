@@ -85,3 +85,29 @@ def test_matching_writes_no_knowledge(matching: tuple[TestClient, int], kb: sa.E
         after = queries.table_counts(conn)
     for table in ("entity", "edge", "assertion", "proposal"):
         assert after[table] == before[table]
+
+
+def test_support_carries_entity_and_evidence_and_gaps_have_none(
+    matching: tuple[TestClient, int],
+) -> None:
+    client, posting = matching
+    rows = client.post(f"/api/jobs/{posting}/match").json()
+
+    (support,) = rows[0]["support"]
+    assert support["name"] == "Rust" and support["archived"] is False
+    assert support["evidence"] and {"locator", "excerpt", "source_kind"} <= set(
+        support["evidence"][0]
+    )
+    assert rows[1]["support"] == []
+
+
+def test_the_gap_report_endpoint_lists_the_unbacked_requirements(
+    matching: tuple[TestClient, int],
+) -> None:
+    client, posting = matching
+    assert client.get(f"/api/jobs/{posting}/gaps").json() == []
+    client.post(f"/api/jobs/{posting}/match")
+    gaps = client.get(f"/api/jobs/{posting}/gaps").json()
+
+    assert [(g["text"], g["verdict"]) for g in gaps] == [("Fortran", "gap"), ("Go", "gap")]
+    assert client.get("/api/jobs/999/gaps").status_code == 404

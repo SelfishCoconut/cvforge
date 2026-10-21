@@ -140,6 +140,8 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.match.store
 
+::: cvforge.match.evidence
+
 ::: cvforge.api.matches
 
 ::: cvforge.llm.agents.adjacency
