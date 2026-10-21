@@ -58,6 +58,17 @@ class SourceRecord:
 
 
 @dataclass(frozen=True)
+class AssertionRecord:
+    """One assertion row: what it is about and which field it states."""
+
+    id: int
+    target_kind: str
+    target_id: int
+    field: str | None
+    evidence_id: int
+
+
+@dataclass(frozen=True)
 class ProvenanceRecord:
     """One assertion resolved back to the literal evidence it cites (FR-03)."""
 
@@ -576,3 +587,43 @@ def get_source(conn: sa.Connection, source_id: int) -> SourceRecord | None:
         ).where(schema.source.c.id == source_id)
     ).one_or_none()
     return None if row is None else SourceRecord(*row)
+
+
+def get_assertion(conn: sa.Connection, assertion_id: int) -> AssertionRecord | None:
+    """Return one assertion, or None if there is no such row.
+
+    Args:
+        conn: An open connection.
+        assertion_id: The assertion id.
+
+    Returns:
+        The assertion, or None.
+    """
+    row = conn.execute(
+        sa.select(schema.assertion).where(schema.assertion.c.id == assertion_id)
+    ).first()
+    if row is None:
+        return None
+    return AssertionRecord(row.id, row.target_kind, row.target_id, row.field, row.evidence_id)
+
+
+def entity_assertion_id(conn: sa.Connection, entity_id: int, field: str | None) -> int | None:
+    """Return the assertion that states `field` of an entity (None = its existence).
+
+    When a field was restated, the latest assertion is the one that states the current value.
+
+    Args:
+        conn: An open connection.
+        entity_id: The entity id.
+        field: The field name, or None for the entity's existence.
+
+    Returns:
+        The assertion id, or None if the entity has no assertion for that field.
+    """
+    a = schema.assertion.c
+    query = (
+        sa.select(sa.func.max(a.id))
+        .where(a.target_kind == TargetKind.ENTITY.value, a.target_id == entity_id)
+        .where(a.field.is_(None) if field is None else a.field == field)
+    )
+    return conn.execute(query).scalar()

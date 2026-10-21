@@ -102,6 +102,7 @@ nav:
       - 0021 Job postings store: adr/0021-job-postings-are-a-registered-writer-keyed-by-url.md
       - 0022 Job intake request: adr/0022-job-intake-is-one-request-and-research-is-not-persisted.md
       - 0023 Requirement matching: adr/0023-requirement-matching-is-decided-by-the-database.md
+      - 0024 CV claims: adr/0024-a-cv-is-its-claim-rows-copied-from-stored-facts.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md

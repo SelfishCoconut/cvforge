@@ -83,6 +83,89 @@
         "title": "ChatResponse",
         "type": "object"
       },
+      "ClaimDetail": {
+        "description": "A claim resolved to the exact stored fact and its evidence.\n\nAttributes:\n    claim: The claim.\n    entity_name: The entity it is about.\n    entity_state: That entity's current knowledge state.\n    field: The field the assertion states (None = the entity's existence).\n    evidence: The source span behind the assertion.",
+        "properties": {
+          "claim": {
+            "$ref": "#/components/schemas/ClaimView"
+          },
+          "entity_name": {
+            "title": "Entity Name",
+            "type": "string"
+          },
+          "entity_state": {
+            "title": "Entity State",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/CvEvidenceView"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          }
+        },
+        "required": [
+          "claim",
+          "entity_name",
+          "entity_state",
+          "field",
+          "evidence"
+        ],
+        "title": "ClaimDetail",
+        "type": "object"
+      },
+      "ClaimSlot": {
+        "description": "Where a claim sits in an item of a CV section.",
+        "enum": [
+          "header",
+          "subheader",
+          "period",
+          "bullet"
+        ],
+        "title": "ClaimSlot",
+        "type": "string"
+      },
+      "ClaimView": {
+        "description": "One line of a CV.\n\nAttributes:\n    id: The claim id, for `GET /api/cvs/{cv}/claims/{id}`.\n    slot: Header, subheader, period or bullet.\n    text: The rendered string, copied from a stored fact.\n    entity_id: The entity it is about.\n    assertion_id: The assertion that states it.",
+        "properties": {
+          "assertion_id": {
+            "title": "Assertion Id",
+            "type": "integer"
+          },
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/ClaimSlot"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slot",
+          "text",
+          "entity_id",
+          "assertion_id"
+        ],
+        "title": "ClaimView",
+        "type": "object"
+      },
       "Committed": {
         "description": "What a commit wrote.\n\nAttributes:\n    commit_id: The `commit_log` row.\n    applied_operation_ids: Applied operations, in order.\n    entity_ids: For each applied `create_entity` seq, the entity it resolved to.\n    index_pending: Entity ids the similarity index could not embed yet (the\n        embedder was unavailable). The commit still happened; only the\n        search index is behind — `reindex_missing` catches these up later.",
         "properties": {
@@ -119,6 +202,101 @@
           "entity_ids"
         ],
         "title": "Committed",
+        "type": "object"
+      },
+      "CvEvidenceView": {
+        "description": "The source span a fact comes from.\n\nAttributes:\n    source_id: The source.\n    source_kind: `conversation`, `document`, `web` or `manual`.\n    source_label: The source's label.\n    locator: Where in the source.\n    excerpt: The literal text.",
+        "properties": {
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "source_kind",
+          "source_label",
+          "locator",
+          "excerpt"
+        ],
+        "title": "CvEvidenceView",
+        "type": "object"
+      },
+      "CvStatus": {
+        "description": "Whether a CV may be handed out.",
+        "enum": [
+          "draft",
+          "final"
+        ],
+        "title": "CvStatus",
+        "type": "string"
+      },
+      "CvView": {
+        "description": "A stored CV.\n\nAttributes:\n    id: The CV id.\n    job_posting_id: The posting it targets.\n    version: Its version for that posting.\n    parent_cv_id: The CV it derives from, if any.\n    generation_mode: `automatic` or `collaborative`.\n    status: `draft` or `final`.\n    sections: Its content.",
+        "properties": {
+          "generation_mode": {
+            "$ref": "#/components/schemas/GenerationMode"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_posting_id": {
+            "title": "Job Posting Id",
+            "type": "integer"
+          },
+          "parent_cv_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Cv Id"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionView"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CvStatus"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "job_posting_id",
+          "version",
+          "parent_cv_id",
+          "generation_mode",
+          "status",
+          "sections"
+        ],
+        "title": "CvView",
         "type": "object"
       },
       "DocumentView": {
@@ -440,6 +618,33 @@
         "title": "GapView",
         "type": "object"
       },
+      "GenerateRequest": {
+        "description": "What to generate from.\n\nAttributes:\n    parent_cv_id: The CV this one derives from, if any.",
+        "properties": {
+          "parent_cv_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Cv Id"
+          }
+        },
+        "title": "GenerateRequest",
+        "type": "object"
+      },
+      "GenerationMode": {
+        "description": "How a CV was produced (spec §6).",
+        "enum": [
+          "automatic",
+          "collaborative"
+        ],
+        "title": "GenerationMode",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -470,6 +675,54 @@
           "version"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "IssueView": {
+        "description": "A problem found by validation.\n\nAttributes:\n    code: A stable machine name.\n    message: What is wrong.\n    claim_id: The claim concerned, if any.",
+        "properties": {
+          "claim_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Id"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "claim_id"
+        ],
+        "title": "IssueView",
+        "type": "object"
+      },
+      "ItemView": {
+        "description": "One item (a role, project, degree...) of a section.\n\nAttributes:\n    claims: Its claims in render order.",
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimView"
+            },
+            "title": "Claims",
+            "type": "array"
+          }
+        },
+        "required": [
+          "claims"
+        ],
+        "title": "ItemView",
         "type": "object"
       },
       "JobAnalysis": {
@@ -1329,6 +1582,28 @@
         "title": "Review",
         "type": "object"
       },
+      "SectionView": {
+        "description": "A section of a CV.\n\nAttributes:\n    title: The section title (template structure, not a claim).\n    items: Its items.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "items"
+        ],
+        "title": "SectionView",
+        "type": "object"
+      },
       "SettingsView": {
         "description": "The persisted settings, plus whether a usable key is configured — never the key itself.\n\nAttributes:\n    settings: The persisted provider settings.\n    api_key_configured: True when `settings.api_key_env` names a real,\n        currently-set environment variable. False both when no name is\n        set and when the named variable is unset — a caller who only\n        wants \"is a key needed and missing\" reads this one field either way.",
         "properties": {
@@ -1438,6 +1713,28 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "ValidationView": {
+        "description": "The result of validating a CV.\n\nAttributes:\n    valid: True if there are no issues.\n    issues: Every issue found.",
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/IssueView"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "issues"
+        ],
+        "title": "ValidationView",
+        "type": "object"
+      },
       "WorkModel": {
         "description": "Where a job is worked from, as the posting states it.",
         "enum": [
@@ -1534,6 +1831,187 @@
         "summary": "Post Message Stream",
         "tags": [
           "chat"
+        ]
+      }
+    },
+    "/api/cvs/{cv_id}": {
+      "get": {
+        "description": "Read one CV.\n\nArgs:\n    cv_id: A CV id.\n    db: The knowledge-base engine.\n\nReturns:\n    The CV with its claims.\n\nRaises:\n    NotFoundError: If there is no such CV (404).",
+        "operationId": "read_cv_api_cvs__cv_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CvView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Cv",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
+    "/api/cvs/{cv_id}/claims/{claim_id}": {
+      "get": {
+        "description": "Resolve a claim to the exact stored fact and the evidence behind it.\n\nArgs:\n    cv_id: A CV id.\n    claim_id: A claim id in that CV.\n    db: The knowledge-base engine.\n\nReturns:\n    The claim, its entity and the source span.\n\nRaises:\n    NotFoundError: If the CV, the claim, or its entity or assertion is missing (404).",
+        "operationId": "read_claim_api_cvs__cv_id__claims__claim_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "title": "Claim Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Claim",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
+    "/api/cvs/{cv_id}/final": {
+      "post": {
+        "description": "Mark a CV final, only if it validates.\n\nArgs:\n    cv_id: A CV id.\n    db: The knowledge-base engine.\n    response: The response, unused on success.\n\nReturns:\n    The CV, now final.\n\nRaises:\n    HTTPException: 409 listing the issues if validation fails; nothing changes.",
+        "operationId": "finalise_api_cvs__cv_id__final_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CvView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Finalise",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
+    "/api/cvs/{cv_id}/validate": {
+      "post": {
+        "description": "Validate a CV against the live knowledge base.\n\nArgs:\n    cv_id: A CV id.\n    db: The knowledge-base engine.\n\nReturns:\n    Whether it is valid, and every issue found.",
+        "operationId": "validate_api_cvs__cv_id__validate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate",
+        "tags": [
+          "cv"
         ]
       }
     },
@@ -1953,6 +2431,104 @@
         "summary": "Read Job",
         "tags": [
           "jobs"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}/cvs": {
+      "get": {
+        "description": "List a posting's CVs, oldest version first.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The CVs.",
+        "operationId": "list_posting_cvs_api_jobs__posting_id__cvs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CvView"
+                  },
+                  "title": "Response List Posting Cvs Api Jobs  Posting Id  Cvs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Posting Cvs",
+        "tags": [
+          "cv"
+        ]
+      },
+      "post": {
+        "description": "Generate a CV for a matched posting from stored facts only.\n\nArgs:\n    posting_id: A posting id.\n    body: Optionally the CV this one derives from.\n    db: The knowledge-base engine.\n\nReturns:\n    The new draft CV.\n\nRaises:\n    NotFoundError: If the posting or the parent CV does not exist (404).\n    HTTPException: 409 if the posting has requirements but has not been matched.",
+        "operationId": "create_cv_api_jobs__posting_id__cvs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CvView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Cv",
+        "tags": [
+          "cv"
         ]
       }
     },

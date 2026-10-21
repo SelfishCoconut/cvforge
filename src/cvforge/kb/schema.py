@@ -20,8 +20,12 @@ from cvforge.kb.vocab import (
     CREDENTIAL_TYPES,
     ORG_TYPES,
     SKILL_CATEGORIES,
+    ClaimBasis,
+    ClaimSlot,
     Classification,
+    CvStatus,
     EntityKind,
+    GenerationMode,
     KnowledgeState,
     MatchVerdict,
     OpStatus,
@@ -405,4 +409,47 @@ match_support = sa.Table(
         "match_id", sa.Integer, sa.ForeignKey("match.id", ondelete="CASCADE"), primary_key=True
     ),
     sa.Column("entity_id", sa.Integer, sa.ForeignKey("entity.id"), primary_key=True),
+)
+
+# --- CV generation (M5, FR-24..FR-27). Derived from knowledge, not knowledge itself. -------
+# Written by `cv/store.py`, a registered writer (ADR-0024). A CV *is* its claim rows: every
+# rendered string is a `cv_claim` bound to one entity and one assertion about it (FR-25), so
+# the claim table cannot hold a line without support: both ids are NOT NULL foreign keys.
+cv = sa.Table(
+    "cv",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("job_posting_id", sa.Integer, sa.ForeignKey("job_posting.id"), nullable=False),
+    sa.Column("version", sa.Integer, nullable=False),
+    sa.Column("parent_cv_id", sa.Integer, sa.ForeignKey("cv.id")),
+    sa.Column("label", sa.String),
+    sa.Column("generation_mode", sa.String, nullable=False),
+    sa.Column("status", sa.String, nullable=False),
+    sa.Column("tex_path", sa.String),
+    sa.Column("pdf_path", sa.String),
+    sa.Column("txt_path", sa.String),
+    sa.Column("created_at", sa.DateTime, nullable=False),
+    sa.UniqueConstraint("job_posting_id", "version"),
+    sa.CheckConstraint("version >= 1", name="version_positive"),
+    _in("generation_mode", values(GenerationMode), "generation_mode"),
+    _in("status", values(CvStatus), "status"),
+)
+
+cv_claim = sa.Table(
+    "cv_claim",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("cv_id", sa.Integer, sa.ForeignKey("cv.id", ondelete="CASCADE"), nullable=False),
+    sa.Column("section", sa.String, nullable=False),
+    sa.Column("item_index", sa.Integer, nullable=False),
+    sa.Column("slot", sa.String, nullable=False),
+    sa.Column("position", sa.Integer, nullable=False),
+    sa.Column("basis", sa.String, nullable=False),
+    sa.Column("text", sa.String, nullable=False),
+    sa.Column("entity_id", sa.Integer, sa.ForeignKey("entity.id"), nullable=False),
+    sa.Column("assertion_id", sa.Integer, sa.ForeignKey("assertion.id"), nullable=False),
+    sa.UniqueConstraint("cv_id", "section", "item_index", "slot", "position"),
+    sa.CheckConstraint("length(trim(text)) > 0", name="text_nonblank"),
+    _in("slot", values(ClaimSlot), "slot"),
+    _in("basis", values(ClaimBasis), "basis"),
 )

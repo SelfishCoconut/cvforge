@@ -155,3 +155,34 @@ class MatchVerdict(StrEnum):
     EVIDENCED = "evidenced"
     UNDOCUMENTED = "undocumented"
     GAP = "gap"
+
+
+class GenerationMode(StrEnum):
+    """How a CV was produced (spec §6)."""
+
+    AUTOMATIC = "automatic"
+    COLLABORATIVE = "collaborative"
+
+
+class CvStatus(StrEnum):
+    """Whether a CV may be handed out."""
+
+    DRAFT = "draft"
+    FINAL = "final"
+
+
+class ClaimSlot(StrEnum):
+    """Where a claim sits in an item of a CV section."""
+
+    HEADER = "header"
+    SUBHEADER = "subheader"
+    PERIOD = "period"
+    BULLET = "bullet"
+
+
+class ClaimBasis(StrEnum):
+    """Which stored fact a claim's text is copied from."""
+
+    NAME = "name"
+    SUMMARY = "summary"
+    PERIOD = "period"

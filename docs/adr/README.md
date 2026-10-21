@@ -33,3 +33,4 @@ was decided, and when, is the whole point.
 | [0021](0021-job-postings-are-a-registered-writer-keyed-by-url.md) | Job postings are a registered writer, keyed by normalised URL | proposed | 2026-10-21 |
 | [0022](0022-job-intake-is-one-request-and-research-is-not-persisted.md) | Job intake is one request; company research is returned, not persisted | proposed | 2026-10-21 |
 | [0023](0023-requirement-matching-is-decided-by-the-database.md) | Requirement matching is decided by the database; the model only judges adjacency | proposed | 2026-10-21 |
+| [0024](0024-a-cv-is-its-claim-rows-copied-from-stored-facts.md) | A CV is its claim rows, each copied from a stored fact | proposed | 2026-10-21 |

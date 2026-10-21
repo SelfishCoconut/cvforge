@@ -1,0 +1,82 @@
+[
+  {
+    "entity": "Rust",
+    "item": 0,
+    "section": "Skills",
+    "slot": "bullet",
+    "states": "existence",
+    "text": "Rust"
+  },
+  {
+    "entity": "Backend Engineer",
+    "item": 0,
+    "section": "Experience",
+    "slot": "header",
+    "states": "existence",
+    "text": "Backend Engineer"
+  },
+  {
+    "entity": "Acme Logistics",
+    "item": 0,
+    "section": "Experience",
+    "slot": "subheader",
+    "states": "existence",
+    "text": "Acme Logistics"
+  },
+  {
+    "entity": "Backend Engineer",
+    "item": 0,
+    "section": "Experience",
+    "slot": "period",
+    "states": "started_at",
+    "text": "2019-01 to 2022-06"
+  },
+  {
+    "entity": "Backend Engineer",
+    "item": 0,
+    "section": "Experience",
+    "slot": "bullet",
+    "states": "summary",
+    "text": "Built data services"
+  },
+  {
+    "entity": "Log parser",
+    "item": 0,
+    "section": "Experience",
+    "slot": "bullet",
+    "states": "summary",
+    "text": "Parsed two gigabytes per second"
+  },
+  {
+    "entity": "BSc Computer Science",
+    "item": 0,
+    "section": "Education",
+    "slot": "header",
+    "states": "existence",
+    "text": "BSc Computer Science"
+  },
+  {
+    "entity": "BSc Computer Science",
+    "item": 0,
+    "section": "Education",
+    "slot": "period",
+    "states": "started_at",
+    "text": "2014-09 to 2018-06"
+  },
+  {
+    "entity": "AWS Certified Developer",
+    "item": 0,
+    "section": "Certifications",
+    "slot": "header",
+    "states": "existence",
+    "text": "AWS Certified Developer"
+  },
+  {
+    "entity": "AWS Certified Developer",
+    "item": 0,
+    "section": "Certifications",
+    "slot": "period",
+    "states": "issued_at",
+    "text": "2021-03"
+  }
+]
