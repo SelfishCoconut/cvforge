@@ -130,3 +130,19 @@ def values(enum: type[StrEnum]) -> tuple[str, ...]:
         The string values, for CHECK constraints and error messages.
     """
     return tuple(member.value for member in enum)
+
+
+class WorkModel(StrEnum):
+    """Where a job is worked from, as the posting states it."""
+
+    REMOTE = "remote"
+    HYBRID = "hybrid"
+    ONSITE = "onsite"
+
+
+class RequirementKind(StrEnum):
+    """What a requirement asks of the candidate (spec §4.6)."""
+
+    REQUIRED = "required"
+    PREFERRED = "preferred"
+    RESPONSIBILITY = "responsibility"

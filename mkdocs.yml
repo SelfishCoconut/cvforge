@@ -99,6 +99,7 @@ nav:
       - 0018 Edges between known entities: adr/0018-edges-between-known-entities-classify-against-stored-edges.md
       - 0019 Job page fetching: adr/0019-job-pages-fetched-static-first-with-an-optional-browser.md
       - 0020 Job agent: adr/0020-the-job-agent-has-no-tools-and-reads-the-posting-as-fenced-data.md
+      - 0021 Job postings store: adr/0021-job-postings-are-a-registered-writer-keyed-by-url.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md

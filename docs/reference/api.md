@@ -125,3 +125,7 @@ Generated from docstrings. Update the docstring, not this page.
 ## Company research
 
 ::: cvforge.web.search
+
+## Job persistence
+
+::: cvforge.jobs.store

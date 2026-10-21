@@ -29,8 +29,10 @@ from cvforge.kb.vocab import (
     ProposalStatus,
     Provider,
     Rel,
+    RequirementKind,
     SourceKind,
     TargetKind,
+    WorkModel,
     values,
 )
 
@@ -326,4 +328,42 @@ app_setting = sa.Table(
     sa.CheckConstraint(
         "similarity_threshold >= 0 AND similarity_threshold <= 1", name="similarity_threshold_range"
     ),
+)
+
+# --- job intake (M3, FR-20). Not knowledge: no assertion, no evidence. --------------------
+# Written by `jobs/store.py`, a registered writer (ADR-0021). `source_id` makes the raw page
+# traceable; `organization_id` and `normalized_skill_id` are filled by matching (M4), never
+# by a fetch.
+job_posting = sa.Table(
+    "job_posting",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("url", sa.String, nullable=False, unique=True),
+    sa.Column("source_id", sa.Integer, sa.ForeignKey("source.id"), nullable=False),
+    sa.Column("organization_id", sa.Integer, sa.ForeignKey("entity.id")),
+    sa.Column("title", sa.String),
+    sa.Column("seniority", sa.String),
+    sa.Column("location", sa.String),
+    sa.Column("work_model", sa.String),
+    sa.Column("raw_text", sa.Text, nullable=False),
+    sa.Column("analysis_json", sa.Text, nullable=False),
+    sa.Column("fetched_at", sa.DateTime, nullable=False),
+    _nullable_in("work_model", values(WorkModel), "work_model"),
+)
+
+requirement = sa.Table(
+    "requirement",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column(
+        "job_posting_id",
+        sa.Integer,
+        sa.ForeignKey("job_posting.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column("kind", sa.String, nullable=False),
+    sa.Column("text", sa.String, nullable=False),
+    sa.Column("normalized_skill_id", sa.Integer, sa.ForeignKey("entity.id")),
+    _in("kind", values(RequirementKind), "requirement_kind"),
+    sa.CheckConstraint("length(trim(text)) > 0", name="requirement_text_nonblank"),
 )

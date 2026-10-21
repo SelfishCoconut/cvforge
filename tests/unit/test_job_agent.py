@@ -8,8 +8,9 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
+from cvforge.kb.vocab import WorkModel
 from cvforge.llm.agents.job import AnalysisError, analyze_posting, build_job_agent
-from cvforge.llm.schemas import JobAnalysis, WorkModel
+from cvforge.llm.schemas import JobAnalysis
 
 POSTING = """Senior Backend Engineer - Example Co.
 You will build data pipelines. Required: Python, SQL. Nice to have: Rust.

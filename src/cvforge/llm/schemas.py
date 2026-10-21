@@ -5,11 +5,10 @@ These are the model-facing shapes. They carry no evidence and no classification;
 """
 
 from datetime import date
-from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
-from cvforge.kb.vocab import EntityKind, Rel
+from cvforge.kb.vocab import EntityKind, Rel, WorkModel
 
 
 class ExtractedFact(BaseModel):
@@ -61,14 +60,6 @@ class DocumentResult(BaseModel):
 
     facts: list[DocumentFact] = Field(default_factory=list)
     edges: list[DocumentEdge] = Field(default_factory=list)
-
-
-class WorkModel(StrEnum):
-    """Where a job is worked from, as the posting states it."""
-
-    REMOTE = "remote"
-    HYBRID = "hybrid"
-    ONSITE = "onsite"
 
 
 class JobAnalysis(BaseModel):
