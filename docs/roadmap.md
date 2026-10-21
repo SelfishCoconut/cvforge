@@ -4,15 +4,13 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-10-21
+Last updated: 2026-10-21 (M1 and M2 closed)
 
 ---
 
 ## Where we are
 
-**Phase: M0 complete. M1 (knowledge spine) in progress — M1a (the storage half)
-is merged (`1e19192`, PR #68); M1b (agent layer) and M1c (UI) are planned and
-starting now.**
+**Phase: M0, M1 (knowledge spine) and M2 (document ingestion) are complete and merged; released as `v0.3.0`. M3 (job intake) is next.**
 
 Done:
 - Design spec approved: `docs/superpowers/specs/2026-09-12-cvforge-design.md`.
@@ -66,6 +64,19 @@ Done:
   **fail open** — a hook that errors blocks every tool call in the repo.
 
 ## Next action
+
+**M3 — job intake (FR-17..FR-20, NFR-07 #46).** Start from issue #21 (FR-17, fetch a job
+page by URL). Before it, the sanity audit's two should-fix items (`docs/sanity/2026-10-21.md`):
+one shared `_write_transaction`/`_now` in `kb/db.py`, and splitting `index_entities`
+(`kb/embeddings.py`, the only C-rank function). Job pages are untrusted data (invariants,
+NFR-07): analyzed, never obeyed.
+
+Close-out scope calls (M1/M2): #107 closed as delivered; #73, #64 and #58 left M1 (not
+deliverables: #73 is the reference for two environment-dependent skips, #64 awaits Álvaro,
+#58 is draft PR #91); #46 moved to M3. NFR-10 on the default reasoning model still fails
+(p95 241.9 s vs 30 s); the native Ollama adapter (#129) is the real fix.
+
+The text below is the historical M1/M2 log, kept for context.
 
 Executing `docs/superpowers/plans/2026-09-26-m1b-agent-layer.md`, package by
 package, in this order: **B1** provider layer and settings (FR-38, FR-39, NFR-01,
@@ -150,8 +161,8 @@ CI. Direct pushes to `main` are rejected, including for admins.
 | | Milestone | Delivers | Status |
 |---|---|---|---|
 | M0 | Foundations | Repo, CI/CD, coverage gate, security pipeline, SRS, ADRs, docs site, `.claude` toolkit, health skeleton | done |
-| M1 | Knowledge spine | Schema + provenance, LLM provider layer, conversational ingest, proposal→review→commit, chat + review UI | in progress (M1a done; M1b, M1c planned) |
-| M2 | Document ingestion | Upload → extract → classify new/known/duplicate/conflict → review | not started |
+| M1 | Knowledge spine | Schema + provenance, LLM provider layer, conversational ingest, proposal→review→commit, chat + review UI | done (`v0.3.0`) |
+| M2 | Document ingestion | Upload → extract → classify new/known/duplicate/conflict → review | done (`v0.3.0`) |
 | M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | not started |
 | M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | not started |
 | M5 | CV generation | LaTeX → PDF + ATS text, claim traceability, versions, application linkage, validation | not started |
