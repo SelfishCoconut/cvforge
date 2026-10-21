@@ -65,12 +65,11 @@ Done:
 
 ## Next action
 
-**M3 — job intake is built, awaiting merge (stacked PRs, in this order): FR-20 (#143,
-persistence, ADR-0021) → the jobs API (`POST /api/jobs`, NFR-07 golden test, ADR-0022).**
-Merged already: sanity should-fix refactor (#139), FR-17 fetch (#140, ADR-0019), FR-18 job
-agent (#141, ADR-0020), FR-19 company research (#142). Open each PR against `main` only
-after the one below it merges. When both merge: close M3 with the `release` skill (version
-0.4.0, sanity audit), then start **M4 — match & gaps** (FR-21..FR-23, issues #25-#27).
+**M3 — job intake is built; the last PR is the jobs API (`POST /api/jobs`, NFR-07 golden
+test, ADR-0022).** Merged: sanity should-fix refactor (#139), FR-17 fetch (#140, ADR-0019),
+FR-18 job agent (#141, ADR-0020), FR-19 company research (#142), FR-20 persistence (#143,
+ADR-0021). When the API PR merges: close M3 with the `release` skill (version 0.4.0, sanity
+audit), then start **M4 — match & gaps** (FR-21..FR-23, issues #25-#27).
 
 Known loose ends carried into M4: #145 (flaky `test_document_dedup`, one CI occurrence, passes
 on re-run); no UI for jobs yet (the API is `GET/POST /api/jobs`); a concrete `SearchProvider`
@@ -169,7 +168,7 @@ CI. Direct pushes to `main` are rejected, including for admins.
 | M0 | Foundations | Repo, CI/CD, coverage gate, security pipeline, SRS, ADRs, docs site, `.claude` toolkit, health skeleton | done |
 | M1 | Knowledge spine | Schema + provenance, LLM provider layer, conversational ingest, proposal→review→commit, chat + review UI | done (`v0.3.0`) |
 | M2 | Document ingestion | Upload → extract → classify new/known/duplicate/conflict → review | done (`v0.3.0`) |
-| M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | built, in review |
+| M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | API PR in review |
 | M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | not started |
 | M5 | CV generation | LaTeX → PDF + ATS text, claim traceability, versions, application linkage, validation | not started |
 | M6 | Collaborative mode | Conversational CV editing, discovery questions, interview mode | not started |
