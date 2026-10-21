@@ -11,6 +11,13 @@ from cvforge.web.fetch import (
     fetch_page,
 )
 
+
+@pytest.fixture(autouse=True)
+def _public_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every fixture host resolves to one public address, so no test needs DNS."""
+    monkeypatch.setattr("cvforge.web.fetch.resolve_host", lambda host: ["93.184.216.34"])
+
+
 URL = "https://jobs.example.test/posting/42"
 
 _PARAGRAPH = (
