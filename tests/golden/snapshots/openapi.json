@@ -1480,6 +1480,30 @@
         "title": "RejectedView",
         "type": "object"
       },
+      "RenderedView": {
+        "description": "Where a CV's rendered files were written.\n\nAttributes:\n    tex: The LaTeX source.\n    pdf: The compiled PDF.\n    txt: The plain-text (ATS) rendering.",
+        "properties": {
+          "pdf": {
+            "title": "Pdf",
+            "type": "string"
+          },
+          "tex": {
+            "title": "Tex",
+            "type": "string"
+          },
+          "txt": {
+            "title": "Txt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tex",
+          "pdf",
+          "txt"
+        ],
+        "title": "RenderedView",
+        "type": "object"
+      },
       "RequirementKind": {
         "description": "What a requirement asks of the candidate (spec §4.6).",
         "enum": [
@@ -1929,6 +1953,61 @@
         ]
       }
     },
+    "/api/cvs/{cv_id}/files/{kind}": {
+      "get": {
+        "description": "Download one rendered file of a CV.\n\nArgs:\n    cv_id: A CV id.\n    kind: `tex`, `pdf` or `txt`.\n    db: The knowledge-base engine.\n\nReturns:\n    The file.\n\nRaises:\n    NotFoundError: If the CV is unknown or has not been rendered (404).",
+        "operationId": "download_api_cvs__cv_id__files__kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "tex",
+                "pdf",
+                "txt"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
     "/api/cvs/{cv_id}/final": {
       "post": {
         "description": "Mark a CV final, only if it validates.\n\nArgs:\n    cv_id: A CV id.\n    db: The knowledge-base engine.\n    response: The response, unused on success.\n\nReturns:\n    The CV, now final.\n\nRaises:\n    HTTPException: 409 listing the issues if validation fails; nothing changes.",
@@ -1967,6 +2046,49 @@
           }
         },
         "summary": "Finalise",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
+    "/api/cvs/{cv_id}/render": {
+      "post": {
+        "description": "Render a valid CV as LaTeX, PDF and plain text under the configured output directory.\n\nA CV is presented only if it validates; the three files are written together or the call\nfails. A LaTeX failure is reported with the log tail, never as a corrupt PDF.\n\nArgs:\n    cv_id: A CV id.\n    db: The knowledge-base engine.\n    request: The request, for the configured output directory.\n\nReturns:\n    The three file paths.\n\nRaises:\n    HTTPException: 409 if the CV does not validate; 502 if LaTeX cannot build it.",
+        "operationId": "render_api_cvs__cv_id__render_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderedView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Render",
         "tags": [
           "cv"
         ]

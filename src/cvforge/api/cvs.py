@@ -4,15 +4,20 @@ A CV is generated from stored facts only (ADR-0024). Marking one final is refuse
 validates against the live knowledge base.
 """
 
-from typing import Annotated
+from pathlib import Path
+from typing import Annotated, Literal
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from cvforge.api.errors import engine
+from cvforge.cv.compile import CompileError, compile_pdf
 from cvforge.cv.generate import generate_cv
-from cvforge.cv.store import StoredCv, get_cv, list_cvs, save_cv, set_status
+from cvforge.cv.render import render_tex
+from cvforge.cv.store import StoredCv, get_cv, list_cvs, save_cv, set_artifacts, set_status
+from cvforge.cv.to_text import render_text
 from cvforge.cv.validate import Issue, validate_cv
 from cvforge.jobs.store import get_posting
 from cvforge.kb import apply, queries
@@ -332,3 +337,79 @@ def finalise(cv_id: int, db: Engine, response: Response) -> CvView:
         raise HTTPException(409, f"the CV does not validate and cannot be final: {detail}")
     set_status(db, cv_id, CvStatus.FINAL)
     return _view(_require(db, cv_id))
+
+
+class RenderedView(BaseModel):
+    """Where a CV's rendered files were written.
+
+    Attributes:
+        tex: The LaTeX source.
+        pdf: The compiled PDF.
+        txt: The plain-text (ATS) rendering.
+    """
+
+    tex: str
+    pdf: str
+    txt: str
+
+
+@router.post("/cvs/{cv_id}/render")
+def render(cv_id: int, db: Engine, request: Request) -> RenderedView:
+    """Render a valid CV as LaTeX, PDF and plain text under the configured output directory.
+
+    A CV is presented only if it validates; the three files are written together or the call
+    fails. A LaTeX failure is reported with the log tail, never as a corrupt PDF.
+
+    Args:
+        cv_id: A CV id.
+        db: The knowledge-base engine.
+        request: The request, for the configured output directory.
+
+    Returns:
+        The three file paths.
+
+    Raises:
+        HTTPException: 409 if the CV does not validate; 502 if LaTeX cannot build it.
+    """
+    cv = _require(db, cv_id)
+    issues = validate_cv(db, cv)
+    if issues:
+        raise HTTPException(
+            409, "the CV does not validate: " + "; ".join(i.message for i in issues)
+        )
+    out: Path = request.app.state.settings.cv_out_dir / f"cv-{cv.id}"
+    out.mkdir(parents=True, exist_ok=True)
+    tex, txt = out / "cv.tex", out / "cv.txt"
+    tex.write_text(render_tex(cv), encoding="utf-8")
+    txt.write_text(render_text(cv), encoding="utf-8")
+    try:
+        pdf = compile_pdf(tex)
+    except CompileError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    set_artifacts(db, cv.id, tex=str(tex), pdf=str(pdf), txt=str(txt))
+    return RenderedView(tex=str(tex), pdf=str(pdf), txt=str(txt))
+
+
+_MEDIA = {"tex": "application/x-tex", "pdf": "application/pdf", "txt": "text/plain"}
+
+
+@router.get("/cvs/{cv_id}/files/{kind}")
+def download(cv_id: int, kind: Literal["tex", "pdf", "txt"], db: Engine) -> FileResponse:
+    """Download one rendered file of a CV.
+
+    Args:
+        cv_id: A CV id.
+        kind: `tex`, `pdf` or `txt`.
+        db: The knowledge-base engine.
+
+    Returns:
+        The file.
+
+    Raises:
+        NotFoundError: If the CV is unknown or has not been rendered (404).
+    """
+    cv = _require(db, cv_id)
+    path = {"tex": cv.tex_path, "pdf": cv.pdf_path, "txt": cv.txt_path}[kind]
+    if path is None or not Path(path).is_file():
+        raise apply.NotFoundError(f"CV {cv_id} has no rendered {kind}; render it first")
+    return FileResponse(path, media_type=_MEDIA[kind])

@@ -63,6 +63,9 @@ class StoredCv:
         generation_mode: `automatic` or `collaborative`.
         status: `draft` or `final`.
         created_at: When it was generated.
+        tex_path: Where its LaTeX source was written, once rendered.
+        pdf_path: Where its PDF was written, once compiled.
+        txt_path: Where its plain text was written, once rendered.
         claims: Its claims.
     """
 
@@ -74,6 +77,9 @@ class StoredCv:
     generation_mode: GenerationMode
     status: CvStatus
     created_at: datetime
+    tex_path: str | None
+    pdf_path: str | None
+    txt_path: str | None
     claims: tuple[StoredClaim, ...]
 
 
@@ -199,6 +205,9 @@ def _stored(conn: sa.Connection, row: sa.Row[Any]) -> StoredCv:
         GenerationMode(row.generation_mode),
         CvStatus(row.status),
         row.created_at,
+        row.tex_path,
+        row.pdf_path,
+        row.txt_path,
         _claims(conn, row.id),
     )
 
@@ -251,6 +260,29 @@ def set_status(engine: sa.Engine, cv_id: int, status: CvStatus) -> None:
     with write_transaction(engine) as conn:
         result = conn.execute(
             sa.update(schema.cv).where(schema.cv.c.id == cv_id).values(status=status.value)
+        )
+        if result.rowcount == 0:
+            raise apply.NotFoundError(f"no CV {cv_id}")
+
+
+def set_artifacts(engine: sa.Engine, cv_id: int, *, tex: str, pdf: str | None, txt: str) -> None:
+    """Record where a CV's rendered files were written.
+
+    Args:
+        engine: The knowledge-base engine.
+        cv_id: The `cv` id.
+        tex: Path of the LaTeX source.
+        pdf: Path of the compiled PDF, if it compiled.
+        txt: Path of the plain-text rendering.
+
+    Raises:
+        NotFoundError: If there is no such CV.
+    """
+    with write_transaction(engine) as conn:
+        result = conn.execute(
+            sa.update(schema.cv)
+            .where(schema.cv.c.id == cv_id)
+            .values(tex_path=tex, pdf_path=pdf, txt_path=txt)
         )
         if result.rowcount == 0:
             raise apply.NotFoundError(f"no CV {cv_id}")

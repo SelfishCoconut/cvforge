@@ -121,3 +121,51 @@ def test_generating_writes_no_knowledge(cvs: tuple[TestClient, int, Any], kb: sa
             for t in (schema.entity, schema.edge, schema.assertion, schema.proposal)
         ]
     assert after == before
+
+
+def test_rendering_an_invalid_cv_is_refused_and_a_valid_one_needs_no_latex_here(
+    cvs: tuple[TestClient, int, Any],
+    kb: sa.Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client, posting, _ = cvs
+    client.app.state.settings.cv_out_dir = tmp_path / "out"  # type: ignore[attr-defined]
+    cv = client.post(f"/api/jobs/{posting}/cvs", json={}).json()
+
+    def fake_compile(tex: Path) -> Path:
+        pdf = tex.with_suffix(".pdf")
+        pdf.write_bytes(b"%PDF-fake")
+        return pdf
+
+    monkeypatch.setattr("cvforge.api.cvs.compile_pdf", fake_compile)
+    assert client.get(f"/api/cvs/{cv['id']}/files/pdf").status_code == 404
+    done = client.post(f"/api/cvs/{cv['id']}/render")
+    assert (
+        done.status_code == 200 and client.get(f"/api/cvs/{cv['id']}/files/tex").status_code == 200
+    )
+
+    with kb.begin() as conn:
+        conn.execute(
+            sa.update(schema.cv_claim).where(schema.cv_claim.c.text == "Rust").values(text="Rust+")
+        )
+    assert client.post(f"/api/cvs/{cv['id']}/render").status_code == 409
+
+
+def test_a_latex_failure_is_a_502_not_a_corrupt_file(
+    cvs: tuple[TestClient, int, Any], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from cvforge.cv.compile import CompileError
+
+    client, posting, _ = cvs
+    client.app.state.settings.cv_out_dir = tmp_path / "out"  # type: ignore[attr-defined]
+    cv = client.post(f"/api/jobs/{posting}/cvs", json={}).json()
+
+    def fail(tex: Path) -> Path:
+        raise CompileError("LaTeX failed (exit 1): ! Missing $ inserted.")
+
+    monkeypatch.setattr("cvforge.api.cvs.compile_pdf", fail)
+    response = client.post(f"/api/cvs/{cv['id']}/render")
+
+    assert response.status_code == 502 and "Missing $" in response.json()["detail"]
+    assert client.get(f"/api/cvs/{cv['id']}/files/pdf").status_code == 404
