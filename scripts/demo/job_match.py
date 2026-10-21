@@ -1,4 +1,4 @@
-"""Demo (FR-21, M4): match a posting's requirements against the knowledge base, offline.
+"""Demo (FR-21..FR-23, M4): match a posting's requirements against the knowledge base, offline.
 
 An in-memory knowledge base holds 'Rust' as a confirmed skill used in a project; the posting asks
 for Rust, a skill the profile only plausibly covers, and Fortran. The model is a scripted
@@ -123,14 +123,23 @@ def main() -> int:
         )
         with TestClient(app, base_url="http://127.0.0.1") as client:
             rows = client.post(f"/api/jobs/{posting}/match").json()
+            gaps = client.get(f"/api/jobs/{posting}/gaps").json()
     for row in rows:
         print(f"{row['verdict']:12} {row['text']!r}: {row['rationale']}")
+    cited = [e["excerpt"] for r in rows for sup in r["support"] for e in sup["evidence"]]
+    print(f"evidence    {cited[:1]} (what the satisfied verdict rests on)")
+    print(f"gap report  {[g['text'] for g in gaps]}")
     with engine.connect() as conn:
         counts = queries.table_counts(conn)
     print(f"knowledge   entity={counts['entity']} edge={counts['edge']} (unchanged by matching)")
     verdicts = [r["verdict"] for r in rows]
     unsupported = all(not r["support"] for r in rows if r["verdict"] in ("undocumented", "gap"))
-    ok = verdicts == ["satisfied", "undocumented", "gap"] and unsupported
+    ok = (
+        verdicts == ["satisfied", "undocumented", "gap"]
+        and unsupported
+        and bool(cited)
+        and [g["text"] for g in gaps] == ["Django REST API client", "Fortran"]
+    )
     return 0 if ok else 1
 
 

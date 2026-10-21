@@ -204,3 +204,21 @@ def test_a_verdict_outside_the_closed_set_is_rejected(kb: sa.Engine) -> None:
                 computed_at=sa.func.now(),
             )
         )
+
+
+@pytest.mark.parametrize(
+    ("verdict", "support"),
+    [
+        (MatchVerdict.SATISFIED, ()),
+        (MatchVerdict.EVIDENCED, ()),
+        (MatchVerdict.UNDOCUMENTED, (1,)),
+        (MatchVerdict.GAP, (1,)),
+    ],
+)
+def test_an_outcome_cannot_cite_support_it_should_not_or_omit_support_it_needs(
+    verdict: MatchVerdict, support: tuple[int, ...]
+) -> None:
+    from cvforge.match.verdicts import Outcome
+
+    with pytest.raises(ValueError, match="support"):
+        Outcome(verdict, None, "x", support)

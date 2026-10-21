@@ -66,8 +66,8 @@ Done:
 ## Next action
 
 **M4 — match & gaps (FR-21..FR-23, issues #25-#27).** FR-21 (#25, verdict engine, `POST/GET
-/api/jobs/{id}/match`, ADR-0023) is in review; then FR-22 (#26, evidence behind each verdict) and
-FR-23 (#27, gap report). Postings and their `requirement` rows exist (`GET/POST /api/jobs`,
+/api/jobs/{id}/match`, ADR-0023) is in review (#149); FR-22 (#26, evidence behind each verdict) and FR-23 (#27, gap
+report) are built on top of it, in review next. Then close M4 with the `release` skill. Postings and their `requirement` rows exist (`GET/POST /api/jobs`,
 ADR-0021/0022); `requirement.normalized_skill_id` and `job_posting.organization_id` are empty
 and are M4's to fill, through `kb/apply.py` or a Proposal, never from `jobs/store.py`.
 
