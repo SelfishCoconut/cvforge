@@ -283,6 +283,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description List the stored postings, newest first.
+         *
+         *     Args:
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         Every posting with its requirements.
+         */
+        get: operations["list_jobs_api_jobs_get"];
+        put?: never;
+        /**
+         * Take In Posting
+         * @description Fetch a job posting by URL, analyse it, and store it with its requirements.
+         *
+         *     Taking in a URL that is already stored updates that posting rather than adding another.
+         *     Company research runs only when a search provider is configured, and its failure never
+         *     fails the request.
+         *
+         *     Args:
+         *         body: The posting URL.
+         *         response: The response, whose status is 201 for a new posting and 200 for an update.
+         *         db: The knowledge-base engine.
+         *         fetcher: Fetches the page.
+         *         model_factory: Builds the model for this request.
+         *         search: The optional company-research provider.
+         *
+         *     Returns:
+         *         The stored posting.
+         *
+         *     Raises:
+         *         HTTPException: 422 if the page cannot be fetched or is refused; 502 if the model
+         *             returns no valid analysis.
+         */
+        post: operations["take_in_posting_api_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{posting_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Job
+         * @description Read one stored posting.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The posting.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such posting (404).
+         */
+        get: operations["read_job_api_jobs__posting_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals": {
         parameters: {
             query?: never;
@@ -711,6 +790,102 @@ export interface components {
             /** Version */
             version: string;
         };
+        /**
+         * JobAnalysis
+         * @description What a job posting states, field by field (FR-18).
+         *
+         *     Every field is either read from the posting or explicitly empty (`None`, or an
+         *     empty list): a value the posting does not state is never guessed. Blank strings
+         *     count as empty, and list entries are stripped and de-duplicated.
+         *
+         *     Attributes:
+         *         title: The job title.
+         *         company: The hiring organization.
+         *         seniority: The seniority level as stated (e.g. "senior", "junior").
+         *         required_skills: Skills the posting requires.
+         *         preferred_skills: Skills the posting lists as nice to have.
+         *         responsibilities: What the role will do.
+         *         technologies: Named tools, languages, frameworks and platforms.
+         *         experience_requirements: Experience asked for (years, domains, degrees).
+         *         keywords: Terms an application should echo, as the posting words them.
+         *         location: Where the job is based.
+         *         working_model: Remote, hybrid or on-site, if stated.
+         *         other_requirements: Anything else required (languages, clearance, travel).
+         */
+        JobAnalysis: {
+            /** Company */
+            company?: string | null;
+            /** Experience Requirements */
+            experience_requirements?: string[];
+            /** Keywords */
+            keywords?: string[];
+            /** Location */
+            location?: string | null;
+            /** Other Requirements */
+            other_requirements?: string[];
+            /** Preferred Skills */
+            preferred_skills?: string[];
+            /** Required Skills */
+            required_skills?: string[];
+            /** Responsibilities */
+            responsibilities?: string[];
+            /** Seniority */
+            seniority?: string | null;
+            /** Technologies */
+            technologies?: string[];
+            /** Title */
+            title?: string | null;
+            working_model?: components["schemas"]["WorkModel"] | null;
+        };
+        /**
+         * JobRequest
+         * @description A posting to take in.
+         *
+         *     Attributes:
+         *         url: The posting's http(s) URL.
+         */
+        JobRequest: {
+            /** Url */
+            url: string;
+        };
+        /**
+         * JobView
+         * @description A stored posting.
+         *
+         *     Attributes:
+         *         id: The posting id.
+         *         created: True if this call created it, False if it updated the stored one.
+         *         url: The normalised URL the posting is keyed by.
+         *         source_id: The `web` source of the latest fetch.
+         *         title: The job title, if stated.
+         *         seniority: The seniority, if stated.
+         *         location: The location, if stated.
+         *         work_model: Remote, hybrid or on-site, if stated.
+         *         analysis: The structured analysis.
+         *         requirements: The decomposed requirements.
+         *         research: Company research, only on the call that ran it.
+         */
+        JobView: {
+            analysis: components["schemas"]["JobAnalysis"];
+            /** Created */
+            created?: boolean | null;
+            /** Id */
+            id: number;
+            /** Location */
+            location: string | null;
+            /** Requirements */
+            requirements: components["schemas"]["RequirementView"][];
+            research?: components["schemas"]["ResearchView"] | null;
+            /** Seniority */
+            seniority: string | null;
+            /** Source Id */
+            source_id: number;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string;
+            work_model: components["schemas"]["WorkModel"] | null;
+        };
         JsonValue: unknown;
         /**
          * KnowledgeState
@@ -945,6 +1120,46 @@ export interface components {
             reason: string;
         };
         /**
+         * RequirementKind
+         * @description What a requirement asks of the candidate (spec §4.6).
+         * @enum {string}
+         */
+        RequirementKind: "required" | "preferred" | "responsibility";
+        /**
+         * RequirementView
+         * @description One requirement of a posting.
+         *
+         *     Attributes:
+         *         kind: `required`, `preferred` or `responsibility`.
+         *         text: What the posting asks.
+         */
+        RequirementView: {
+            kind: components["schemas"]["RequirementKind"];
+            /** Text */
+            text: string;
+        };
+        /**
+         * ResearchView
+         * @description What optional company research found.
+         *
+         *     Attributes:
+         *         status: `skipped` (no provider), `ok` or `failed`.
+         *         error: Why it failed, when it did.
+         *         topics: Hit titles and URLs per topic.
+         */
+        ResearchView: {
+            /** Error */
+            error: string | null;
+            /** Status */
+            status: string;
+            /** Topics */
+            topics: {
+                [key: string]: {
+                    [key: string]: string;
+                }[];
+            };
+        };
+        /**
          * Review
          * @description A reviewer's decision on one operation.
          *
@@ -998,6 +1213,12 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * WorkModel
+         * @description Where a job is worked from, as the posting states it.
+         * @enum {string}
+         */
+        WorkModel: "remote" | "hybrid" | "onsite";
     };
     responses: never;
     parameters: never;
@@ -1278,6 +1499,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    list_jobs_api_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"][];
+                };
+            };
+        };
+    };
+    take_in_posting_api_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_job_api_jobs__posting_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

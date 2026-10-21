@@ -14,6 +14,7 @@ empty content is never returned silently.
 """
 
 import ipaddress
+import socket
 import time
 from dataclasses import dataclass
 from typing import Final, Literal, Protocol, runtime_checkable
@@ -83,6 +84,28 @@ def _is_local_host(host: str) -> bool:
     return not address.is_global
 
 
+def resolve_host(host: str) -> list[str]:
+    """Resolve `host` to the IP addresses a connection to it could reach.
+
+    Numeric spellings a literal check misses (`2130706433`, `0x7f.1`) resolve to their
+    real address here.
+
+    Args:
+        host: A hostname or IP literal.
+
+    Returns:
+        The distinct addresses.
+
+    Raises:
+        FetchError: If the name does not resolve.
+    """
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except (socket.gaierror, UnicodeError) as exc:
+        raise FetchError(f"could not resolve {host}") from exc
+    return sorted({str(info[4][0]) for info in infos})
+
+
 def check_url(url: str, *, allow_local: bool = False) -> None:
     """Refuse a URL that must not be fetched.
 
@@ -91,7 +114,8 @@ def check_url(url: str, *, allow_local: bool = False) -> None:
         allow_local: Permit local hosts. Only tests and the offline demo set this.
 
     Raises:
-        FetchError: If the scheme is not http(s), there is no host, or the host is local.
+        FetchError: If the scheme is not http(s), there is no host, the host is local, or it
+            does not resolve or resolves to a local address.
     """
     parts = urlsplit(url)
     if parts.scheme not in _ALLOWED_SCHEMES:
@@ -100,6 +124,10 @@ def check_url(url: str, *, allow_local: bool = False) -> None:
         raise FetchError("the URL has no host")
     if not allow_local and _is_local_host(parts.hostname):
         raise FetchError(f"refusing to fetch a local address: {parts.hostname}")
+    if not allow_local and any(
+        _is_local_host(a.split("%")[0]) for a in resolve_host(parts.hostname)
+    ):
+        raise FetchError(f"refusing to fetch {parts.hostname}: it resolves to a local address")
 
 
 def _get_html(client: httpx.Client, url: str, *, allow_local: bool) -> tuple[str, str]:
@@ -113,6 +141,7 @@ def _get_html(client: httpx.Client, url: str, *, allow_local: bool) -> tuple[str
         check_url(current, allow_local=allow_local)
         try:
             with client.stream("GET", current, headers=_REQUEST_HEADERS) as response:
+                _check_peer(response, allow_local=allow_local)
                 if response.status_code in _REDIRECT_STATUSES:
                     location = response.headers.get("location")
                     if not location:
@@ -126,6 +155,18 @@ def _get_html(client: httpx.Client, url: str, *, allow_local: bool) -> tuple[str
         except httpx.HTTPError as exc:
             raise FetchError(f"could not fetch {current}: {exc}") from exc
     raise FetchError(f"more than {MAX_REDIRECTS} redirects from {url}")
+
+
+def _check_peer(response: httpx.Response, *, allow_local: bool) -> None:
+    """Refuse a response from a local address, whatever the name resolved to earlier.
+
+    This closes the gap between the resolution in `check_url` and the connection (DNS
+    rebinding). Transports with no real socket (tests) expose no peer and are skipped.
+    """
+    stream = response.extensions.get("network_stream")
+    peer = stream.get_extra_info("server_addr") if stream is not None else None
+    if not allow_local and peer and _is_local_host(str(peer[0]).split("%")[0]):
+        raise FetchError(f"the connection went to a local address: {peer[0]}")
 
 
 def _read_capped(response: httpx.Response, deadline: float) -> bytes:

@@ -34,8 +34,8 @@ def build_job_agent(model: Model) -> Agent[None, JobAnalysis]:
 
 
 def _prompt(posting_text: str) -> str:
-    """Fence the posting so it reads as data; a closing tag inside it cannot end the fence."""
-    safe = posting_text.replace(_CLOSE, "")
+    """Fence the posting as data; every `<` in it is escaped, so it cannot close the fence."""
+    safe = posting_text.replace("<", "&lt;")  # one linear pass: no tag can be written or rebuilt
     return f"<posting>\n{safe}\n{_CLOSE}"
 
 

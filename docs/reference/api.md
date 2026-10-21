@@ -129,3 +129,7 @@ Generated from docstrings. Update the docstring, not this page.
 ## Job persistence
 
 ::: cvforge.jobs.store
+
+## Jobs API
+
+::: cvforge.api.jobs

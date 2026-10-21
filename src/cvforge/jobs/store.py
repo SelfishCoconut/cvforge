@@ -12,7 +12,9 @@ by the new analysis.
 """
 
 import hashlib
+from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -20,7 +22,7 @@ import sqlalchemy as sa
 
 from cvforge.kb import apply, schema
 from cvforge.kb.db import utc_now, write_transaction
-from cvforge.kb.vocab import RequirementKind, SourceKind
+from cvforge.kb.vocab import RequirementKind, SourceKind, WorkModel
 from cvforge.llm.schemas import JobAnalysis
 from cvforge.web.fetch import FetchedPage
 
@@ -155,6 +157,113 @@ def persist_posting(
                 ],
             )
     return PersistedPosting(posting_id, existing is None, source_id, len(requirements))
+
+
+@dataclass(frozen=True)
+class StoredRequirement:
+    """One requirement row.
+
+    Attributes:
+        kind: `required`, `preferred` or `responsibility`.
+        text: What the posting asks.
+    """
+
+    kind: RequirementKind
+    text: str
+
+
+@dataclass(frozen=True)
+class StoredPosting:
+    """A stored posting with its requirements.
+
+    Attributes:
+        id: The `job_posting` row id.
+        url: The normalised URL it is keyed by.
+        source_id: The `web` source of the latest fetch.
+        title: The job title, if the posting states one.
+        seniority: The seniority, if stated.
+        location: The location, if stated.
+        work_model: Remote, hybrid or on-site, if stated.
+        analysis: The stored structured analysis.
+        fetched_at: When the latest fetch happened.
+        requirements: The requirements, in stored order.
+    """
+
+    id: int
+    url: str
+    source_id: int
+    title: str | None
+    seniority: str | None
+    location: str | None
+    work_model: WorkModel | None
+    analysis: JobAnalysis
+    fetched_at: datetime
+    requirements: tuple[StoredRequirement, ...]
+
+
+def _stored(row: sa.Row[Any], requirements: Sequence[sa.Row[Any]]) -> StoredPosting:
+    return StoredPosting(
+        id=row.id,
+        url=row.url,
+        source_id=row.source_id,
+        title=row.title,
+        seniority=row.seniority,
+        location=row.location,
+        work_model=WorkModel(row.work_model) if row.work_model else None,
+        analysis=JobAnalysis.model_validate_json(row.analysis_json),
+        fetched_at=row.fetched_at,
+        requirements=tuple(
+            StoredRequirement(RequirementKind(r.kind), r.text) for r in requirements
+        ),
+    )
+
+
+def get_posting(engine: sa.Engine, posting_id: int) -> StoredPosting | None:
+    """Read one stored posting.
+
+    Args:
+        engine: The knowledge-base engine.
+        posting_id: A `job_posting` id.
+
+    Returns:
+        The posting, or None if there is none with that id.
+    """
+    with engine.connect() as conn:
+        row = conn.execute(
+            sa.select(schema.job_posting).where(schema.job_posting.c.id == posting_id)
+        ).first()
+        if row is None:
+            return None
+        rows = conn.execute(
+            sa.select(schema.requirement)
+            .where(schema.requirement.c.job_posting_id == posting_id)
+            .order_by(schema.requirement.c.id)
+        ).all()
+    return _stored(row, rows)
+
+
+def list_postings(engine: sa.Engine) -> list[StoredPosting]:
+    """Read every stored posting, newest fetch first.
+
+    Args:
+        engine: The knowledge-base engine.
+
+    Returns:
+        The postings with their requirements.
+    """
+    with engine.connect() as conn:
+        postings = conn.execute(
+            sa.select(schema.job_posting).order_by(
+                schema.job_posting.c.fetched_at.desc(), schema.job_posting.c.id.desc()
+            )
+        ).all()
+        requirements = conn.execute(
+            sa.select(schema.requirement).order_by(schema.requirement.c.id)
+        ).all()
+    by_posting: dict[int, list[sa.Row[Any]]] = {}
+    for requirement in requirements:
+        by_posting.setdefault(requirement.job_posting_id, []).append(requirement)
+    return [_stored(row, by_posting.get(row.id, [])) for row in postings]
 
 
 def _insert(conn: sa.Connection, key: str, values: dict[str, Any]) -> int:

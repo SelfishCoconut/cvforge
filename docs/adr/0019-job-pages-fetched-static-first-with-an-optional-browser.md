@@ -34,13 +34,17 @@ or proposal. Analysis (FR-18) and persistence (FR-20) are separate steps.
 
 ## Consequences
 
-- A hostname that *resolves* to a private address (DNS rebinding, or an internal
-  hostname) is not caught: the check is on literals, to stay offline and deterministic.
-  Resolving and pinning the address is the follow-up if this tool is ever exposed
-  beyond one user's machine.
+- Every URL is also resolved (`getaddrinfo`) and refused if any address it yields is not
+  globally routable, so internal hostnames, `nip.io`-style names and numeric spellings such
+  as `2130706433` are caught. The check and the connection resolve separately, so a DNS
+  answer that changes between them (rebinding) is caught on the static path by checking
+  the peer address of the connection that was actually made; Chromium has no such hook, so
+  the browser fallback keeps the rebinding window. Pinning the checked address in a custom
+  transport and routing Chromium through a filtering proxy are the follow-ups if this tool
+  is ever exposed beyond one user's machine.
 - The browser fallback screens every request Chromium makes (navigations, redirect
   hops and subresources) with the same literal check, and re-checks the URL it ended
-  on. It shares the DNS limitation above.
+  on. It shares the rebinding limitation above.
 - The download is capped at 5 MiB after decoding (the request asks for an
   uncompressed body, and a declared `Content-Length` over the cap is refused up
   front) and must finish within 30 s overall, redirects included.

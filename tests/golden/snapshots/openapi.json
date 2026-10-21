@@ -394,6 +394,237 @@
         "title": "Health",
         "type": "object"
       },
+      "JobAnalysis": {
+        "additionalProperties": false,
+        "description": "What a job posting states, field by field (FR-18).\n\nEvery field is either read from the posting or explicitly empty (`None`, or an\nempty list): a value the posting does not state is never guessed. Blank strings\ncount as empty, and list entries are stripped and de-duplicated.\n\nAttributes:\n    title: The job title.\n    company: The hiring organization.\n    seniority: The seniority level as stated (e.g. \"senior\", \"junior\").\n    required_skills: Skills the posting requires.\n    preferred_skills: Skills the posting lists as nice to have.\n    responsibilities: What the role will do.\n    technologies: Named tools, languages, frameworks and platforms.\n    experience_requirements: Experience asked for (years, domains, degrees).\n    keywords: Terms an application should echo, as the posting words them.\n    location: Where the job is based.\n    working_model: Remote, hybrid or on-site, if stated.\n    other_requirements: Anything else required (languages, clearance, travel).",
+        "properties": {
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "experience_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Experience Requirements",
+            "type": "array"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "other_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Other Requirements",
+            "type": "array"
+          },
+          "preferred_skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Preferred Skills",
+            "type": "array"
+          },
+          "required_skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Skills",
+            "type": "array"
+          },
+          "responsibilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Responsibilities",
+            "type": "array"
+          },
+          "seniority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniority"
+          },
+          "technologies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Technologies",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "working_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "JobAnalysis",
+        "type": "object"
+      },
+      "JobRequest": {
+        "description": "A posting to take in.\n\nAttributes:\n    url: The posting's http(s) URL.",
+        "properties": {
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "JobRequest",
+        "type": "object"
+      },
+      "JobView": {
+        "description": "A stored posting.\n\nAttributes:\n    id: The posting id.\n    created: True if this call created it, False if it updated the stored one.\n    url: The normalised URL the posting is keyed by.\n    source_id: The `web` source of the latest fetch.\n    title: The job title, if stated.\n    seniority: The seniority, if stated.\n    location: The location, if stated.\n    work_model: Remote, hybrid or on-site, if stated.\n    analysis: The structured analysis.\n    requirements: The decomposed requirements.\n    research: Company research, only on the call that ran it.",
+        "properties": {
+          "analysis": {
+            "$ref": "#/components/schemas/JobAnalysis"
+          },
+          "created": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementView"
+            },
+            "title": "Requirements",
+            "type": "array"
+          },
+          "research": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seniority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniority"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "work_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "source_id",
+          "title",
+          "seniority",
+          "location",
+          "work_model",
+          "analysis",
+          "requirements"
+        ],
+        "title": "JobView",
+        "type": "object"
+      },
       "JsonValue": {},
       "KnowledgeState": {
         "description": "Knowledge state of an entity (spec §4.4). Not a match verdict.",
@@ -855,6 +1086,74 @@
         "title": "RejectedView",
         "type": "object"
       },
+      "RequirementKind": {
+        "description": "What a requirement asks of the candidate (spec §4.6).",
+        "enum": [
+          "required",
+          "preferred",
+          "responsibility"
+        ],
+        "title": "RequirementKind",
+        "type": "string"
+      },
+      "RequirementView": {
+        "description": "One requirement of a posting.\n\nAttributes:\n    kind: `required`, `preferred` or `responsibility`.\n    text: What the posting asks.",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/RequirementKind"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "RequirementView",
+        "type": "object"
+      },
+      "ResearchView": {
+        "description": "What optional company research found.\n\nAttributes:\n    status: `skipped` (no provider), `ok` or `failed`.\n    error: Why it failed, when it did.\n    topics: Hit titles and URLs per topic.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "topics": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "title": "Topics",
+            "type": "object"
+          }
+        },
+        "required": [
+          "status",
+          "error",
+          "topics"
+        ],
+        "title": "ResearchView",
+        "type": "object"
+      },
       "Review": {
         "additionalProperties": false,
         "description": "A reviewer's decision on one operation.\n\nAttributes:\n    decision: ``accept``, ``edit`` or ``reject``.\n    edited_payload: The replacement payload, for ``edit`` only.",
@@ -955,6 +1254,16 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WorkModel": {
+        "description": "Where a job is worked from, as the posting states it.",
+        "enum": [
+          "remote",
+          "hybrid",
+          "onsite"
+        ],
+        "title": "WorkModel",
+        "type": "string"
       }
     }
   },
@@ -1352,6 +1661,115 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "description": "List the stored postings, newest first.\n\nArgs:\n    db: The knowledge-base engine.\n\nReturns:\n    Every posting with its requirements.",
+        "operationId": "list_jobs_api_jobs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobView"
+                  },
+                  "title": "Response List Jobs Api Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Jobs",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "post": {
+        "description": "Fetch a job posting by URL, analyse it, and store it with its requirements.\n\nTaking in a URL that is already stored updates that posting rather than adding another.\nCompany research runs only when a search provider is configured, and its failure never\nfails the request.\n\nArgs:\n    body: The posting URL.\n    response: The response, whose status is 201 for a new posting and 200 for an update.\n    db: The knowledge-base engine.\n    fetcher: Fetches the page.\n    model_factory: Builds the model for this request.\n    search: The optional company-research provider.\n\nReturns:\n    The stored posting.\n\nRaises:\n    HTTPException: 422 if the page cannot be fetched or is refused; 502 if the model\n        returns no valid analysis.",
+        "operationId": "take_in_posting_api_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Take In Posting",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}": {
+      "get": {
+        "description": "Read one stored posting.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The posting.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
+        "operationId": "read_job_api_jobs__posting_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Job",
+        "tags": [
+          "jobs"
         ]
       }
     },

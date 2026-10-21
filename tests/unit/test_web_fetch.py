@@ -11,6 +11,13 @@ from cvforge.web.fetch import (
     fetch_page,
 )
 
+
+@pytest.fixture(autouse=True)
+def _public_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every fixture host resolves to one public address, so no test needs DNS."""
+    monkeypatch.setattr("cvforge.web.fetch.resolve_host", lambda host: ["93.184.216.34"])
+
+
 URL = "https://jobs.example.test/posting/42"
 
 _PARAGRAPH = (
@@ -190,3 +197,32 @@ def test_a_download_past_the_deadline_is_refused(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr("cvforge.web.fetch.time.monotonic", lambda: next(ticks, 1000.0))
     with pytest.raises(FetchError, match="took longer"):
         fetch_page(URL, client=_client({URL: _html(STATIC_HTML)}))
+
+
+class _Stream:
+    def __init__(self, peer: tuple[str, int]) -> None:
+        self.peer = peer
+
+    def get_extra_info(self, name: str) -> tuple[str, int]:
+        assert name == "server_addr"
+        return self.peer
+
+
+def _answered_from(peer: tuple[str, int]) -> httpx.Response:
+    return httpx.Response(
+        200,
+        text=STATIC_HTML,
+        headers={"content-type": "text/html"},
+        extensions={"network_stream": _Stream(peer)},
+    )
+
+
+def test_a_connection_that_lands_on_a_local_address_is_refused() -> None:
+    """A name that resolved publicly but connected locally (rebinding) is caught."""
+    with pytest.raises(FetchError, match="went to a local address"):
+        fetch_page(URL, client=_client({URL: _answered_from(("127.0.0.1", 443))}))
+
+
+def test_a_connection_to_a_public_address_is_accepted() -> None:
+    page = fetch_page(URL, client=_client({URL: _answered_from(("93.184.216.34", 443))}))
+    assert page.method == "static"
