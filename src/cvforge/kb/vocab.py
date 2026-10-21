@@ -207,3 +207,10 @@ class StepKind(StrEnum):
     READING = "reading"
     EXERCISE = "exercise"
     PROJECT = "project"
+
+
+class FillStatus(StrEnum):
+    """Where a form-fill session stands."""
+
+    ANALYZED = "analyzed"
+    FILLED = "filled"
