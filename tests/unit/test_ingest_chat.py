@@ -1,11 +1,13 @@
 """`POST /api/chat/messages` turns a statement into a reviewable proposal (FR-11, FR-12)."""
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.messages import ModelMessage, ModelResponse, ThinkingPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
@@ -103,6 +105,38 @@ def test_a_model_failure_is_a_502_with_no_proposal(client: TestClient, kb: sa.En
     assert response.status_code == 502 and "endpoint down" in response.json()["detail"]
     counts = _counts(kb)
     assert (counts["evidence"], counts["proposal"]) == (1, 0)
+
+
+def _thinking_only_truncated(_messages: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
+    return ModelResponse(parts=[ThinkingPart(content="hmm")], finish_reason="length")
+
+
+def test_a_truncated_reasoning_reply_names_the_context_window(
+    client: TestClient, kb: sa.Engine
+) -> None:
+    client.app.state.model_factory = lambda _e: FunctionModel(_thinking_only_truncated)  # type: ignore[attr-defined]
+
+    response = client.post("/api/chat/messages", json={"text": "I know Rust"})
+
+    assert response.status_code == 502
+    assert "OLLAMA_CONTEXT_LENGTH" in response.json()["detail"]
+    assert _counts(kb)["proposal"] == 0
+
+
+def test_a_truncated_reasoning_reply_on_the_stream_names_the_context_window(
+    client: TestClient,
+) -> None:
+    async def truncated(_messages: list[ModelMessage], _info: AgentInfo) -> AsyncIterator[str]:
+        raise UnexpectedModelBehavior("Model token limit (provider default) exceeded")
+        yield ""
+
+    client.app.state.model_factory = lambda _e: FunctionModel(  # type: ignore[attr-defined]
+        _thinking_only_truncated, stream_function=truncated
+    )
+
+    response = client.post("/api/chat/messages/stream", json={"text": "I know Rust"})
+
+    assert "OLLAMA_CONTEXT_LENGTH" in response.text
 
 
 @pytest.mark.parametrize("text", ["x" * 200_000, "   \n\t", ""])
