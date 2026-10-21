@@ -55,6 +55,10 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+      # FR-26 compiles real PDFs; a minimal TeX Live is enough for the CV template.
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          latexmk texlive-latex-base texlive-latex-recommended texlive-fonts-recommended
       - run: uv sync --locked
       - run: uv run pytest -m integration --no-cov
 
@@ -79,6 +83,10 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+      # FR-26 compiles real PDFs; a minimal TeX Live is enough for the CV template.
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          latexmk texlive-latex-base texlive-latex-recommended texlive-fonts-recommended
       - run: uv sync --locked
       # Every demo a reviewer is told to run to validate a PR. A broken one voids
       # the Definition of Done, so it must break the build.

@@ -135,6 +135,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cvs/{cv_id}/files/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download
+         * @description Download one rendered file of a CV.
+         *
+         *     Args:
+         *         cv_id: A CV id.
+         *         kind: `tex`, `pdf` or `txt`.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The file.
+         *
+         *     Raises:
+         *         NotFoundError: If the CV is unknown or has not been rendered (404).
+         */
+        get: operations["download_api_cvs__cv_id__files__kind__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cvs/{cv_id}/final": {
         parameters: {
             query?: never;
@@ -160,6 +191,40 @@ export interface paths {
          *         HTTPException: 409 listing the issues if validation fails; nothing changes.
          */
         post: operations["finalise_api_cvs__cv_id__final_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cvs/{cv_id}/render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Render
+         * @description Render a valid CV as LaTeX, PDF and plain text under the configured output directory.
+         *
+         *     A CV is presented only if it validates; the three files are written together or the call
+         *     fails. A LaTeX failure is reported with the log tail, never as a corrupt PDF.
+         *
+         *     Args:
+         *         cv_id: A CV id.
+         *         db: The knowledge-base engine.
+         *         request: The request, for the configured output directory.
+         *
+         *     Returns:
+         *         The three file paths.
+         *
+         *     Raises:
+         *         HTTPException: 409 if the CV does not validate; 502 if LaTeX cannot build it.
+         */
+        post: operations["render_api_cvs__cv_id__render_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1588,6 +1653,23 @@ export interface components {
             reason: string;
         };
         /**
+         * RenderedView
+         * @description Where a CV's rendered files were written.
+         *
+         *     Attributes:
+         *         tex: The LaTeX source.
+         *         pdf: The compiled PDF.
+         *         txt: The plain-text (ATS) rendering.
+         */
+        RenderedView: {
+            /** Pdf */
+            pdf: string;
+            /** Tex */
+            tex: string;
+            /** Txt */
+            txt: string;
+        };
+        /**
          * RequirementKind
          * @description What a requirement asks of the candidate (spec §4.6).
          * @enum {string}
@@ -1879,6 +1961,38 @@ export interface operations {
             };
         };
     };
+    download_api_cvs__cv_id__files__kind__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+                kind: "tex" | "pdf" | "txt";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     finalise_api_cvs__cv_id__final_post: {
         parameters: {
             query?: never;
@@ -1897,6 +2011,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CvView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    render_api_cvs__cv_id__render_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderedView"];
                 };
             };
             /** @description Validation Error */

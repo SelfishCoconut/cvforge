@@ -156,4 +156,10 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.cv.validate
 
+::: cvforge.cv.render
+
+::: cvforge.cv.to_text
+
+::: cvforge.cv.compile
+
 ::: cvforge.api.cvs

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     Attributes:
         host: Address uvicorn binds to. Must be loopback (NFR-02).
         port: TCP port uvicorn binds to.
+        cv_out_dir: Where rendered CVs (`.tex`, `.pdf`, `.txt`) are written. Gitignored.
         data_dir: Directory holding private data — the knowledge base, uploaded
             documents and the browser profile. Never committed.
         frontend_dist: Directory holding the built SPA. The SPA is only served
@@ -37,6 +38,7 @@ class Settings(BaseSettings):
     port: int = 8000
     data_dir: Path = Path("data")
     frontend_dist: Path = Path("frontend/dist")
+    cv_out_dir: Path = Path("cv_out")
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "[::1]")
 
     @property
