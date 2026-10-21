@@ -16,7 +16,7 @@ asking the model. The four values mean exactly this (ADR-0009):
   Accepting replaces the stored value, and keeps the old assertion as history.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 import sqlalchemy as sa
@@ -26,6 +26,7 @@ from cvforge.kb.models import (
     COMMON_FIELDS,
     AddEdge,
     CreateEntity,
+    EntityRef,
     OpRef,
     SetState,
     UpdateField,
@@ -60,6 +61,7 @@ def classify(
     payload: object,
     *,
     similar: SimilarFinder | None = None,
+    resolved: Mapping[int, int] | None = None,
 ) -> Verdict:
     """Classify one proposed operation against what is stored.
 
@@ -67,6 +69,10 @@ def classify(
         conn: An open connection.
         payload: A typed operation payload.
         similar: Optional similarity lookup; the source of `duplicate`.
+        resolved: For earlier `create_entity` operations of the same proposal that
+            classified `known` or `duplicate`, the stored entity each one resolves
+            to (`seq` to entity id). It lets an edge between such operations be
+            classified against the stored edge instead of always being `new`.
 
     Returns:
         The verdict. Operation types with no stored counterpart are `new`.
@@ -76,7 +82,7 @@ def classify(
     if isinstance(payload, UpdateField):
         return _update(conn, payload)
     if isinstance(payload, AddEdge):
-        return _edge(conn, payload)
+        return _edge(conn, payload, resolved or {})
     if isinstance(payload, SetState):
         return _state(conn, payload)
     return NEW
@@ -109,10 +115,16 @@ def _update(conn: sa.Connection, payload: UpdateField) -> Verdict:
     return Verdict(Classification.CONFLICT, TargetKind.ENTITY, entity.id)
 
 
-def _edge(conn: sa.Connection, payload: AddEdge) -> Verdict:
-    if isinstance(payload.src, OpRef) or isinstance(payload.dst, OpRef):
+def _end(ref: EntityRef, resolved: Mapping[int, int]) -> int | None:
+    """The stored entity an edge end names, or None when it is created by this proposal."""
+    return resolved.get(ref.op) if isinstance(ref, OpRef) else ref
+
+
+def _edge(conn: sa.Connection, payload: AddEdge, resolved: Mapping[int, int]) -> Verdict:
+    src, dst = _end(payload.src, resolved), _end(payload.dst, resolved)
+    if src is None or dst is None:
         return NEW  # one end does not exist yet, so neither can the edge
-    stored = queries.find_edge(conn, payload.src, payload.rel.value, payload.dst)
+    stored = queries.find_edge(conn, src, payload.rel.value, dst)
     if stored is None:
         return NEW
     proposed = (payload.started_at, payload.ended_at)
