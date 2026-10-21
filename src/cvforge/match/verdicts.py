@@ -88,6 +88,14 @@ class Outcome:
     rationale: str
     support: tuple[int, ...] = ()
 
+    def __post_init__(self) -> None:
+        """Hold the invariant: only `satisfied` and `evidenced` rest on entities, and both do."""
+        backed = self.verdict in (MatchVerdict.SATISFIED, MatchVerdict.EVIDENCED)
+        if backed != bool(self.support):
+            raise ValueError(
+                f"a {self.verdict.value} verdict must{'' if backed else ' not'} cite support"
+            )
+
 
 def _uses(conn: sa.Connection, entity_id: int) -> int:
     return sum(1 for edge in queries.neighbours(conn, entity_id) if edge.rel in USED_RELS)

@@ -111,3 +111,16 @@ def test_the_gap_report_endpoint_lists_the_unbacked_requirements(
 
     assert [(g["text"], g["verdict"]) for g in gaps] == [("Fortran", "gap"), ("Go", "gap")]
     assert client.get("/api/jobs/999/gaps").status_code == 404
+
+
+def test_matching_still_works_when_no_model_can_be_built(
+    matching: tuple[TestClient, int],
+) -> None:
+    client, posting = matching
+
+    def no_model(_engine: object) -> object:
+        raise RuntimeError("no provider configured")
+
+    client.app.state.model_factory = no_model  # type: ignore[attr-defined]
+    response = client.post(f"/api/jobs/{posting}/match")
+    assert response.status_code == 200 and response.json()[0]["verdict"] == "satisfied"

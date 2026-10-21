@@ -10,7 +10,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models import Model
 
 from cvforge.llm.fence import fence
@@ -62,16 +61,16 @@ class ModelJudge:
             candidates: Recorded, used entities it may be judged against.
 
         Returns:
-            The judgment; no ids if the model's output was invalid.
+            The judgment; no ids if the model failed or its output was invalid.
         """
         listing = "\n".join(
             f"- id {c.entity_id}: {c.name} ({c.kind.value})"
             + (f" - {c.summary}" if c.summary else "")
             for c in candidates
         )
-        prompt = f"{fence('requirement', requirement)}\n\nCandidates:\n{listing}"
+        prompt = f"{fence('requirement', requirement)}\n\n{fence('candidates', listing)}"
         try:
             output = self._agent.run_sync(prompt).output
-        except UnexpectedModelBehavior:
+        except Exception:
             return Judgment((), "")
         return Judgment(tuple(output.entity_ids), output.rationale)

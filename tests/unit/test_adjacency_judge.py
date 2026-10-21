@@ -44,3 +44,11 @@ def test_invalid_output_yields_no_judgment() -> None:
     judge, _, _ = _judge({"entity_ids": ["not-an-id"]})
     verdict = judge.judge("REST API client", CANDIDATES)
     assert verdict.entity_ids == () and verdict.rationale == ""
+
+
+def test_a_model_that_raises_yields_no_judgment() -> None:
+    def broken(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        raise RuntimeError("provider down")
+
+    verdict = ModelJudge(FunctionModel(broken)).judge("REST API client", CANDIDATES)
+    assert verdict.entity_ids == ()

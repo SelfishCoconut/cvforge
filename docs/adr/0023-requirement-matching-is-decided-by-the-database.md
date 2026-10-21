@@ -52,3 +52,10 @@ state and carry no assertion.
   the match is flagged (`archived`), and one that no longer exists is dropped rather than
   cited. The gap report (`undocumented` + `gap`) is read from the stored matches, in
   requirement order, so it is identical until the match is run again.
+- For CV generation (M5): a stored match is a snapshot, not a licence. `evidenced` means a
+  *different* entity backs the requirement, so a claim may cite that entity's assertion but
+  never state the requirement's own text as fact; `rationale` is free text and is never a
+  source of claims; and support must be re-read from live assertions (an entity archived
+  after the match is flagged, not removed). `Outcome` enforces that only `satisfied` and
+  `evidenced` carry support, and both always do.
+- The judge's failure (model error, no model) leaves the verdict as the rules decided it.

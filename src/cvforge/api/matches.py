@@ -124,6 +124,16 @@ def _posting(db: sa.Engine, posting_id: int) -> StoredPosting:
     return posting
 
 
+def _judge(db: sa.Engine, embedder: Embedder, model_factory: Factory) -> ModelJudge | None:
+    """The adjacency judge, or None when there is no embedder or no model can be built."""
+    if embedder is None:
+        return None
+    try:
+        return ModelJudge(model_factory(db))
+    except Exception:
+        return None
+
+
 @router.post("/jobs/{posting_id}/match")
 def run_match(
     posting_id: int, db: Engine, embedder: Embedder, model_factory: Factory
@@ -142,7 +152,7 @@ def run_match(
     Raises:
         NotFoundError: If there is no such posting (404).
     """
-    judge = ModelJudge(model_factory(db)) if embedder is not None else None
+    judge = _judge(db, embedder, model_factory)
     results = match_posting(db, posting_id, embedder=embedder, judge=judge)
     if results is None:
         raise apply.NotFoundError(f"no job posting {posting_id}")
