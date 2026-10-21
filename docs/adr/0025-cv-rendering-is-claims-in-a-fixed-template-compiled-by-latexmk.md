@@ -11,7 +11,7 @@ no corrupt output and nothing written into the repository.
 
 ## Decision
 
-**D-AH — one template, claims only.** `templates/cv/classic.tex` holds structure and
+**D-AH — one template, claims only.** `templates/cv/classic.tex` (base LaTeX packages only) holds structure and
 typography with a single `%%BODY%%` slot. `cv/render.py` fills it from the stored claim rows
 and nothing else: section titles are template structure, every other string is a claim.
 Rendering is a pure function of the claims and the template (no model, clock or randomness).
@@ -37,6 +37,6 @@ after a successful compile.
 ## Consequences
 
 - CI installs a minimal TeX Live (`latexmk`, `texlive-latex-base/-recommended`,
-  `texlive-fonts-recommended`) for the integration and demo jobs, a minute or two per run.
+  `texlive-fonts-recommended`; the template needs nothing from `-extra`) for the integration and demo jobs, a minute or two per run.
 - The default template is plain on purpose; more templates are a `templates/cv/` addition.
 - A failed compile can leave `cv.tex` and `cv.txt` on disk without a recorded PDF path.

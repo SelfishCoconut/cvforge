@@ -55,7 +55,7 @@ def test_the_tex_holds_the_escaped_claims_and_no_raw_specials() -> None:
     tex = render_tex(CV)
     for expected in (r"C \& C++", r"100\% uptime\_tools", r"R\&D Lab \#1", r"2019-01 to 2022-06"):
         assert expected in tex
-    assert r"\section*{Skills}" in tex and r"\section*{Experience}" in tex
+    assert r"\cvsection{Skills}" in tex and r"\cvsection{Experience}" in tex
     assert "%%BODY%%" not in tex
 
 

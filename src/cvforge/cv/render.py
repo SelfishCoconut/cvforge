@@ -76,7 +76,7 @@ def render_tex(cv: StoredCv) -> str:
     """
     body: list[str] = []
     for title, items in _items(cv).items():
-        body.append(rf"\section*{{{latex_escape(title)}}}")
+        body.append(rf"\cvsection{{{latex_escape(title)}}}")
         for index in sorted(items):
             body += _item_tex(items[index])
     return TEMPLATE.read_text(encoding="utf-8").replace("%%BODY%%", "\n".join(body))
