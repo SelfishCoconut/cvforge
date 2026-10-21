@@ -183,3 +183,13 @@ Generated from docstrings. Update the docstring, not this page.
 ::: cvforge.llm.agents.interview
 
 ::: cvforge.api.discovery
+
+## Learning plans
+
+::: cvforge.learning.store
+
+::: cvforge.learning.progress
+
+::: cvforge.llm.agents.plan
+
+::: cvforge.api.learning

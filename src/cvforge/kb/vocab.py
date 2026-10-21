@@ -198,3 +198,12 @@ class ApplicationStatus(StrEnum):
     OFFER = "offer"
     REJECTED = "rejected"
     WITHDRAWN = "withdrawn"
+
+
+class StepKind(StrEnum):
+    """What a learning-plan step asks the user to do."""
+
+    STUDY = "study"
+    READING = "reading"
+    EXERCISE = "exercise"
+    PROJECT = "project"

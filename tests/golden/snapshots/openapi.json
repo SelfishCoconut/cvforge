@@ -1342,6 +1342,84 @@
         "title": "OperationRecord",
         "type": "object"
       },
+      "PlanView": {
+        "description": "A learning plan.\n\nAttributes:\n    id: The plan id.\n    job_posting_id: The posting.\n    requirement_id: The `gap` requirement it addresses (see `GET /api/jobs/{id}/gaps`).\n    entity_id: The recorded entity it would confirm, if any.\n    summary: The route in one sentence.\n    completion_proposal_id: The pending `set_state` proposal, once every step is done.\n    steps: The steps in order.",
+        "properties": {
+          "completion_proposal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Proposal Id"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_posting_id": {
+            "title": "Job Posting Id",
+            "type": "integer"
+          },
+          "requirement_id": {
+            "title": "Requirement Id",
+            "type": "integer"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepView"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_posting_id",
+          "requirement_id",
+          "entity_id",
+          "summary",
+          "completion_proposal_id",
+          "steps"
+        ],
+        "title": "PlanView",
+        "type": "object"
+      },
+      "ProgressView": {
+        "description": "The result of completing a step.\n\nAttributes:\n    plan: The plan after the step was marked.\n    proposal: The pending `set_state` proposal if that finished the plan; empty otherwise.",
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/PlanView"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalView"
+          }
+        },
+        "required": [
+          "plan",
+          "proposal"
+        ],
+        "title": "ProgressView",
+        "type": "object"
+      },
       "ProposalRecord": {
         "description": "A proposal and its operations in `seq` order.",
         "properties": {
@@ -1907,6 +1985,75 @@
           "status"
         ],
         "title": "StatusRequest",
+        "type": "object"
+      },
+      "StepKind": {
+        "description": "What a learning-plan step asks the user to do.",
+        "enum": [
+          "study",
+          "reading",
+          "exercise",
+          "project"
+        ],
+        "title": "StepKind",
+        "type": "string"
+      },
+      "StepView": {
+        "description": "One step of a plan.\n\nAttributes:\n    id: The step id.\n    position: Its place in the plan.\n    title: What to do.\n    kind: `study`, `reading`, `exercise` or `project`.\n    resource: A suggested resource, if any.\n    done_when: The sign it is finished.\n    completed_at: When it was completed, if it was.",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "done_when": {
+            "title": "Done When",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/StepKind"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "resource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "title",
+          "kind",
+          "resource",
+          "done_when",
+          "completed_at"
+        ],
+        "title": "StepView",
         "type": "object"
       },
       "SupportView": {
@@ -3401,6 +3548,58 @@
         ]
       }
     },
+    "/api/jobs/{posting_id}/gaps/{requirement_id}/plan": {
+      "post": {
+        "description": "Draft a learning plan for one `gap` requirement and store it.\n\nArgs:\n    posting_id: A posting id.\n    requirement_id: A requirement whose stored verdict is `gap`.\n    db: The knowledge-base engine.\n    model_factory: Builds the model for this request.\n\nReturns:\n    The stored plan.\n\nRaises:\n    HTTPException: 409 if the requirement is not a gap or already has a plan; 502 if the\n        model fails.",
+        "operationId": "make_plan_api_jobs__posting_id__gaps__requirement_id__plan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "requirement_id",
+            "required": true,
+            "schema": {
+              "title": "Requirement Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Make Plan",
+        "tags": [
+          "learning"
+        ]
+      }
+    },
     "/api/jobs/{posting_id}/interview": {
       "get": {
         "description": "List the interview questions: one per `undocumented` or `gap` requirement.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The questions, derived from the posting's stored matches.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
@@ -3588,6 +3787,148 @@
         "summary": "Run Match",
         "tags": [
           "match"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}/plans": {
+      "get": {
+        "description": "List a posting's learning plans.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The plans.",
+        "operationId": "read_plans_api_jobs__posting_id__plans_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlanView"
+                  },
+                  "title": "Response Read Plans Api Jobs  Posting Id  Plans Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Plans",
+        "tags": [
+          "learning"
+        ]
+      }
+    },
+    "/api/plans/{plan_id}": {
+      "get": {
+        "description": "Read one plan.\n\nArgs:\n    plan_id: A plan id.\n    db: The knowledge-base engine.\n\nReturns:\n    The plan.\n\nRaises:\n    NotFoundError: If there is no such plan (404).",
+        "operationId": "read_plan_api_plans__plan_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Plan",
+        "tags": [
+          "learning"
+        ]
+      }
+    },
+    "/api/plans/{plan_id}/steps/{step_id}/complete": {
+      "post": {
+        "description": "Mark a step complete; finishing the last one raises a pending `set_state` proposal.\n\nThe entity is never changed here: the proposal is accepted or rejected in review.\n\nArgs:\n    plan_id: A plan id.\n    step_id: A step of that plan.\n    db: The knowledge-base engine.\n\nReturns:\n    The plan and, if it is now complete, the pending proposal.\n\nRaises:\n    NotFoundError: If the plan or step does not exist (404).\n    HTTPException: 409 if the plan's entity is not recorded as `learning`.",
+        "operationId": "complete_api_plans__plan_id__steps__step_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "step_id",
+            "required": true,
+            "schema": {
+              "title": "Step Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete",
+        "tags": [
+          "learning"
         ]
       }
     },

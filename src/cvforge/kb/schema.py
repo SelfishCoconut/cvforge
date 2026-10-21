@@ -37,6 +37,7 @@ from cvforge.kb.vocab import (
     Rel,
     RequirementKind,
     SourceKind,
+    StepKind,
     TargetKind,
     WorkModel,
     values,
@@ -470,4 +471,43 @@ application = sa.Table(
     sa.Column("applied_at", sa.DateTime),
     sa.Column("notes", sa.String),
     _in("status", values(ApplicationStatus), "status"),
+)
+
+# --- learning plans (M7, FR-33, FR-34). A plan is advice, not knowledge. -------------------
+# Written by `learning/store.py`, a registered writer (ADR-0029). Moving the linked entity to
+# `confirmed` is never done here: completion only *proposes* a `set_state` for review.
+learning_plan = sa.Table(
+    "learning_plan",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("job_posting_id", sa.Integer, sa.ForeignKey("job_posting.id"), nullable=False),
+    sa.Column(
+        "requirement_id",
+        sa.Integer,
+        sa.ForeignKey("requirement.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    ),
+    sa.Column("entity_id", sa.Integer, sa.ForeignKey("entity.id")),
+    sa.Column("summary", sa.String, nullable=False),
+    sa.Column("created_at", sa.DateTime, nullable=False),
+    sa.Column("completion_proposal_id", sa.Integer, sa.ForeignKey("proposal.id")),
+)
+
+learning_step = sa.Table(
+    "learning_step",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column(
+        "plan_id", sa.Integer, sa.ForeignKey("learning_plan.id", ondelete="CASCADE"), nullable=False
+    ),
+    sa.Column("position", sa.Integer, nullable=False),
+    sa.Column("title", sa.String, nullable=False),
+    sa.Column("kind", sa.String, nullable=False),
+    sa.Column("resource", sa.String),
+    sa.Column("done_when", sa.String, nullable=False),
+    sa.Column("completed_at", sa.DateTime),
+    sa.UniqueConstraint("plan_id", "position"),
+    sa.CheckConstraint("length(trim(title)) > 0", name="step_title_nonblank"),
+    _in("kind", values(StepKind), "step_kind"),
 )

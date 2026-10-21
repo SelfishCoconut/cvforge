@@ -863,6 +863,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/{posting_id}/gaps/{requirement_id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make Plan
+         * @description Draft a learning plan for one `gap` requirement and store it.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         requirement_id: A requirement whose stored verdict is `gap`.
+         *         db: The knowledge-base engine.
+         *         model_factory: Builds the model for this request.
+         *
+         *     Returns:
+         *         The stored plan.
+         *
+         *     Raises:
+         *         HTTPException: 409 if the requirement is not a gap or already has a plan; 502 if the
+         *             model fails.
+         */
+        post: operations["make_plan_api_jobs__posting_id__gaps__requirement_id__plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/{posting_id}/interview": {
         parameters: {
             query?: never;
@@ -954,6 +987,97 @@ export interface paths {
          *         NotFoundError: If there is no such posting (404).
          */
         post: operations["run_match_api_jobs__posting_id__match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{posting_id}/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Plans
+         * @description List a posting's learning plans.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The plans.
+         */
+        get: operations["read_plans_api_jobs__posting_id__plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Plan
+         * @description Read one plan.
+         *
+         *     Args:
+         *         plan_id: A plan id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The plan.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such plan (404).
+         */
+        get: operations["read_plan_api_plans__plan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{plan_id}/steps/{step_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete
+         * @description Mark a step complete; finishing the last one raises a pending `set_state` proposal.
+         *
+         *     The entity is never changed here: the proposal is accepted or rejected in review.
+         *
+         *     Args:
+         *         plan_id: A plan id.
+         *         step_id: A step of that plan.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The plan and, if it is now complete, the pending proposal.
+         *
+         *     Raises:
+         *         NotFoundError: If the plan or step does not exist (404).
+         *         HTTPException: 409 if the plan's entity is not recorded as `learning`.
+         */
+        post: operations["complete_api_plans__plan_id__steps__step_id__complete_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1865,6 +1989,47 @@ export interface components {
             target_kind: string | null;
         };
         /**
+         * PlanView
+         * @description A learning plan.
+         *
+         *     Attributes:
+         *         id: The plan id.
+         *         job_posting_id: The posting.
+         *         requirement_id: The `gap` requirement it addresses (see `GET /api/jobs/{id}/gaps`).
+         *         entity_id: The recorded entity it would confirm, if any.
+         *         summary: The route in one sentence.
+         *         completion_proposal_id: The pending `set_state` proposal, once every step is done.
+         *         steps: The steps in order.
+         */
+        PlanView: {
+            /** Completion Proposal Id */
+            completion_proposal_id: number | null;
+            /** Entity Id */
+            entity_id: number | null;
+            /** Id */
+            id: number;
+            /** Job Posting Id */
+            job_posting_id: number;
+            /** Requirement Id */
+            requirement_id: number;
+            /** Steps */
+            steps: components["schemas"]["StepView"][];
+            /** Summary */
+            summary: string;
+        };
+        /**
+         * ProgressView
+         * @description The result of completing a step.
+         *
+         *     Attributes:
+         *         plan: The plan after the step was marked.
+         *         proposal: The pending `set_state` proposal if that finished the plan; empty otherwise.
+         */
+        ProgressView: {
+            plan: components["schemas"]["PlanView"];
+            proposal: components["schemas"]["ProposalView"];
+        };
+        /**
          * ProposalRecord
          * @description A proposal and its operations in `seq` order.
          */
@@ -2194,6 +2359,40 @@ export interface components {
          */
         StatusRequest: {
             status: components["schemas"]["ApplicationStatus"];
+        };
+        /**
+         * StepKind
+         * @description What a learning-plan step asks the user to do.
+         * @enum {string}
+         */
+        StepKind: "study" | "reading" | "exercise" | "project";
+        /**
+         * StepView
+         * @description One step of a plan.
+         *
+         *     Attributes:
+         *         id: The step id.
+         *         position: Its place in the plan.
+         *         title: What to do.
+         *         kind: `study`, `reading`, `exercise` or `project`.
+         *         resource: A suggested resource, if any.
+         *         done_when: The sign it is finished.
+         *         completed_at: When it was completed, if it was.
+         */
+        StepView: {
+            /** Completed At */
+            completed_at: string | null;
+            /** Done When */
+            done_when: string;
+            /** Id */
+            id: number;
+            kind: components["schemas"]["StepKind"];
+            /** Position */
+            position: number;
+            /** Resource */
+            resource: string | null;
+            /** Title */
+            title: string;
         };
         /**
          * SupportView
@@ -3190,6 +3389,38 @@ export interface operations {
             };
         };
     };
+    make_plan_api_jobs__posting_id__gaps__requirement_id__plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_interview_api_jobs__posting_id__interview_get: {
         parameters: {
             query?: never;
@@ -3305,6 +3536,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_plans_api_jobs__posting_id__plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_plan_api_plans__plan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_api_plans__plan_id__steps__step_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+                step_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressView"];
                 };
             };
             /** @description Validation Error */
