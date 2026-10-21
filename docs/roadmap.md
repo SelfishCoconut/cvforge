@@ -65,12 +65,12 @@ Done:
 
 ## Next action
 
-**M8 — form autofill (FR-35..FR-37; issues #39-#41), the last milestone.** FR-35 (#39, analysis, ADR-0030)
-is in review; next FR-36 (#40, suggested values + `form_fill_session`) and FR-37 (#41, confirmed fill, never submit). Playwright is already an optional extra (`cvforge[browser]`, ADR-0019);
-spec D13 wants a dedicated persistent profile under `data/`, headed by default, never the user's real
-Chrome profile, per-field options with prefilled defaults (FR-36), confirm before fill and never auto-submit
-(FR-37). The ATS plain-text CV (`cv/to_text.py`) and the CV claims are the source of fill values; form
-pages are untrusted data (NFR-07): analyse, never obey. This machine has Chromium under `~/.cache/ms-playwright`.
+**M8 — form autofill (FR-35..FR-37; issues #39-#41), the last milestone.** FR-35 (#39, analysis,
+ADR-0030) is PR #168; FR-36 (#40, suggestions from the selected CV, `form_fill_session`) and FR-37
+(#41, `forms/fill.py`: confirmed fields only, headed persistent profile, never submits, pinned by an
+AST test) are built on `feat/fr-36-form-options` (stacked on #168). **Remaining for M8:** open the
+PRs once #168 merges, the API routes (analyse, confirm, fill) and UI, then the `release` skill for
+M8. Form pages are untrusted data (NFR-07): analyse, never obey.
 
 M7 closed as `v0.8.0` (2026-10-21): FR-33 learning plans for `gap` requirements and FR-34 progress
 tracking whose completion only proposes a `set_state` (ADR-0029). Sanity audit
