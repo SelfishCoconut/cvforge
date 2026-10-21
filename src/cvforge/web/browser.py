@@ -33,6 +33,16 @@ class PlaywrightFetcher:
         else:
             route.continue_()
 
+    def _screen_socket(self, socket: Any) -> None:
+        """Close any WebSocket that `check_url` refuses; connect the rest."""
+        try:
+            # ws:// and wss:// travel over http(s), and are held to the same targets.
+            check_url(socket.url.replace("ws", "http", 1), allow_local=self._allow_local)
+        except FetchError:
+            socket.close()
+        else:
+            socket.connect_to_server()
+
     def render(self, url: str) -> str:
         """Load `url` in headless Chromium, wait for the network to settle, return the HTML.
 
@@ -58,8 +68,10 @@ class PlaywrightFetcher:
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
                 try:
-                    page = browser.new_context().new_page()
-                    page.route("**/*", self._screen)
+                    context = browser.new_context(service_workers="block")
+                    context.route("**/*", self._screen)
+                    context.route_web_socket("**/*", self._screen_socket)
+                    page = context.new_page()
                     page.goto(url, wait_until="networkidle", timeout=NAVIGATION_TIMEOUT_MS)
                     check_url(page.url, allow_local=self._allow_local)
                     html: str = page.content()

@@ -35,6 +35,18 @@ class _Route:
         self.outcome = "continue"
 
 
+class _Socket:
+    def __init__(self, url: str) -> None:
+        self.url = url
+        self.outcome = ""
+
+    def close(self) -> None:
+        self.outcome = "close"
+
+    def connect_to_server(self) -> None:
+        self.outcome = "connect"
+
+
 class _Page:
     def __init__(self, fail: bool, lands_on: str | None = None) -> None:
         self.fail = fail
@@ -42,10 +54,8 @@ class _Page:
         self.visited: list[str] = []
         self.url = ""
         self.screen: Any = None
-
-    def route(self, pattern: str, handler: Any) -> None:
-        assert pattern == "**/*"
-        self.screen = handler
+        self.screen_socket: Any = None
+        self.context_options: dict[str, Any] = {}
 
     def goto(self, url: str, *, wait_until: str, timeout: int) -> None:
         assert wait_until == "networkidle"
@@ -63,8 +73,17 @@ class _Browser:
         self.page = page
         self.closed = False
 
-    def new_context(self) -> "_Browser":
+    def new_context(self, **options: Any) -> "_Browser":
+        self.page.context_options = options
         return self
+
+    def route(self, pattern: str, handler: Any) -> None:
+        assert pattern == "**/*"
+        self.page.screen = handler
+
+    def route_web_socket(self, pattern: str, handler: Any) -> None:
+        assert pattern == "**/*"
+        self.page.screen_socket = handler
 
     def new_page(self) -> _Page:
         return self.page
@@ -140,3 +159,15 @@ def test_a_page_that_ends_on_a_local_address_is_refused(monkeypatch: pytest.Monk
     _install_fake(monkeypatch, lands_on="http://127.0.0.1:8000/internal")
     with pytest.raises(FetchError, match="local address"):
         PlaywrightFetcher().render(URL)
+
+
+def test_service_workers_are_blocked_and_websockets_screened(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    browser = _install_fake(monkeypatch)
+    PlaywrightFetcher().render(URL)
+    assert browser.page.context_options == {"service_workers": "block"}
+    allowed, refused = _Socket("wss://feed.example.test/live"), _Socket("ws://127.0.0.1:9/x")
+    browser.page.screen_socket(allowed)
+    browser.page.screen_socket(refused)
+    assert (allowed.outcome, refused.outcome) == ("connect", "close")
