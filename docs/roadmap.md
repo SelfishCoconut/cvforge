@@ -65,10 +65,9 @@ Done:
 
 ## Next action
 
-**M5 — CV generation (FR-24..FR-29, NFR-05; issues #28-#33, #45).** In progress: FR-24/FR-25
-(#28, #29: generator, `cv`/`cv_claim`, claim API, basic validation, ADR-0024) is in review; next
-FR-26 render (LaTeX/PDF/text), FR-27/28 versions and applications, FR-29 full validation, then
-close M5. Read first: invariant 5 and ADR-0023's M5 notes. A stored
+**M5 — CV generation (FR-24..FR-29, NFR-05; issues #28-#33, #45).** Merged: FR-24/25 (#153, generator,
+`cv`/`cv_claim`, claim API, ADR-0024), FR-26 (#154, render, ADR-0025). In review: FR-27/28 (#155,
+versions and applications, ADR-0026) and FR-29 + NFR-05 (full validation). Then close M5. Read first: invariant 5 and ADR-0023's M5 notes. A stored
 `match` is a snapshot, not a licence: a claim must cite a live assertion (an `evidenced`
 verdict backs the *supporting entity's* claim, never the requirement's own text; `rationale`
 is free text and never a source of claims). The `cv-template` skill covers rendering.

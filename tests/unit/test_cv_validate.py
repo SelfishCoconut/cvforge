@@ -113,3 +113,148 @@ def test_saving_for_an_unknown_parent_is_a_not_found(kb: sa.Engine, propose: Any
     posting = matched_posting(kb, "Rust")
     with pytest.raises(apply.NotFoundError):
         save_cv(kb, posting, [], parent_cv_id=42)
+
+
+def _codes(kb: sa.Engine, cv_id: int) -> list[str]:
+    return [i.code for i in validate_cv(kb, _cv(kb, cv_id))]
+
+
+def _generate(kb: sa.Engine, posting: int) -> int:
+    return save_cv(kb, posting, generate_cv(kb, posting))
+
+
+def test_overlapping_full_time_roles_are_flagged_not_presented_silently(
+    kb: sa.Engine, propose: Any
+) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    ids = apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "create_entity",
+                "kind": "role",
+                "name": "Consultant",
+                "attributes": {
+                    "started_at": "2021-01-01",
+                    "ended_at": "2023-01-01",
+                    "employment_type": "full-time",
+                },
+            },
+            accept=True,
+        ),
+    ).entity_ids
+    apply.commit_proposal(
+        kb,
+        propose(
+            {"op_type": "add_edge", "src": profile.rust, "rel": "used_in", "dst": ids[0]},
+            accept=True,
+        ),
+    )
+
+    assert "overlapping_roles" in _codes(kb, _generate(kb, posting))
+
+
+def test_part_time_or_sequential_roles_do_not_overlap(kb: sa.Engine, propose: Any) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    ids = apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "create_entity",
+                "kind": "role",
+                "name": "Later role",
+                "attributes": {"started_at": "2022-07-01", "employment_type": "full-time"},
+            },
+            accept=True,
+        ),
+    ).entity_ids
+    apply.commit_proposal(
+        kb,
+        propose(
+            {"op_type": "add_edge", "src": profile.rust, "rel": "used_in", "dst": ids[0]},
+            accept=True,
+        ),
+    )
+    assert "overlapping_roles" not in _codes(kb, _generate(kb, posting))
+
+
+def test_a_use_recorded_before_the_thing_it_was_used_in_began_is_flagged(
+    kb: sa.Engine, propose: Any
+) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    ids = apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "create_entity",
+                "kind": "project",
+                "name": "Early adopter",
+                "attributes": {"started_at": "2020-01-01"},
+            },
+            accept=True,
+        ),
+    ).entity_ids
+    apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "add_edge",
+                "src": profile.rust,
+                "rel": "used_in",
+                "dst": ids[0],
+                "started_at": "2019-01-01",
+            },
+            accept=True,
+        ),
+    )
+    assert "inconsistent_period" in _codes(kb, _generate(kb, posting))
+
+
+def test_a_cv_omitting_a_satisfied_required_skill_is_incomplete(
+    kb: sa.Engine, propose: Any
+) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    without_rust = [c for c in generate_cv(kb, posting) if c.entity_id != profile.rust]
+    cv_id = save_cv(kb, posting, without_rust)
+    assert _codes(kb, cv_id) == ["incomplete_coverage"]
+
+
+def test_a_complete_consistent_cv_has_no_issues(kb: sa.Engine, propose: Any) -> None:
+    build_profile(kb, propose)
+    assert _codes(kb, _generate(kb, matched_posting(kb, "Rust"))) == []
+
+
+def test_a_model_that_tries_to_hallucinate_a_claim_is_blocked(kb: sa.Engine, propose: Any) -> None:
+    """NFR-05: a model-written line is caught by the store or by the validator, never presented."""
+    from pydantic_ai.agent import Agent
+    from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+    from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+
+    def hallucinate(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        tool = next(iter(info.output_tools))
+        return ModelResponse(
+            parts=[ToolCallPart(tool.name, {"text": "Led a team of 50 engineers"})]
+        )
+
+    from pydantic import BaseModel
+
+    class Line(BaseModel):
+        text: str
+
+    line = Agent(FunctionModel(hallucinate), output_type=Line).run_sync("write a bullet").output
+    honest = generate_cv(kb, posting)
+    skill_claim = next(c for c in honest if c.entity_id == profile.rust)
+    fabricated = replace(skill_claim, text=line.text)  # real entity and assertion, invented words
+
+    cv_id = save_cv(kb, posting, [fabricated])  # the store only proves the assertion exists...
+    codes = _codes(kb, cv_id)
+    assert "text_mismatch" in codes  # ...the validator proves the words are the stored fact's
+    with pytest.raises(UnsupportedClaimError):  # and with no assertion at all it never lands
+        save_cv(kb, posting, [replace(fabricated, assertion_id=987_654)])

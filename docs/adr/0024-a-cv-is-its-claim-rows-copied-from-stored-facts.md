@@ -34,8 +34,13 @@ are never rendered and `undocumented`/`gap` requirements select nothing.
 
 **D-AG — validation recomputes from the live knowledge base.** `cv/validate.py` checks each
 stored claim: its assertion exists and is about its entity, the entity is still `confirmed`,
-and `claim_source` still yields exactly the stored text. A CV with any issue cannot be marked
-final (`POST /api/cvs/{id}/final` answers 409). Versions are `max + 1` per posting with an
+and `claim_source` still yields exactly the stored text. Across claims it also flags (FR-29)
+`overlapping_roles` (full-time roles whose recorded dates overlap; an open end runs to the
+future), `inconsistent_period` (a skill's recorded use falls outside the recorded period of
+what it was used in; the knowledge base holds no release dates, so this is the available
+reading of "technology inconsistent with its period") and `incomplete_coverage` (a `required`
+requirement the candidate is `satisfied` on has no claim on the CV). A CV with any issue cannot
+be marked final or rendered (`POST /api/cvs/{id}/final` answers 409). Versions are `max + 1` per posting with an
 optional `parent_cv_id`.
 
 ## Consequences
