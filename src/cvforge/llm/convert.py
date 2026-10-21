@@ -4,12 +4,19 @@ Nothing the model returns is trusted to be well-formed: a fact or edge that does
 not fit is reported in `Converted.rejected` and the rest of the result survives.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from pydantic import ValidationError
 
 from cvforge.kb.models import AddEdge, CreateEntity, EntityRef, OpRef, Payload
-from cvforge.llm.schemas import ExtractedEdge, ExtractedFact, IngestResult
+from cvforge.llm.schemas import DocumentResult, ExtractedEdge, ExtractedFact, IngestResult
+
+EvidenceFor = Callable[[ExtractedFact | ExtractedEdge], int | None]
+"""Picks the evidence span for one item, or None when the item has no resolvable locator."""
+
+
+NO_LOCATOR = "no resolvable locator"
 
 
 @dataclass(frozen=True)
@@ -28,7 +35,9 @@ class Converted:
     rejected: list[RejectedItem] = field(default_factory=list)
 
 
-def to_payloads(result: IngestResult, *, evidence_id: int) -> Converted:
+def to_payloads(
+    result: IngestResult | DocumentResult, *, evidence_id: int | EvidenceFor
+) -> Converted:
     """Convert an agent result into payloads, reporting every item it rejects.
 
     Facts come first, so an edge's `OpRef` always points at an earlier create.
@@ -36,11 +45,16 @@ def to_payloads(result: IngestResult, *, evidence_id: int) -> Converted:
 
     Args:
         result: The parsed agent output.
-        evidence_id: The evidence span every payload is bound to (invariant 3).
+        evidence_id: The evidence span every payload is bound to (invariant 3), or a
+            function choosing one per item. An item it returns None for has no
+            resolvable locator and is rejected rather than stored without evidence.
 
     Returns:
         The payloads and the rejected items.
     """
+    evidence_for: EvidenceFor = (
+        (lambda _item: evidence_id) if isinstance(evidence_id, int) else evidence_id
+    )
     payloads: list[Payload] = []
     rejected: list[RejectedItem] = []
     refs: dict[str, OpRef] = {}
@@ -51,14 +65,14 @@ def to_payloads(result: IngestResult, *, evidence_id: int) -> Converted:
                 RejectedItem(_fact_label(fact), f"duplicate local id {fact.local_id!r}")
             )
             continue
-        created = _create(fact, evidence_id, rejected)
+        created = _create(fact, evidence_for(fact), rejected)
         if created is None:
             dead.add(fact.local_id)
             continue
         refs[fact.local_id] = OpRef(op=len(payloads))
         payloads.append(created)
     for edge in result.edges:
-        added = _add_edge(edge, evidence_id, refs, dead, rejected)
+        added = _add_edge(edge, evidence_for(edge), refs, dead, rejected)
         if added is not None:
             payloads.append(added)
     return Converted(payloads, rejected)
@@ -69,8 +83,11 @@ def _fact_label(fact: ExtractedFact) -> str:
 
 
 def _create(
-    fact: ExtractedFact, evidence_id: int, rejected: list[RejectedItem]
+    fact: ExtractedFact, evidence_id: int | None, rejected: list[RejectedItem]
 ) -> CreateEntity | None:
+    if evidence_id is None:
+        rejected.append(RejectedItem(_fact_label(fact), NO_LOCATOR))
+        return None
     try:
         return CreateEntity(
             kind=fact.kind,
@@ -86,7 +103,7 @@ def _create(
 
 def _add_edge(
     edge: ExtractedEdge,
-    evidence_id: int,
+    evidence_id: int | None,
     refs: dict[str, OpRef],
     dead: set[str],
     rejected: list[RejectedItem],
@@ -102,6 +119,9 @@ def _add_edge(
             reason = f"rejected fact {end!r}" if end in dead else f"unknown local id {end!r}"
             rejected.append(RejectedItem(label, reason))
             return None
+    if evidence_id is None:
+        rejected.append(RejectedItem(label, NO_LOCATOR))
+        return None
     try:
         return AddEdge(
             src=ends[0],

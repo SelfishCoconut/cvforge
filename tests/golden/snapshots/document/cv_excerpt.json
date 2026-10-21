@@ -1,0 +1,102 @@
+{
+  "body": {
+    "chunks": 1,
+    "proposal": {
+      "id": 1,
+      "operations": [
+        {
+          "classification": "new",
+          "id": 1,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {},
+            "evidence_id": 1,
+            "kind": "role",
+            "name": "Backend engineer",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 0,
+          "target_id": null,
+          "target_kind": null
+        },
+        {
+          "classification": "new",
+          "id": 2,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {},
+            "evidence_id": 2,
+            "kind": "skill",
+            "name": "Rust",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 1,
+          "target_id": null,
+          "target_kind": null
+        },
+        {
+          "classification": "new",
+          "id": 3,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {},
+            "evidence_id": 3,
+            "kind": "project",
+            "name": "Log parser",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 2,
+          "target_id": null,
+          "target_kind": null
+        },
+        {
+          "classification": "new",
+          "id": 4,
+          "op_type": "add_edge",
+          "payload": {
+            "confidence": null,
+            "dst": {
+              "op": 2
+            },
+            "ended_at": null,
+            "evidence_id": 2,
+            "note": null,
+            "op_type": "add_edge",
+            "rel": "used_in",
+            "src": {
+              "op": 1
+            },
+            "started_at": null
+          },
+          "seq": 3,
+          "target_id": null,
+          "target_kind": null
+        }
+      ]
+    },
+    "rejected": [],
+    "similarity_available": true,
+    "source_id": 1
+  },
+  "evidence": [
+    {
+      "excerpt": "Backend engineer at Acme Logistics, 2019 to 2022.",
+      "locator": "page:1 chars:14-63"
+    },
+    {
+      "excerpt": "Built a log parser in Rust",
+      "locator": "page:1 chars:65-91"
+    },
+    {
+      "excerpt": "Built a log parser in Rust that processes two gigabytes per second.",
+      "locator": "page:1 chars:65-132"
+    }
+  ],
+  "status": 200
+}

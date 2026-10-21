@@ -1,0 +1,21 @@
+{
+  "filename": "cv.md",
+  "text": "I worked on the billing service at Acme.\n",
+  "model_output": {
+    "facts": [
+      {
+        "local_id": "k",
+        "kind": "skill",
+        "name": "Kubernetes",
+        "excerpt": "I ran Kubernetes clusters at Globex."
+      },
+      {
+        "local_id": "b",
+        "kind": "project",
+        "name": "Billing service",
+        "excerpt": "the billing service at Acme"
+      }
+    ],
+    "edges": []
+  }
+}

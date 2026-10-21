@@ -326,6 +326,42 @@
         "title": "EvidenceRecord",
         "type": "object"
       },
+      "ExtractionView": {
+        "description": "The result of extracting a document.\n\nAttributes:\n    source_id: The document.\n    chunks: How many chunks it was read in.\n    proposal: The pending proposal; empty when nothing was extracted.\n    rejected: What the agent produced that was dropped, and why.\n    similarity_available: False if duplicate detection could not run.",
+        "properties": {
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalView"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedView"
+            },
+            "title": "Rejected",
+            "type": "array"
+          },
+          "similarity_available": {
+            "title": "Similarity Available",
+            "type": "boolean"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source_id",
+          "chunks",
+          "proposal",
+          "rejected",
+          "similarity_available"
+        ],
+        "title": "ExtractionView",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1046,6 +1082,49 @@
           }
         },
         "summary": "Upload Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/documents/{source_id}/extract": {
+      "post": {
+        "description": "Read an uploaded document with the model and record a pending proposal.\n\nEvery fact carries the passage that states it; a fact whose passage cannot be\nfound in the document is dropped. Nothing is written to the knowledge base until\nthe proposal is reviewed and committed.\n\nArgs:\n    db: The knowledge-base engine.\n    source_id: A document source id from `POST /api/documents`.\n    embedder: Used for similarity, if configured.\n    model_factory: Builds the model for this request.\n\nReturns:\n    The proposal and anything dropped.\n\nRaises:\n    HTTPException: 404 for an unknown document; 502 if the model fails.",
+        "operationId": "extract_api_documents__source_id__extract_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Extract",
         "tags": [
           "documents"
         ]

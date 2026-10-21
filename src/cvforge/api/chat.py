@@ -147,7 +147,8 @@ def _store_message(db: sa.Engine, body: ChatRequest) -> tuple[int, int]:
     return conversation, evidence
 
 
-def _view(db: sa.Engine, proposal_id: int | None) -> ProposalView:
+def proposal_view(db: sa.Engine, proposal_id: int | None) -> ProposalView:
+    """Describe a stored proposal (or an empty one) for a response."""
     if proposal_id is None:
         return ProposalView(id=None, operations=[])
     with db.connect() as conn:
@@ -197,7 +198,7 @@ def _finish(
         conversation_id=conversation,
         message_id=evidence,
         reply=result.reply,
-        proposal=_view(db, stored.proposal_id if stored else None),
+        proposal=proposal_view(db, stored.proposal_id if stored else None),
         rejected=[RejectedView(item=r.item, reason=r.reason) for r in converted.rejected],
         similarity_available=stored.similarity_available if stored else embedder is not None,
     )
