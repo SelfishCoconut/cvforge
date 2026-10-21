@@ -331,7 +331,7 @@ app_setting = sa.Table(
 )
 
 # --- job intake (M3, FR-20). Not knowledge: no assertion, no evidence. --------------------
-# Written by `jobs/store.py`, a registered writer (ADR-0020). `source_id` makes the raw page
+# Written by `jobs/store.py`, a registered writer (ADR-0021). `source_id` makes the raw page
 # traceable; `organization_id` and `normalized_skill_id` are filled by matching (M4), never
 # by a fetch.
 job_posting = sa.Table(

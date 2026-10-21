@@ -1,13 +1,13 @@
 """Persist a fetched, analysed job posting and its requirements (FR-20).
 
-Registered writer (ADR-0011, ADR-0020): may write `job_posting` and `requirement`,
+Registered writer (ADR-0011, ADR-0021): may write `job_posting` and `requirement`,
 nothing else. A posting is not knowledge about Álvaro (no assertion, no evidence), so
 it does not go through the knowledge writer. Its raw page is still traceable: every
 persist records a `web` source through `kb.apply.record_source`, and
 `job_posting.source_id` points at it.
 
 Re-persisting a URL is an update, not a duplicate: postings are keyed by the
-normalised URL (ADR-0020 D-O), the row keeps its id, and its requirements are replaced
+normalised URL (ADR-0021 D-T), the row keeps its id, and its requirements are replaced
 by the new analysis.
 """
 
