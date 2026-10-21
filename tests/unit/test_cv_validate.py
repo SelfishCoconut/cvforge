@@ -375,3 +375,77 @@ def test_finalising_revalidates_and_a_final_cv_that_goes_stale_cannot_be_sent(
         record_application(kb, posting, cv_id, applied_at=datetime(2026, 10, 21))
     with pytest.raises(apply.NotFoundError):
         finalize_cv(kb, 999)
+
+
+def test_a_part_time_role_is_never_an_overlap(kb: sa.Engine, propose: Any) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    ids = apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "create_entity",
+                "kind": "role",
+                "name": "Side gig",
+                "attributes": {
+                    "started_at": "2021-01-01",
+                    "ended_at": "2021-12-31",
+                    "employment_type": "part-time",
+                },
+            },
+            accept=True,
+        ),
+    ).entity_ids
+    apply.commit_proposal(
+        kb,
+        propose(
+            {"op_type": "add_edge", "src": profile.rust, "rel": "used_in", "dst": ids[0]},
+            accept=True,
+        ),
+    )
+    assert "overlapping_roles" not in _codes(kb, _generate(kb, posting))
+
+
+def test_edges_other_than_a_recorded_use_do_not_trigger_the_period_check(
+    kb: sa.Engine, propose: Any
+) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "add_edge",
+                "src": profile.rust,
+                "rel": "related_to",
+                "dst": profile.python,
+                "started_at": "1990-01-01",
+            },
+            accept=True,
+        ),
+    )
+    assert "inconsistent_period" not in _codes(kb, _generate(kb, posting))
+
+
+def test_a_cv_for_a_vanished_posting_skips_the_coverage_check(kb: sa.Engine, propose: Any) -> None:
+    cv_id, _ = _saved(kb, propose)
+    orphan = replace(_cv(kb, cv_id), job_posting_id=9999)
+    assert "incomplete_coverage" not in {i.code for i in validate_cv(kb, orphan)}
+
+
+def test_a_claim_with_a_blank_section_is_refused(kb: sa.Engine, propose: Any) -> None:
+    build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    claim = replace(generate_cv(kb, posting)[0], section="  ")
+    with pytest.raises(UnsupportedClaimError, match="no section"):
+        save_cv(kb, posting, [claim])
+
+
+def test_writing_status_or_artifacts_of_a_missing_cv_is_not_found(kb: sa.Engine) -> None:
+    from cvforge.cv.store import _set_status, set_artifacts
+    from cvforge.kb.vocab import CvStatus
+
+    with pytest.raises(apply.NotFoundError):
+        _set_status(kb, 999, CvStatus.DRAFT)
+    with pytest.raises(apply.NotFoundError):
+        set_artifacts(kb, 999, tex="a", pdf=None, txt="b")

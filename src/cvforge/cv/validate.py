@@ -15,7 +15,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from cvforge.cv.binding import claim_problem
-from cvforge.cv.store import StoredClaim, StoredCv, get_cv, set_status
+from cvforge.cv.store import StoredClaim, StoredCv, _set_status, get_cv
 from cvforge.jobs.store import get_posting
 from cvforge.kb import apply, queries
 from cvforge.kb.vocab import (
@@ -27,7 +27,7 @@ from cvforge.kb.vocab import (
     Rel,
     RequirementKind,
 )
-from cvforge.match.store import list_matches
+from cvforge.match.store import StoredMatch, list_matches
 
 _FULL_TIME = frozenset({"full-time", "full time", "fulltime"})
 
@@ -75,17 +75,30 @@ def _day(value: Any) -> date | None:
     return value if isinstance(value, date) else date.fromisoformat(str(value)[:10])
 
 
+def _entities_of_kind(
+    conn: sa.Connection, cv: StoredCv, kind: EntityKind
+) -> list[queries.EntityRecord]:
+    """The distinct entities of `kind` the CV makes claims about."""
+    records = (queries.get_entity(conn, i) for i in dict.fromkeys(c.entity_id for c in cv.claims))
+    return [r for r in records if r is not None and r.kind is kind]
+
+
+def _full_time_span(role: queries.EntityRecord) -> tuple[date, date, str] | None:
+    """A full-time role's (start, end, name); an open end runs to the far future."""
+    employment = str(role.attributes.get("employment_type") or "").lower()
+    start = _day(role.attributes.get("started_at"))
+    if employment not in _FULL_TIME or start is None:
+        return None
+    return start, _day(role.attributes.get("ended_at")) or date.max, role.name
+
+
 def _overlapping_roles(conn: sa.Connection, cv: StoredCv) -> list[Issue]:
-    """Full-time roles whose recorded dates overlap; an open end runs to the far future."""
-    spans: list[tuple[date, date, str]] = []
-    for entity_id in dict.fromkeys(c.entity_id for c in cv.claims):
-        role = queries.get_entity(conn, entity_id)
-        if role is None or role.kind is not EntityKind.ROLE:
-            continue
-        kind = str(role.attributes.get("employment_type") or "").lower()
-        start = _day(role.attributes.get("started_at"))
-        if kind in _FULL_TIME and start is not None:
-            spans.append((start, _day(role.attributes.get("ended_at")) or date.max, role.name))
+    """Full-time roles whose recorded dates overlap."""
+    spans = [
+        span
+        for role in _entities_of_kind(conn, cv, EntityKind.ROLE)
+        if (span := _full_time_span(role)) is not None
+    ]
     return [
         Issue("overlapping_roles", f"full-time roles {a[2]!r} and {b[2]!r} overlap in time")
         for i, a in enumerate(spans)
@@ -94,28 +107,24 @@ def _overlapping_roles(conn: sa.Connection, cv: StoredCv) -> list[Issue]:
     ]
 
 
+def _outside(edge: queries.EdgeRecord, other: queries.EntityRecord) -> bool:
+    """True if a recorded use's dates fall outside the period of what it was used in."""
+    first, last = _day(edge.started_at), _day(edge.ended_at)
+    start, end = _day(other.attributes.get("started_at")), _day(other.attributes.get("ended_at"))
+    return bool((first and start and first < start) or (last and end and last > end))
+
+
 def _use_outside_period(conn: sa.Connection, cv: StoredCv) -> list[Issue]:
     """Skills whose recorded use falls outside the period of what they were used in."""
     issues: list[Issue] = []
-    skills = {c.entity_id for c in cv.claims}
-    for skill_id in sorted(skills):
-        skill = queries.get_entity(conn, skill_id)
-        if skill is None or skill.kind is not EntityKind.SKILL:
-            continue
-        for edge in queries.neighbours(conn, skill_id):
+    for skill in _entities_of_kind(conn, cv, EntityKind.SKILL):
+        for edge in queries.neighbours(conn, skill.id):
             if edge.rel != Rel.USED_IN.value:
                 continue
             other = queries.get_entity(
-                conn, edge.dst_id if edge.src_id == skill_id else edge.src_id
+                conn, edge.dst_id if edge.src_id == skill.id else edge.src_id
             )
-            if other is None:
-                continue
-            first, last = _day(edge.started_at), _day(edge.ended_at)
-            start, end = (
-                _day(other.attributes.get("started_at")),
-                _day(other.attributes.get("ended_at")),
-            )
-            if (first and start and first < start) or (last and end and last > end):
+            if other is not None and _outside(edge, other):
                 issues.append(
                     Issue(
                         "inconsistent_period",
@@ -125,6 +134,20 @@ def _use_outside_period(conn: sa.Connection, cv: StoredCv) -> list[Issue]:
     return issues
 
 
+def _live_support(conn: sa.Connection, match: StoredMatch) -> set[int]:
+    """The confirmed entities a match rests on."""
+    records = (queries.get_entity(conn, e) for e in match.support)
+    return {r.id for r in records if r is not None and r.state is KnowledgeState.CONFIRMED}
+
+
+def _unmentioned(conn: sa.Connection, match: StoredMatch | None, present: set[int]) -> bool:
+    """True if a `satisfied` match rests on live entities none of which the CV mentions."""
+    if match is None or match.verdict is not MatchVerdict.SATISFIED:
+        return False
+    live = _live_support(conn, match)
+    return bool(live) and not (live & present)
+
+
 def _missing_required(engine: sa.Engine, conn: sa.Connection, cv: StoredCv) -> list[Issue]:
     """Required requirements the candidate is `satisfied` on that the CV never mentions."""
     posting = get_posting(engine, cv.job_posting_id)
@@ -132,24 +155,14 @@ def _missing_required(engine: sa.Engine, conn: sa.Connection, cv: StoredCv) -> l
         return []
     present = {c.entity_id for c in cv.claims}
     matches = {m.requirement_id: m for m in list_matches(engine, cv.job_posting_id)}
-    issues: list[Issue] = []
-    for requirement in posting.requirements:
-        match = matches.get(requirement.id)
-        if requirement.kind is not RequirementKind.REQUIRED or match is None:
-            continue
-        live = {
-            e
-            for e in match.support
-            if (r := queries.get_entity(conn, e)) and r.state is KnowledgeState.CONFIRMED
-        }
-        if match.verdict is MatchVerdict.SATISFIED and live and not (live & present):
-            issues.append(
-                Issue(
-                    "incomplete_coverage",
-                    f"required {requirement.text!r} is satisfied by stored facts but not on the CV",
-                )
-            )
-    return issues
+    return [
+        Issue(
+            "incomplete_coverage",
+            f"required {r.text!r} is satisfied by stored facts but not on the CV",
+        )
+        for r in posting.requirements
+        if r.kind is RequirementKind.REQUIRED and _unmentioned(conn, matches.get(r.id), present)
+    ]
 
 
 def validate_cv(engine: sa.Engine, cv: StoredCv) -> list[Issue]:
@@ -175,8 +188,8 @@ def validate_cv(engine: sa.Engine, cv: StoredCv) -> list[Issue]:
 def finalize_cv(engine: sa.Engine, cv_id: int) -> list[Issue]:
     """Mark a CV final if, and only if, it validates now.
 
-    This is the one sanctioned way to reach the `final` status: `set_status` is a bare writer
-    and does not check anything.
+    This is the one sanctioned way to reach the `final` status: the store's status writer is
+    private and does not check anything.
 
     Args:
         engine: The knowledge-base engine.
@@ -193,5 +206,5 @@ def finalize_cv(engine: sa.Engine, cv_id: int) -> list[Issue]:
         raise apply.NotFoundError(f"no CV {cv_id}")
     issues = validate_cv(engine, cv)
     if not issues:
-        set_status(engine, cv_id, CvStatus.FINAL)
+        _set_status(engine, cv_id, CvStatus.FINAL)
     return issues

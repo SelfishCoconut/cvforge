@@ -14,10 +14,11 @@ from cvforge.cv.applications import (
     set_application_status,
 )
 from cvforge.cv.generate import generate_cv
-from cvforge.cv.store import save_cv, set_status
+from cvforge.cv.store import save_cv
+from cvforge.cv.validate import finalize_cv
 from cvforge.jobs.store import persist_posting
 from cvforge.kb import apply, schema
-from cvforge.kb.vocab import ApplicationStatus, CvStatus
+from cvforge.kb.vocab import ApplicationStatus
 from cvforge.llm.schemas import JobAnalysis
 from cvforge.web.fetch import FetchedPage
 
@@ -28,7 +29,7 @@ def _final_cv(kb: sa.Engine, propose: Any) -> tuple[int, int]:
     build_profile(kb, propose)
     posting = matched_posting(kb, "Rust")
     cv = save_cv(kb, posting, generate_cv(kb, posting))
-    set_status(kb, cv, CvStatus.FINAL)
+    assert finalize_cv(kb, cv) == []
     return posting, cv
 
 

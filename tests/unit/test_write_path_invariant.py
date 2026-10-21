@@ -28,7 +28,7 @@ and the `provenance-auditor` agent are the second net.
 A module may also be **registered** as a writer of specific non-knowledge
 tables (ADR-0011): it is exempt from the scan above (it is allowed to write),
 but never from referencing a knowledge table it wasn't registered for.
-`REGISTERED_WRITERS` starts empty; `llm/settings_store.py` joins it in M1b task
+`REGISTERED_WRITERS` started empty; `llm/settings_store.py` joined it in M1b task
 B1.3, `kb/embeddings.py` in B2. Editing it is a deliberate, reviewed line, not
 a side effect of adding a module.
 """

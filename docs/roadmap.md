@@ -65,23 +65,26 @@ Done:
 
 ## Next action
 
-**M5 — CV generation (FR-24..FR-29, NFR-05; issues #28-#33, #45).** Merged: FR-24/25 (#153, generator,
-`cv`/`cv_claim`, claim API, ADR-0024), FR-26 (#154, render, ADR-0025). In review: FR-27/28 (#155,
-versions and applications, ADR-0026) and FR-29 + NFR-05 (full validation). Then close M5. Read first: invariant 5 and ADR-0023's M5 notes. A stored
-`match` is a snapshot, not a licence: a claim must cite a live assertion (an `evidenced`
-verdict backs the *supporting entity's* claim, never the requirement's own text; `rationale`
-is free text and never a source of claims). The `cv-template` skill covers rendering.
+**M6 — collaborative mode (FR-30..FR-32, issues #34-#36).** Start from #34 (FR-30, ask discovery
+questions for plausible gaps): the `undocumented` matches of a posting are its input (`GET
+/api/jobs/{id}/gaps`), and every answer becomes a *proposal* reviewed like any other fact
+(invariant 4), never a direct write. #35 (FR-31) edits a CV conversationally and must create
+child versions (`parent_cv_id`, ADR-0026) whose every new line is still a `cv_claim` bound to a
+live assertion (ADR-0024); `GenerationMode.COLLABORATIVE` has no code path yet. #36 is interview mode.
 
-M4 closed as `v0.5.0` (2026-10-21): FR-21 verdicts (`match/verdicts.py`, ADR-0023), FR-22
-evidence and FR-23 gap report (`match/evidence.py`), `POST/GET /api/jobs/{id}/match` and
-`GET /api/jobs/{id}/gaps`. Sanity audit `docs/sanity/2026-10-21-m4.md`: WATCH, no must-fix; its
-Mediums were fixed in the close-out PR.
+M5 closed as `v0.6.0` (2026-10-21): FR-24/25 claims and generator (ADR-0024), FR-26 LaTeX/PDF/text
+(ADR-0025), FR-27/28 versions and applications (ADR-0026), FR-29 + NFR-05 validation. Invariant 5
+is structural: `cv_claim` has NOT NULL entity and assertion keys, `cv/binding.claim_problem` ties
+each claim's text to the assertion whose recorded value *is* that text (store and validator share
+it), and the only route to `final` is `finalize_cv`. Sanity audit
+`docs/sanity/2026-10-21-m5.md`: WATCH, no must-fix; its Mediums were fixed in the close-out PR.
 
-Loose ends: #145 (flaky `test_document_dedup`, now in M5); no UI for jobs or matches yet; the
-shared "text between tags is data" prompt wording is repeated across four prompts (audit 7a);
-`persist_posting` leaves an orphan `web` source if the posting write fails (ADR-0021); no
-concrete `SearchProvider`; NFR-10 on the default model needs the native Ollama adapter (#129);
-#64 awaits Álvaro; ADRs 0010-0012 and 0015-0023 await his confirmation.
+Loose ends: #145 (flaky `test_document_dedup`, now in M6); no UI for jobs, matches, CVs or
+applications yet (the whole M3-M5 API is headless); `render` leaves `.tex`/`.txt` on disk when the
+PDF fails to compile; the evidence-span record exists in four places (audit); the shared "text
+between tags is data" prompt wording is repeated across four prompts; `persist_posting` can leave an
+orphan `web` source (ADR-0021); no concrete `SearchProvider`; NFR-10 on the default model needs the
+native Ollama adapter (#129); #64 awaits Álvaro; ADRs 0010-0012 and 0015-0026 await his confirmation.
 
 Close-out scope calls (M1/M2): #107 closed as delivered; #73, #64 and #58 left M1 (not
 deliverables: #73 is the reference for two environment-dependent skips, #64 awaits Álvaro,
@@ -177,7 +180,7 @@ CI. Direct pushes to `main` are rejected, including for admins.
 | M2 | Document ingestion | Upload → extract → classify new/known/duplicate/conflict → review | done (`v0.3.0`) |
 | M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | done (`v0.4.0`) |
 | M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | done (`v0.5.0`) |
-| M5 | CV generation | LaTeX → PDF + ATS text, claim traceability, versions, application linkage, validation | not started |
+| M5 | CV generation | LaTeX → PDF + ATS text, claim traceability, versions, application linkage, validation | done (`v0.6.0`) |
 | M6 | Collaborative mode | Conversational CV editing, discovery questions, interview mode | not started |
 | M7 | Learning plans | Gap → plan → tracked `learning` state | not started |
 | M8 | Form autofill | Playwright persistent profile, per-field options, confirm before fill | not started |
