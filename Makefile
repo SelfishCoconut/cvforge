@@ -1,6 +1,6 @@
 .PHONY: lint format typecheck complexity test test-unit test-integration test-golden \
         update-golden test-demos sanity docs docs-serve build-ui dev-ui ui-install \
-        ui-lint ui-gen ui-test run demo-health demo-review-pipeline demo-chat-ingest demo-document-upload demo-document-extract demo-job-fetch demo-job-analyze demo-job-persist demo-company-research demo-job-intake demo-job-match demo-cv-generate demo-cv-render demo-cv-applications demo-ui demo-ui-check migration clean
+        ui-lint ui-gen ui-test run demo-health demo-review-pipeline demo-chat-ingest demo-document-upload demo-document-extract demo-job-fetch demo-job-analyze demo-job-persist demo-company-research demo-job-intake demo-job-match demo-cv-generate demo-cv-render demo-cv-applications demo-discovery demo-ui demo-ui-check migration clean
 
 # --- python quality ---
 lint:
@@ -80,6 +80,9 @@ demo-cv-render:
 demo-cv-applications:
 	uv run python scripts/demo/cv_applications.py
 
+demo-discovery:
+	uv run python scripts/demo/discovery.py
+
 # Serves the built SPA + API with a scripted model on a throwaway DB (run `make build-ui` first).
 demo-ui:
 	uv run python scripts/demo/ui_demo.py
@@ -88,7 +91,7 @@ demo-ui:
 demo-ui-check:
 	uv run python scripts/demo/ui_demo.py --check
 
-test-demos: demo-health demo-review-pipeline demo-chat-ingest demo-document-upload demo-document-extract demo-job-fetch demo-job-analyze demo-job-persist demo-company-research demo-job-intake demo-job-match demo-cv-generate demo-cv-render demo-cv-applications demo-ui-check
+test-demos: demo-health demo-review-pipeline demo-chat-ingest demo-document-upload demo-document-extract demo-job-fetch demo-job-analyze demo-job-persist demo-company-research demo-job-intake demo-job-match demo-cv-generate demo-cv-render demo-cv-applications demo-discovery demo-ui-check
 	@echo "all offline demos ran clean"
 
 # --- mechanical quality signals ---

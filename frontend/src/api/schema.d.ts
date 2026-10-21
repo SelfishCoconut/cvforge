@@ -698,6 +698,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/{posting_id}/discovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Discovery
+         * @description List the discovery questions for a matched posting: one per `undocumented` requirement.
+         *
+         *     A `gap` requirement is never asked about here; it feeds the learning planner.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The questions.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such posting (404).
+         */
+        get: operations["read_discovery_api_jobs__posting_id__discovery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{posting_id}/discovery/{requirement_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Question
+         * @description Answer a discovery question; the answer becomes a pending proposal, never a write.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         requirement_id: The `undocumented` requirement the question was about.
+         *         body: The answer.
+         *         db: The knowledge-base engine.
+         *         embedder: Used for similarity, if configured.
+         *         model_factory: Builds the model for this request.
+         *
+         *     Returns:
+         *         The agent's acknowledgement and the pending proposal (empty if nothing was stated).
+         *
+         *     Raises:
+         *         HTTPException: 409 if the requirement raises no discovery question (a `gap` or a
+         *             backed requirement); 422 for a blank answer; 502 if the model fails.
+         */
+        post: operations["answer_question_api_jobs__posting_id__discovery__requirement_id__answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{posting_id}/discovery/{requirement_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline Question
+         * @description Decline a discovery question. Nothing is recorded: no entity, no source, no proposal.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         requirement_id: The requirement the question was about.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         An empty 204.
+         *
+         *     Raises:
+         *         HTTPException: 409 if the requirement raises no discovery question.
+         */
+        post: operations["decline_question_api_jobs__posting_id__discovery__requirement_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/{posting_id}/gaps": {
         parameters: {
             query?: never;
@@ -722,6 +820,57 @@ export interface paths {
         get: operations["read_gaps_api_jobs__posting_id__gaps_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{posting_id}/interview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Interview
+         * @description List the interview questions: one per `undocumented` or `gap` requirement.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The questions, derived from the posting's stored matches.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such posting (404).
+         */
+        get: operations["read_interview_api_jobs__posting_id__interview_get"];
+        put?: never;
+        /**
+         * Submit Interview
+         * @description Turn an interview transcript into one pending proposal (origin `interview`).
+         *
+         *     Only the user's answers are read as facts. Blank answers are dropped; a transcript with no
+         *     substantive answer records nothing and calls no model.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         body: The answered questions.
+         *         db: The knowledge-base engine.
+         *         embedder: Used for similarity, if configured.
+         *         model_factory: Builds the model for this request.
+         *
+         *     Returns:
+         *         The acknowledgement and the pending proposal.
+         *
+         *     Raises:
+         *         HTTPException: 422 for an answer to a requirement that was not asked about; 502 if the
+         *             model fails.
+         */
+        post: operations["submit_interview_api_jobs__posting_id__interview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -986,6 +1135,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AnswerRequest
+         * @description An answer to a discovery question.
+         *
+         *     Attributes:
+         *         answer: What the user says, in their own words.
+         *         conversation_id: Continue an existing conversation source, if any.
+         */
+        AnswerRequest: {
+            /** Answer */
+            answer: string;
+            /** Conversation Id */
+            conversation_id?: number | null;
+        };
         /**
          * ApplicationRequest
          * @description An application to record.
@@ -1426,6 +1589,17 @@ export interface components {
             version: string;
         };
         /**
+         * InterviewRequest
+         * @description An interview transcript.
+         *
+         *     Attributes:
+         *         turns: The answered questions, in the order they were asked.
+         */
+        InterviewRequest: {
+            /** Turns */
+            turns: components["schemas"]["Turn"][];
+        };
+        /**
          * IssueView
          * @description A problem found by validation.
          *
@@ -1806,6 +1980,25 @@ export interface components {
             similarity_threshold: number;
         };
         /**
+         * QuestionView
+         * @description A question about one requirement.
+         *
+         *     Attributes:
+         *         requirement_id: The requirement it is about.
+         *         requirement_text: What the posting asks.
+         *         verdict: `undocumented` or `gap`.
+         *         text: The question.
+         */
+        QuestionView: {
+            /** Requirement Id */
+            requirement_id: number;
+            /** Requirement Text */
+            requirement_text: string;
+            /** Text */
+            text: string;
+            verdict: components["schemas"]["MatchVerdict"];
+        };
+        /**
          * RejectedView
          * @description Something the agent produced that could not become an operation.
          */
@@ -1963,6 +2156,20 @@ export interface components {
          * @enum {string}
          */
         TargetKind: "entity" | "edge";
+        /**
+         * Turn
+         * @description One answered interview question.
+         *
+         *     Attributes:
+         *         requirement_id: The requirement the question was about.
+         *         answer: What the user says; blank means they had nothing to add.
+         */
+        Turn: {
+            /** Answer */
+            answer: string;
+            /** Requirement Id */
+            requirement_id: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2749,6 +2956,103 @@ export interface operations {
             };
         };
     };
+    read_discovery_api_jobs__posting_id__discovery_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_question_api_jobs__posting_id__discovery__requirement_id__answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_question_api_jobs__posting_id__discovery__requirement_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_gaps_api_jobs__posting_id__gaps_get: {
         parameters: {
             query?: never;
@@ -2767,6 +3071,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GapView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_interview_api_jobs__posting_id__interview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_interview_api_jobs__posting_id__interview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
                 };
             };
             /** @description Validation Error */

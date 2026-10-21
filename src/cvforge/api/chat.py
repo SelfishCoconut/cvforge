@@ -131,10 +131,12 @@ Embedder = Annotated[EmbeddingProvider | None, Depends(_embedder)]
 Factory = Annotated[ModelFactory, Depends(_model_factory)]
 
 
-def _store_message(db: sa.Engine, body: ChatRequest) -> tuple[int, int]:
+def store_message(
+    db: sa.Engine, body: ChatRequest, label: str = "chat conversation"
+) -> tuple[int, int]:
     """Record the message as provenance; returns (conversation id, evidence id)."""
     if body.conversation_id is None:
-        conversation = apply.record_source(db, SourceKind.CONVERSATION, "chat conversation")
+        conversation = apply.record_source(db, SourceKind.CONVERSATION, label)
         number = 0
     else:
         conversation = body.conversation_id
@@ -172,14 +174,18 @@ def proposal_view(db: sa.Engine, proposal_id: int | None) -> ProposalView:
     )
 
 
-def _finish(
+def finish_proposal(
     db: sa.Engine,
     embedder: EmbeddingProvider | None,
     conversation: int,
     evidence: int,
     result: IngestResult,
+    origin: Origin = Origin.CHAT,
 ) -> ChatResponse:
-    """Convert the agent's result and store it as a pending proposal (shared by both routes)."""
+    """Convert the agent's result and store it as a pending proposal.
+
+    Shared by the chat routes, the discovery answers and the interview.
+    """
     converted = to_payloads(result, evidence_id=evidence)
     finder = (
         make_similar_finder(db, embedder, load_settings(db).similarity_threshold)
@@ -188,7 +194,7 @@ def _finish(
     )
     stored = intake.propose(
         db,
-        origin=Origin.CHAT,
+        origin=origin,
         source_id=conversation,
         summary=result.reply[:200] or "chat message",
         payloads=converted.payloads,
@@ -225,17 +231,17 @@ def post_message(
     Raises:
         HTTPException: 404 for an unknown conversation; 502 if the model fails.
     """
-    conversation, evidence = _store_message(db, body)
+    conversation, evidence = store_message(db, body)
     try:
         agent = build_ingest_agent(model_factory(db))
         result = agent.run_sync(body.text, deps=KbDeps(db, embedder)).output
     except Exception as exc:
         logger.warning("ingest agent failed: %s", exc)
-        raise HTTPException(502, _failure_message(exc)) from exc
-    return _finish(db, embedder, conversation, evidence, result)
+        raise HTTPException(502, failure_message(exc)) from exc
+    return finish_proposal(db, embedder, conversation, evidence, result)
 
 
-def _failure_message(exc: Exception) -> str:
+def failure_message(exc: Exception) -> str:
     """Describe a model failure, naming the usual cause of a truncated reasoning reply.
 
     pydantic-ai reports `finish_reason == "length"` as a "token limit" error even when
@@ -278,12 +284,14 @@ async def _produce(
             result = await run.get_output()
         if result.reply.startswith(sent) and len(result.reply) > len(sent):
             await queue.put(_line({"type": "delta", "text": result.reply[len(sent) :]}))
-        response = await run_in_threadpool(_finish, db, embedder, conversation, evidence, result)
+        response = await run_in_threadpool(
+            finish_proposal, db, embedder, conversation, evidence, result
+        )
         await queue.put(_line({"type": "proposal", **response.model_dump(exclude={"reply"})}))
         await queue.put(_line({"type": "done"}))
     except Exception as exc:
         logger.warning("ingest stream failed: %s", exc)
-        await queue.put(_line({"type": "error", "message": _failure_message(exc)}))
+        await queue.put(_line({"type": "error", "message": failure_message(exc)}))
     finally:
         await queue.put(None)
 
@@ -348,7 +356,7 @@ async def post_message_stream(
     Returns:
         An `application/x-ndjson` stream.
     """
-    conversation, evidence = await run_in_threadpool(_store_message, db, body)
+    conversation, evidence = await run_in_threadpool(store_message, db, body)
     return StreamingResponse(
         stream_events(db, embedder, model_factory, body.text, conversation, evidence),
         media_type="application/x-ndjson",
