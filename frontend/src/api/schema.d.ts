@@ -212,6 +212,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cvs/{cv_id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Edit Cv
+         * @description Edit a CV from a chat instruction, producing a new version rather than changing history.
+         *
+         *     Every operation is checked against the stored facts; one that cannot be supported is refused
+         *     with a reason. The new version is validated, and its issues (if any) are returned: a version
+         *     with issues is a draft that cannot be finalised or rendered.
+         *
+         *     Args:
+         *         cv_id: The CV to edit.
+         *         body: The instruction.
+         *         db: The knowledge-base engine.
+         *         model_factory: Builds the model for this request.
+         *
+         *     Returns:
+         *         The reply, the new version if anything changed, and what was applied or refused.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such CV (404).
+         *         HTTPException: 502 if the model fails.
+         */
+        post: operations["edit_cv_api_cvs__cv_id__edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cvs/{cv_id}/files/{kind}": {
         parameters: {
             query?: never;
@@ -1422,6 +1459,40 @@ export interface components {
             started_at: unknown;
         };
         /**
+         * EditRequest
+         * @description A chat instruction for editing a CV.
+         *
+         *     Attributes:
+         *         instruction: What the user wants changed (emphasis, rewording, shortening, focus).
+         */
+        EditRequest: {
+            /** Instruction */
+            instruction: string;
+        };
+        /**
+         * EditResponse
+         * @description The outcome of an edit.
+         *
+         *     Attributes:
+         *         reply: The agent's short account.
+         *         cv: The new draft version, or None if no operation could be applied.
+         *         applied: What was done.
+         *         refused: What was not done, and why.
+         *         issues: Validation problems with the new version; it cannot be finalised or rendered
+         *             until they are gone.
+         */
+        EditResponse: {
+            /** Applied */
+            applied: string[];
+            cv: components["schemas"]["CvView"] | null;
+            /** Issues */
+            issues: components["schemas"]["IssueView"][];
+            /** Refused */
+            refused: string[];
+            /** Reply */
+            reply: string;
+        };
+        /**
          * EntityKind
          * @description The eight entity kinds (spec §4.1).
          * @enum {string}
@@ -2428,6 +2499,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_cv_api_cvs__cv_id__edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditResponse"];
                 };
             };
             /** @description Validation Error */

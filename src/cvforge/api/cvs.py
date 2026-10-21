@@ -10,14 +10,17 @@ from typing import Annotated, Literal
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from cvforge.api.chat import Factory
 from cvforge.api.errors import engine
 from cvforge.cv.compile import CompileError, compile_pdf
+from cvforge.cv.edit import Drop, Edit, Emphasize, Reword, apply_edits
 from cvforge.cv.generate import generate_cv
 from cvforge.cv.render import render_tex
 from cvforge.cv.store import (
     StoredCv,
+    UnsupportedClaimError,
     WrongPostingError,
     get_cv,
     list_cvs,
@@ -30,6 +33,7 @@ from cvforge.cv.versions import lineage
 from cvforge.jobs.store import get_posting
 from cvforge.kb import apply, queries
 from cvforge.kb.vocab import ClaimSlot, CvStatus, GenerationMode, TargetKind
+from cvforge.llm.agents.cv_edit import EditOp, build_cv_edit_agent, edit_prompt
 from cvforge.match.store import list_matches
 
 router = APIRouter(tags=["cv"])
@@ -448,3 +452,103 @@ def read_lineage(cv_id: int, db: Engine) -> list[CvView]:
     """
     _require(db, cv_id)
     return [_view(cv) for cv in lineage(db, cv_id)]
+
+
+class EditRequest(BaseModel):
+    """A chat instruction for editing a CV.
+
+    Attributes:
+        instruction: What the user wants changed (emphasis, rewording, shortening, focus).
+    """
+
+    instruction: str = Field(min_length=1, max_length=2000)
+
+
+class EditResponse(BaseModel):
+    """The outcome of an edit.
+
+    Attributes:
+        reply: The agent's short account.
+        cv: The new draft version, or None if no operation could be applied.
+        applied: What was done.
+        refused: What was not done, and why.
+        issues: Validation problems with the new version; it cannot be finalised or rendered
+            until they are gone.
+    """
+
+    reply: str
+    cv: CvView | None
+    applied: list[str]
+    refused: list[str]
+    issues: list[IssueView]
+
+
+def _edits(ops: list[EditOp]) -> tuple[list[Edit], list[str]]:
+    """Turn the agent's operations into typed edits; malformed ones are reported, not guessed."""
+    edits: list[Edit] = []
+    refused: list[str] = []
+    for op in ops:
+        if op.kind == "reword" and op.claim_id is not None and op.text:
+            edits.append(Reword(op.claim_id, op.text))
+        elif op.kind == "drop" and op.claim_id is not None:
+            edits.append(Drop(op.claim_id))
+        elif op.kind == "emphasize" and op.name:
+            edits.append(Emphasize(op.name))
+        else:
+            refused.append(f"ignored a malformed {op.kind} operation")
+    return edits, refused
+
+
+@router.post("/cvs/{cv_id}/edit")
+def edit_cv(cv_id: int, body: EditRequest, db: Engine, model_factory: Factory) -> EditResponse:
+    """Edit a CV from a chat instruction, producing a new version rather than changing history.
+
+    Every operation is checked against the stored facts; one that cannot be supported is refused
+    with a reason. The new version is validated, and its issues (if any) are returned: a version
+    with issues is a draft that cannot be finalised or rendered.
+
+    Args:
+        cv_id: The CV to edit.
+        body: The instruction.
+        db: The knowledge-base engine.
+        model_factory: Builds the model for this request.
+
+    Returns:
+        The reply, the new version if anything changed, and what was applied or refused.
+
+    Raises:
+        NotFoundError: If there is no such CV (404).
+        HTTPException: 502 if the model fails.
+    """
+    cv = _require(db, cv_id)
+    try:
+        plan = (
+            build_cv_edit_agent(model_factory(db))
+            .run_sync(edit_prompt(cv, body.instruction))
+            .output
+        )
+    except Exception as exc:
+        raise HTTPException(502, f"the model could not plan the edit: {exc}") from exc
+    edits, malformed = _edits(plan.ops)
+    result = apply_edits(db, cv, edits)
+    refused = [*malformed, *result.refused]
+    if not result.applied:
+        return EditResponse(reply=plan.reply, cv=None, applied=[], refused=refused, issues=[])
+    try:
+        new_id = save_cv(
+            db,
+            cv.job_posting_id,
+            result.claims,
+            parent_cv_id=cv.id,
+            mode=GenerationMode.COLLABORATIVE,
+        )
+    except UnsupportedClaimError as exc:
+        raise HTTPException(422, f"the edit is not supported by stored facts: {exc}") from exc
+    new = _require(db, new_id)
+    return EditResponse(
+        reply=plan.reply,
+        cv=_view(new),
+        applied=result.applied,
+        refused=refused,
+        issues=[_issue_view(i) for i in validate_cv(db, new)],
+    )

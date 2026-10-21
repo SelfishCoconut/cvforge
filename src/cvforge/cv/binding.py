@@ -10,6 +10,7 @@ relates the two.
 import sqlalchemy as sa
 
 from cvforge.cv.facts import claim_source
+from cvforge.cv.grounding import ungrounded_terms
 from cvforge.kb import queries
 from cvforge.kb.vocab import ClaimBasis, KnowledgeState, TargetKind
 
@@ -49,11 +50,45 @@ def claim_problem(
     if entity is None or entity.state is not KnowledgeState.CONFIRMED:
         state = "missing" if entity is None else entity.state.value
         return "inactive_entity", f"{text!r} rests on an entity that is {state}"
+    if basis is ClaimBasis.REWORD:
+        return _reword_problem(
+            conn, text, entity_id, assertion, link_assertion_id, header_entity_id
+        )
     source = claim_source(conn, entity_id, basis)
     if source is None or source[0] != text:
         return "text_mismatch", f"{text!r} no longer matches the stored fact"
     if source[1] != assertion_id:
         return "wrong_assertion", f"{text!r} cites an assertion that does not state it"
+    return _link_problem(conn, text, entity_id, link_assertion_id, header_entity_id)
+
+
+def _facts_about(conn: sa.Connection, entity_id: int) -> list[str]:
+    """Every stored text a line about the entity may draw on: its own and its neighbours' names."""
+    record = queries.get_entity(conn, entity_id)
+    if record is None:
+        return []
+    texts = [record.name, record.summary or "", *(str(v) for v in record.attributes.values())]
+    for edge in queries.neighbours(conn, entity_id):
+        other = queries.get_entity(conn, edge.dst_id if edge.src_id == entity_id else edge.src_id)
+        if other is not None:
+            texts.append(other.name)
+    return texts
+
+
+def _reword_problem(
+    conn: sa.Connection,
+    text: str,
+    entity_id: int,
+    assertion: queries.AssertionRecord,
+    link_assertion_id: int | None,
+    header_entity_id: int | None,
+) -> tuple[str, str] | None:
+    """A reworded claim keeps a name or summary assertion and adds no new fact."""
+    if assertion.field not in ("name", "summary"):
+        return "wrong_assertion", f"{text!r} rewords a fact its assertion does not state"
+    novel = ungrounded_terms(_facts_about(conn, entity_id), text)
+    if novel:
+        return "ungrounded", f"{text!r} adds {novel}, which nothing stored about it says"
     return _link_problem(conn, text, entity_id, link_assertion_id, header_entity_id)
 
 

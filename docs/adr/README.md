@@ -37,3 +37,4 @@ was decided, and when, is the whole point.
 | [0025](0025-cv-rendering-is-claims-in-a-fixed-template-compiled-by-latexmk.md) | CV rendering is claim rows in a fixed template, compiled by latexmk | proposed | 2026-10-21 |
 | [0026](0026-cv-lineage-and-applications.md) | CV versions are per posting; only a final CV can be recorded as sent | proposed | 2026-10-21 |
 | [0027](0027-discovery-questions-and-interviews-feed-the-review-pipeline.md) | Discovery questions and interviews feed the review pipeline | proposed | 2026-10-21 |
+| [0028](0028-collaborative-cv-edits-reword-without-adding-facts.md) | Collaborative CV edits may reword but never add a fact | proposed | 2026-10-21 |
