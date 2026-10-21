@@ -100,6 +100,7 @@ nav:
       - 0019 Job page fetching: adr/0019-job-pages-fetched-static-first-with-an-optional-browser.md
       - 0020 Job agent: adr/0020-the-job-agent-has-no-tools-and-reads-the-posting-as-fenced-data.md
       - 0021 Job postings store: adr/0021-job-postings-are-a-registered-writer-keyed-by-url.md
+      - 0022 Job intake request: adr/0022-job-intake-is-one-request-and-research-is-not-persisted.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md

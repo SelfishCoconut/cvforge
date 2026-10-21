@@ -1,0 +1,14 @@
+{
+  "url": "https://jobs.example.test/posting/1",
+  "text": "Senior Backend Engineer at Example Co. You will build data pipelines. Required: Python and SQL. Nice to have: Rust. Fully remote. 5+ years of experience.",
+  "model_output": {
+    "title": "Senior Backend Engineer",
+    "company": "Example Co",
+    "seniority": "senior",
+    "required_skills": ["Python", "SQL"],
+    "preferred_skills": ["Rust"],
+    "responsibilities": ["Build data pipelines"],
+    "experience_requirements": ["5+ years of experience"],
+    "working_model": "remote"
+  }
+}

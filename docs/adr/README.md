@@ -31,3 +31,4 @@ was decided, and when, is the whole point.
 | [0019](0019-job-pages-fetched-static-first-with-an-optional-browser.md) | Job pages are fetched static-first, with an optional browser fallback and a local-address bar | proposed | 2026-10-21 |
 | [0020](0020-the-job-agent-has-no-tools-and-reads-the-posting-as-fenced-data.md) | The job agent has no tools and reads the posting as fenced data | proposed | 2026-10-21 |
 | [0021](0021-job-postings-are-a-registered-writer-keyed-by-url.md) | Job postings are a registered writer, keyed by normalised URL | proposed | 2026-10-21 |
+| [0022](0022-job-intake-is-one-request-and-research-is-not-persisted.md) | Job intake is one request; company research is returned, not persisted | proposed | 2026-10-21 |

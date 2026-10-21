@@ -1,0 +1,62 @@
+{
+  "body": {
+    "analysis": {
+      "company": "Example Co",
+      "experience_requirements": [
+        "5+ years of experience"
+      ],
+      "keywords": [],
+      "location": null,
+      "other_requirements": [],
+      "preferred_skills": [
+        "Rust"
+      ],
+      "required_skills": [
+        "Python",
+        "SQL"
+      ],
+      "responsibilities": [
+        "Build data pipelines"
+      ],
+      "seniority": "senior",
+      "technologies": [],
+      "title": "Senior Backend Engineer",
+      "working_model": "remote"
+    },
+    "created": true,
+    "id": 1,
+    "location": null,
+    "requirements": [
+      {
+        "kind": "required",
+        "text": "Python"
+      },
+      {
+        "kind": "required",
+        "text": "SQL"
+      },
+      {
+        "kind": "required",
+        "text": "5+ years of experience"
+      },
+      {
+        "kind": "preferred",
+        "text": "Rust"
+      },
+      {
+        "kind": "responsibility",
+        "text": "Build data pipelines"
+      }
+    ],
+    "research": null,
+    "seniority": "senior",
+    "source_id": 1,
+    "title": "Senior Backend Engineer",
+    "url": "https://jobs.example.test/posting/1",
+    "work_model": "remote"
+  },
+  "status": 201,
+  "tools_offered": [
+    []
+  ]
+}
