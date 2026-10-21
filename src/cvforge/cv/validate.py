@@ -14,17 +14,18 @@ from typing import Any
 
 import sqlalchemy as sa
 
-from cvforge.cv.facts import claim_source
-from cvforge.cv.store import StoredClaim, StoredCv
+from cvforge.cv.binding import claim_problem
+from cvforge.cv.store import StoredClaim, StoredCv, get_cv, set_status
 from cvforge.jobs.store import get_posting
-from cvforge.kb import queries
+from cvforge.kb import apply, queries
 from cvforge.kb.vocab import (
+    ClaimSlot,
+    CvStatus,
     EntityKind,
     KnowledgeState,
     MatchVerdict,
     Rel,
     RequirementKind,
-    TargetKind,
 )
 from cvforge.match.store import list_matches
 
@@ -46,26 +47,26 @@ class Issue:
     claim_id: int | None = None
 
 
-def _claim_issues(conn: sa.Connection, claim: StoredClaim) -> list[Issue]:
-    assertion = queries.get_assertion(conn, claim.assertion_id)
-    if (
-        assertion is None
-        or assertion.target_kind != TargetKind.ENTITY.value
-        or assertion.target_id != claim.entity_id
-    ):
-        return [Issue("unsupported", f"{claim.text!r} has no assertion about its entity", claim.id)]
-    entity = queries.get_entity(conn, claim.entity_id)
-    if entity is None or entity.state is not KnowledgeState.CONFIRMED:
-        state = "missing" if entity is None else entity.state.value
-        return [
-            Issue("inactive_entity", f"{claim.text!r} rests on an entity that is {state}", claim.id)
-        ]
-    source = claim_source(conn, claim.entity_id, claim.basis)
-    if source is None or source[0] != claim.text:
-        return [
-            Issue("text_mismatch", f"{claim.text!r} no longer matches the stored fact", claim.id)
-        ]
-    return []
+def _claim_issues(conn: sa.Connection, cv: StoredCv, claim: StoredClaim) -> list[Issue]:
+    header = next(
+        (
+            c.entity_id
+            for c in cv.claims
+            if c.slot is ClaimSlot.HEADER
+            and (c.section, c.item_index) == (claim.section, claim.item_index)
+        ),
+        None,
+    )
+    problem = claim_problem(
+        conn,
+        text=claim.text,
+        entity_id=claim.entity_id,
+        assertion_id=claim.assertion_id,
+        basis=claim.basis,
+        link_assertion_id=claim.link_assertion_id,
+        header_entity_id=header,
+    )
+    return [] if problem is None else [Issue(problem[0], problem[1], claim.id)]
 
 
 def _day(value: Any) -> date | None:
@@ -162,10 +163,35 @@ def validate_cv(engine: sa.Engine, cv: StoredCv) -> list[Issue]:
         Every issue found; empty means the CV may be presented.
     """
     with engine.connect() as conn:
-        claim_issues = [issue for claim in cv.claims for issue in _claim_issues(conn, claim)]
+        claim_issues = [issue for claim in cv.claims for issue in _claim_issues(conn, cv, claim)]
         return [
             *claim_issues,
             *_overlapping_roles(conn, cv),
             *_use_outside_period(conn, cv),
             *_missing_required(engine, conn, cv),
         ]
+
+
+def finalize_cv(engine: sa.Engine, cv_id: int) -> list[Issue]:
+    """Mark a CV final if, and only if, it validates now.
+
+    This is the one sanctioned way to reach the `final` status: `set_status` is a bare writer
+    and does not check anything.
+
+    Args:
+        engine: The knowledge-base engine.
+        cv_id: The CV to finalise.
+
+    Returns:
+        The issues that stopped it; empty means the CV is now final.
+
+    Raises:
+        NotFoundError: If there is no such CV.
+    """
+    cv = get_cv(engine, cv_id)
+    if cv is None:
+        raise apply.NotFoundError(f"no CV {cv_id}")
+    issues = validate_cv(engine, cv)
+    if not issues:
+        set_status(engine, cv_id, CvStatus.FINAL)
+    return issues

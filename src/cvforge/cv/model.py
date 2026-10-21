@@ -32,3 +32,4 @@ class ClaimDraft:
     text: str
     entity_id: int
     assertion_id: int
+    link_assertion_id: int | None = None

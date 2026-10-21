@@ -23,10 +23,9 @@ from cvforge.cv.store import (
     list_cvs,
     save_cv,
     set_artifacts,
-    set_status,
 )
 from cvforge.cv.to_text import render_text
-from cvforge.cv.validate import Issue, validate_cv
+from cvforge.cv.validate import Issue, finalize_cv, validate_cv
 from cvforge.cv.versions import lineage
 from cvforge.jobs.store import get_posting
 from cvforge.kb import apply, queries
@@ -344,11 +343,10 @@ def finalise(cv_id: int, db: Engine, response: Response) -> CvView:
     Raises:
         HTTPException: 409 listing the issues if validation fails; nothing changes.
     """
-    issues = validate_cv(db, _require(db, cv_id))
+    issues = finalize_cv(db, cv_id)
     if issues:
         detail = "; ".join(f"{i.code}: {i.message}" for i in issues)
         raise HTTPException(409, f"the CV does not validate and cannot be final: {detail}")
-    set_status(db, cv_id, CvStatus.FINAL)
     return _view(_require(db, cv_id))
 
 
@@ -420,8 +418,14 @@ def download(cv_id: int, kind: Literal["tex", "pdf", "txt"], db: Engine) -> File
 
     Raises:
         NotFoundError: If the CV is unknown or has not been rendered (404).
+        HTTPException: 409 if the CV no longer validates against the knowledge base.
     """
     cv = _require(db, cv_id)
+    issues = validate_cv(db, cv)
+    if issues:
+        raise HTTPException(
+            409, "the CV no longer validates: " + "; ".join(i.message for i in issues)
+        )
     path = {"tex": cv.tex_path, "pdf": cv.pdf_path, "txt": cv.txt_path}[kind]
     if path is None or not Path(path).is_file():
         raise apply.NotFoundError(f"CV {cv_id} has no rendered {kind}; render it first")

@@ -20,7 +20,7 @@ def render_text(cv: StoredCv) -> str:
     sections: dict[str, dict[int, dict[ClaimSlot, list[str]]]] = {}
     for claim in cv.claims:
         item = sections.setdefault(claim.section, {}).setdefault(claim.item_index, {})
-        item.setdefault(claim.slot, []).append(claim.text)
+        item.setdefault(claim.slot, []).append(" ".join(claim.text.split()))
     blocks: list[str] = []
     for title, items in sections.items():
         lines = [title.upper()]

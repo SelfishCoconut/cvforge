@@ -1,6 +1,7 @@
 """FR-24 / FR-25: an unsupported claim is rejected at write time and caught by validation."""
 
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -253,8 +254,124 @@ def test_a_model_that_tries_to_hallucinate_a_claim_is_blocked(kb: sa.Engine, pro
     skill_claim = next(c for c in honest if c.entity_id == profile.rust)
     fabricated = replace(skill_claim, text=line.text)  # real entity and assertion, invented words
 
-    cv_id = save_cv(kb, posting, [fabricated])  # the store only proves the assertion exists...
-    codes = _codes(kb, cv_id)
-    assert "text_mismatch" in codes  # ...the validator proves the words are the stored fact's
+    with pytest.raises(UnsupportedClaimError, match="text_mismatch"):  # the store refuses it...
+        save_cv(kb, posting, [fabricated])
+    cv_id = save_cv(kb, posting, honest)  # ...and a stored CV altered afterwards is caught
+    with kb.begin() as conn:
+        conn.execute(
+            sa.update(schema.cv_claim)
+            .where(schema.cv_claim.c.text == "Rust")
+            .values(text=line.text)
+        )
+    assert "text_mismatch" in _codes(kb, cv_id)
     with pytest.raises(UnsupportedClaimError):  # and with no assertion at all it never lands
         save_cv(kb, posting, [replace(fabricated, assertion_id=987_654)])
+
+
+def test_a_claim_citing_a_true_but_different_assertion_of_its_entity_is_refused(
+    kb: sa.Engine, propose: Any
+) -> None:
+    """The assertion must be the one whose recorded value is the claim's text."""
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    claim = next(c for c in generate_cv(kb, posting) if c.entity_id == profile.rust)
+    with kb.connect() as conn:
+        existence = conn.execute(
+            sa.select(sa.func.min(schema.assertion.c.id)).where(
+                schema.assertion.c.target_id == profile.rust,
+                schema.assertion.c.target_kind == "entity",
+                schema.assertion.c.field.is_(None),
+            )
+        ).scalar_one()
+    assert existence != claim.assertion_id
+    with pytest.raises(UnsupportedClaimError, match="wrong_assertion"):
+        save_cv(kb, posting, [replace(claim, assertion_id=existence)])
+
+
+def test_a_renamed_entity_invalidates_a_cv_that_still_carries_the_old_name(
+    kb: sa.Engine, propose: Any
+) -> None:
+    cv_id, profile = _saved(kb, propose)
+    apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "update_field",
+                "entity_id": profile.rust,
+                "field": "name",
+                "value": "Rust-lang",
+            },
+            accept=True,
+        ),
+    )
+    assert "text_mismatch" in _codes(kb, cv_id)
+    posting = _cv(kb, cv_id).job_posting_id
+    assert "Rust-lang" in [c.text for c in generate_cv(kb, posting)]
+
+
+def test_a_claim_under_a_header_needs_the_edge_that_relates_them(
+    kb: sa.Engine, propose: Any
+) -> None:
+    cv_id, _ = _saved(kb, propose)
+    assert all(c.link_assertion_id for c in _cv(kb, cv_id).claims if c.slot.value == "subheader")
+    with kb.begin() as conn:
+        conn.execute(
+            sa.update(schema.cv_claim)
+            .where(schema.cv_claim.c.slot == "subheader")
+            .values(link_assertion_id=None)
+        )
+    assert "unlinked" in _codes(kb, cv_id)
+
+
+def test_a_role_without_a_recorded_edge_to_its_organization_shows_no_organization(
+    kb: sa.Engine, propose: Any
+) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    with kb.begin() as conn:
+        conn.execute(
+            sa.delete(schema.assertion).where(
+                schema.assertion.c.target_kind == "edge",
+                schema.assertion.c.target_id.in_(
+                    sa.select(schema.edge.c.id).where(
+                        schema.edge.c.rel == "at_organization", schema.edge.c.src_id == profile.role
+                    )
+                ),
+            )
+        )
+    assert "Acme Logistics" not in [c.text for c in generate_cv(kb, posting)]
+
+
+def test_a_period_whose_end_date_has_no_assertion_is_not_claimed(
+    kb: sa.Engine, propose: Any
+) -> None:
+    profile = build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    with kb.begin() as conn:
+        conn.execute(
+            sa.delete(schema.assertion).where(
+                schema.assertion.c.target_id == profile.role,
+                schema.assertion.c.target_kind == "entity",
+                schema.assertion.c.field == "ended_at",
+            )
+        )
+    assert "2019-01 to 2022-06" not in [c.text for c in generate_cv(kb, posting)]
+
+
+def test_finalising_revalidates_and_a_final_cv_that_goes_stale_cannot_be_sent(
+    kb: sa.Engine, propose: Any
+) -> None:
+    from cvforge.cv.applications import ApplicationError, record_application
+    from cvforge.cv.validate import finalize_cv
+
+    cv_id, profile = _saved(kb, propose)
+    posting = _cv(kb, cv_id).job_posting_id
+    assert finalize_cv(kb, cv_id) == [] and _cv(kb, cv_id).status.value == "final"
+    apply.commit_proposal(
+        kb,
+        propose({"op_type": "set_state", "entity": profile.rust, "state": "archived"}, accept=True),
+    )
+    with pytest.raises(ApplicationError, match="no longer validates"):
+        record_application(kb, posting, cv_id, applied_at=datetime(2026, 10, 21))
+    with pytest.raises(apply.NotFoundError):
+        finalize_cv(kb, 999)

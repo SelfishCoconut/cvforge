@@ -65,6 +65,7 @@ class AssertionRecord:
     target_kind: str
     target_id: int
     field: str | None
+    value: Any
     evidence_id: int
 
 
@@ -604,7 +605,9 @@ def get_assertion(conn: sa.Connection, assertion_id: int) -> AssertionRecord | N
     ).first()
     if row is None:
         return None
-    return AssertionRecord(row.id, row.target_kind, row.target_id, row.field, row.evidence_id)
+    return AssertionRecord(
+        row.id, row.target_kind, row.target_id, row.field, row.value_json, row.evidence_id
+    )
 
 
 def entity_assertion_id(conn: sa.Connection, entity_id: int, field: str | None) -> int | None:
@@ -625,5 +628,22 @@ def entity_assertion_id(conn: sa.Connection, entity_id: int, field: str | None) 
         sa.select(sa.func.max(a.id))
         .where(a.target_kind == TargetKind.ENTITY.value, a.target_id == entity_id)
         .where(a.field.is_(None) if field is None else a.field == field)
+    )
+    return conn.execute(query).scalar()
+
+
+def edge_existence_assertion_id(conn: sa.Connection, edge_id: int) -> int | None:
+    """Return the assertion that states an edge exists (the earliest about the edge itself).
+
+    Args:
+        conn: An open connection.
+        edge_id: The edge id.
+
+    Returns:
+        The assertion id, or None if the edge has none (which invariant 3 forbids).
+    """
+    a = schema.assertion.c
+    query = sa.select(sa.func.min(a.id)).where(
+        a.target_kind == TargetKind.EDGE.value, a.target_id == edge_id, a.field.is_(None)
     )
     return conn.execute(query).scalar()

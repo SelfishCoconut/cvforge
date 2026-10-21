@@ -46,13 +46,14 @@ class _Builder:
         position: int,
         entity_id: int,
         basis: ClaimBasis,
+        link: int | None = None,
     ) -> bool:
         source = claim_source(self.conn, entity_id, basis)
         if source is None:
             return False
         text, assertion_id = source
         self.claims.append(
-            ClaimDraft(section, item, slot, position, basis, text, entity_id, assertion_id)
+            ClaimDraft(section, item, slot, position, basis, text, entity_id, assertion_id, link)
         )
         return True
 
@@ -94,22 +95,35 @@ def _touches(graph: _Graph, seeds: set[int], entity_id: int) -> bool:
     return entity_id in seeds or bool(graph.linked(entity_id, _USES) & seeds)
 
 
+def _link(conn: sa.Connection, header: int, other: int) -> int | None:
+    """The existence assertion of an edge joining `header` and `other`, if one exists."""
+    for edge in queries.neighbours(conn, header):
+        if {edge.src_id, edge.dst_id} == {header, other}:
+            return queries.edge_existence_assertion_id(conn, edge.id)
+    return None
+
+
 def _add_item(
     out: _Builder, section: str, entity_id: int, bullets: Iterable[int], org: int | None = None
 ) -> None:
     item = out.new_item(section)
     out.add(section, item, ClaimSlot.HEADER, 0, entity_id, ClaimBasis.NAME)
     if org is not None:
-        out.add(section, item, ClaimSlot.SUBHEADER, 0, org, ClaimBasis.NAME)
+        link = _link(out.conn, entity_id, org)
+        if link is not None:
+            out.add(section, item, ClaimSlot.SUBHEADER, 0, org, ClaimBasis.NAME, link)
     out.add(section, item, ClaimSlot.PERIOD, 0, entity_id, ClaimBasis.PERIOD)
     position = 0
-    for source in (entity_id, *bullets):
-        if out.add(section, item, ClaimSlot.BULLET, position, source, ClaimBasis.SUMMARY):
-            position += 1
-        elif source != entity_id and out.add(
-            section, item, ClaimSlot.BULLET, position, source, ClaimBasis.NAME
-        ):
-            position += 1
+    if out.add(section, item, ClaimSlot.BULLET, position, entity_id, ClaimBasis.SUMMARY):
+        position += 1
+    for child in bullets:
+        link = _link(out.conn, entity_id, child)
+        if link is None:
+            continue
+        for basis in (ClaimBasis.SUMMARY, ClaimBasis.NAME):
+            if out.add(section, item, ClaimSlot.BULLET, position, child, basis, link):
+                position += 1
+                break
 
 
 def _skills(out: _Builder, graph: _Graph, seeds: set[int]) -> None:

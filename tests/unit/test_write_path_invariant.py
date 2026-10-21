@@ -159,7 +159,7 @@ def references_knowledge_table(source: str, allowed: frozenset[str]) -> bool:
     writer — in prose that names "assertion" or "evidence" — isn't flagged for
     saying so.
     """
-    forbidden = KNOWLEDGE_TABLES - allowed
+    forbidden = frozenset(schema.metadata.tables) - allowed
     tree = ast.parse(source)
     prose = _docstrings(tree)
     referenced = {
