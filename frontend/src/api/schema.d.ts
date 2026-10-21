@@ -74,6 +74,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cvs/{cv_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Cv
+         * @description Read one CV.
+         *
+         *     Args:
+         *         cv_id: A CV id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The CV with its claims.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such CV (404).
+         */
+        get: operations["read_cv_api_cvs__cv_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cvs/{cv_id}/claims/{claim_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Claim
+         * @description Resolve a claim to the exact stored fact and the evidence behind it.
+         *
+         *     Args:
+         *         cv_id: A CV id.
+         *         claim_id: A claim id in that CV.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The claim, its entity and the source span.
+         *
+         *     Raises:
+         *         NotFoundError: If the CV, the claim, or its entity or assertion is missing (404).
+         */
+        get: operations["read_claim_api_cvs__cv_id__claims__claim_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cvs/{cv_id}/final": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalise
+         * @description Mark a CV final, only if it validates.
+         *
+         *     Args:
+         *         cv_id: A CV id.
+         *         db: The knowledge-base engine.
+         *         response: The response, unused on success.
+         *
+         *     Returns:
+         *         The CV, now final.
+         *
+         *     Raises:
+         *         HTTPException: 409 listing the issues if validation fails; nothing changes.
+         */
+        post: operations["finalise_api_cvs__cv_id__final_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cvs/{cv_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate
+         * @description Validate a CV against the live knowledge base.
+         *
+         *     Args:
+         *         cv_id: A CV id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         Whether it is valid, and every issue found.
+         */
+        post: operations["validate_api_cvs__cv_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents": {
         parameters: {
             query?: never;
@@ -356,6 +475,49 @@ export interface paths {
         get: operations["read_job_api_jobs__posting_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{posting_id}/cvs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Posting Cvs
+         * @description List a posting's CVs, oldest version first.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The CVs.
+         */
+        get: operations["list_posting_cvs_api_jobs__posting_id__cvs_get"];
+        put?: never;
+        /**
+         * Create Cv
+         * @description Generate a CV for a matched posting from stored facts only.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         body: Optionally the CV this one derives from.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The new draft CV.
+         *
+         *     Raises:
+         *         NotFoundError: If the posting or the parent CV does not exist (404).
+         *         HTTPException: 409 if the posting has requirements but has not been matched.
+         */
+        post: operations["create_cv_api_jobs__posting_id__cvs_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -695,6 +857,55 @@ export interface components {
             similarity_available: boolean;
         };
         /**
+         * ClaimDetail
+         * @description A claim resolved to the exact stored fact and its evidence.
+         *
+         *     Attributes:
+         *         claim: The claim.
+         *         entity_name: The entity it is about.
+         *         entity_state: That entity's current knowledge state.
+         *         field: The field the assertion states (None = the entity's existence).
+         *         evidence: The source span behind the assertion.
+         */
+        ClaimDetail: {
+            claim: components["schemas"]["ClaimView"];
+            /** Entity Name */
+            entity_name: string;
+            /** Entity State */
+            entity_state: string;
+            evidence: components["schemas"]["CvEvidenceView"];
+            /** Field */
+            field: string | null;
+        };
+        /**
+         * ClaimSlot
+         * @description Where a claim sits in an item of a CV section.
+         * @enum {string}
+         */
+        ClaimSlot: "header" | "subheader" | "period" | "bullet";
+        /**
+         * ClaimView
+         * @description One line of a CV.
+         *
+         *     Attributes:
+         *         id: The claim id, for `GET /api/cvs/{cv}/claims/{id}`.
+         *         slot: Header, subheader, period or bullet.
+         *         text: The rendered string, copied from a stored fact.
+         *         entity_id: The entity it is about.
+         *         assertion_id: The assertion that states it.
+         */
+        ClaimView: {
+            /** Assertion Id */
+            assertion_id: number;
+            /** Entity Id */
+            entity_id: number;
+            /** Id */
+            id: number;
+            slot: components["schemas"]["ClaimSlot"];
+            /** Text */
+            text: string;
+        };
+        /**
          * Committed
          * @description What a commit wrote.
          *
@@ -720,6 +931,62 @@ export interface components {
              * @default []
              */
             index_pending: number[];
+        };
+        /**
+         * CvEvidenceView
+         * @description The source span a fact comes from.
+         *
+         *     Attributes:
+         *         source_id: The source.
+         *         source_kind: `conversation`, `document`, `web` or `manual`.
+         *         source_label: The source's label.
+         *         locator: Where in the source.
+         *         excerpt: The literal text.
+         */
+        CvEvidenceView: {
+            /** Excerpt */
+            excerpt: string;
+            /** Locator */
+            locator: string;
+            /** Source Id */
+            source_id: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Label */
+            source_label: string;
+        };
+        /**
+         * CvStatus
+         * @description Whether a CV may be handed out.
+         * @enum {string}
+         */
+        CvStatus: "draft" | "final";
+        /**
+         * CvView
+         * @description A stored CV.
+         *
+         *     Attributes:
+         *         id: The CV id.
+         *         job_posting_id: The posting it targets.
+         *         version: Its version for that posting.
+         *         parent_cv_id: The CV it derives from, if any.
+         *         generation_mode: `automatic` or `collaborative`.
+         *         status: `draft` or `final`.
+         *         sections: Its content.
+         */
+        CvView: {
+            generation_mode: components["schemas"]["GenerationMode"];
+            /** Id */
+            id: number;
+            /** Job Posting Id */
+            job_posting_id: number;
+            /** Parent Cv Id */
+            parent_cv_id: number | null;
+            /** Sections */
+            sections: components["schemas"]["SectionView"][];
+            status: components["schemas"]["CvStatus"];
+            /** Version */
+            version: number;
         };
         /**
          * DocumentView
@@ -894,6 +1161,23 @@ export interface components {
             text: string;
             verdict: components["schemas"]["MatchVerdict"];
         };
+        /**
+         * GenerateRequest
+         * @description What to generate from.
+         *
+         *     Attributes:
+         *         parent_cv_id: The CV this one derives from, if any.
+         */
+        GenerateRequest: {
+            /** Parent Cv Id */
+            parent_cv_id?: number | null;
+        };
+        /**
+         * GenerationMode
+         * @description How a CV was produced (spec §6).
+         * @enum {string}
+         */
+        GenerationMode: "automatic" | "collaborative";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -912,6 +1196,34 @@ export interface components {
             status: string;
             /** Version */
             version: string;
+        };
+        /**
+         * IssueView
+         * @description A problem found by validation.
+         *
+         *     Attributes:
+         *         code: A stable machine name.
+         *         message: What is wrong.
+         *         claim_id: The claim concerned, if any.
+         */
+        IssueView: {
+            /** Claim Id */
+            claim_id: number | null;
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /**
+         * ItemView
+         * @description One item (a role, project, degree...) of a section.
+         *
+         *     Attributes:
+         *         claims: Its claims in render order.
+         */
+        ItemView: {
+            /** Claims */
+            claims: components["schemas"]["ClaimView"][];
         };
         /**
          * JobAnalysis
@@ -1335,6 +1647,20 @@ export interface components {
             } | null;
         };
         /**
+         * SectionView
+         * @description A section of a CV.
+         *
+         *     Attributes:
+         *         title: The section title (template structure, not a claim).
+         *         items: Its items.
+         */
+        SectionView: {
+            /** Items */
+            items: components["schemas"]["ItemView"][];
+            /** Title */
+            title: string;
+        };
+        /**
          * SettingsView
          * @description The persisted settings, plus whether a usable key is configured — never the key itself.
          *
@@ -1394,6 +1720,20 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * ValidationView
+         * @description The result of validating a CV.
+         *
+         *     Attributes:
+         *         valid: True if there are no issues.
+         *         issues: Every issue found.
+         */
+        ValidationView: {
+            /** Issues */
+            issues: components["schemas"]["IssueView"][];
+            /** Valid */
+            valid: boolean;
         };
         /**
          * WorkModel
@@ -1463,6 +1803,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_cv_api_cvs__cv_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_claim_api_cvs__cv_id__claims__claim_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+                claim_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finalise_api_cvs__cv_id__final_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_api_cvs__cv_id__validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationView"];
                 };
             };
             /** @description Validation Error */
@@ -1756,6 +2221,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_posting_cvs_api_jobs__posting_id__cvs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cv_api_jobs__posting_id__cvs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvView"];
                 };
             };
             /** @description Validation Error */
