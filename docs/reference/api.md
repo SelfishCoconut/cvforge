@@ -169,3 +169,11 @@ Generated from docstrings. Update the docstring, not this page.
 ::: cvforge.api.applications
 
 ::: cvforge.api.cvs
+
+## Discovery and interviews
+
+::: cvforge.discovery.questions
+
+::: cvforge.llm.agents.interview
+
+::: cvforge.api.discovery

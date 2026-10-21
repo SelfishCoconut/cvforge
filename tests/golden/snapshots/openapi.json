@@ -1,6 +1,33 @@
 {
   "components": {
     "schemas": {
+      "AnswerRequest": {
+        "description": "An answer to a discovery question.\n\nAttributes:\n    answer: What the user says, in their own words.\n    conversation_id: Continue an existing conversation source, if any.",
+        "properties": {
+          "answer": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Answer",
+            "type": "string"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          }
+        },
+        "required": [
+          "answer"
+        ],
+        "title": "AnswerRequest",
+        "type": "object"
+      },
       "ApplicationRequest": {
         "description": "An application to record.\n\nAttributes:\n    job_posting_id: The posting applied to.\n    cv_id: The CV used; it must target that posting and be final.\n    status: Where it stands (default `applied`).\n    applied_at: When it was sent; required unless the status is `planned`.\n    notes: Free notes.",
         "properties": {
@@ -789,6 +816,24 @@
         "title": "Health",
         "type": "object"
       },
+      "InterviewRequest": {
+        "description": "An interview transcript.\n\nAttributes:\n    turns: The answered questions, in the order they were asked.",
+        "properties": {
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/Turn"
+            },
+            "maxItems": 200,
+            "title": "Turns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "turns"
+        ],
+        "title": "InterviewRequest",
+        "type": "object"
+      },
       "IssueView": {
         "description": "A problem found by validation.\n\nAttributes:\n    code: A stable machine name.\n    message: What is wrong.\n    claim_id: The claim concerned, if any.",
         "properties": {
@@ -1573,6 +1618,34 @@
         "title": "ProviderSettings",
         "type": "object"
       },
+      "QuestionView": {
+        "description": "A question about one requirement.\n\nAttributes:\n    requirement_id: The requirement it is about.\n    requirement_text: What the posting asks.\n    verdict: `undocumented` or `gap`.\n    text: The question.",
+        "properties": {
+          "requirement_id": {
+            "title": "Requirement Id",
+            "type": "integer"
+          },
+          "requirement_text": {
+            "title": "Requirement Text",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/MatchVerdict"
+          }
+        },
+        "required": [
+          "requirement_id",
+          "requirement_text",
+          "verdict",
+          "text"
+        ],
+        "title": "QuestionView",
+        "type": "object"
+      },
       "RejectedView": {
         "description": "Something the agent produced that could not become an operation.",
         "properties": {
@@ -1821,6 +1894,26 @@
         ],
         "title": "TargetKind",
         "type": "string"
+      },
+      "Turn": {
+        "description": "One answered interview question.\n\nAttributes:\n    requirement_id: The requirement the question was about.\n    answer: What the user says; blank means they had nothing to add.",
+        "properties": {
+          "answer": {
+            "maxLength": 8000,
+            "title": "Answer",
+            "type": "string"
+          },
+          "requirement_id": {
+            "title": "Requirement Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "requirement_id",
+          "answer"
+        ],
+        "title": "Turn",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {
@@ -2989,6 +3082,160 @@
         ]
       }
     },
+    "/api/jobs/{posting_id}/discovery": {
+      "get": {
+        "description": "List the discovery questions for a matched posting: one per `undocumented` requirement.\n\nA `gap` requirement is never asked about here; it feeds the learning planner.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The questions.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
+        "operationId": "read_discovery_api_jobs__posting_id__discovery_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuestionView"
+                  },
+                  "title": "Response Read Discovery Api Jobs  Posting Id  Discovery Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Discovery",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}/discovery/{requirement_id}/answer": {
+      "post": {
+        "description": "Answer a discovery question; the answer becomes a pending proposal, never a write.\n\nArgs:\n    posting_id: A posting id.\n    requirement_id: The `undocumented` requirement the question was about.\n    body: The answer.\n    db: The knowledge-base engine.\n    embedder: Used for similarity, if configured.\n    model_factory: Builds the model for this request.\n\nReturns:\n    The agent's acknowledgement and the pending proposal (empty if nothing was stated).\n\nRaises:\n    HTTPException: 409 if the requirement raises no discovery question (a `gap` or a\n        backed requirement); 422 for a blank answer; 502 if the model fails.",
+        "operationId": "answer_question_api_jobs__posting_id__discovery__requirement_id__answer_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "requirement_id",
+            "required": true,
+            "schema": {
+              "title": "Requirement Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Answer Question",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}/discovery/{requirement_id}/decline": {
+      "post": {
+        "description": "Decline a discovery question. Nothing is recorded: no entity, no source, no proposal.\n\nArgs:\n    posting_id: A posting id.\n    requirement_id: The requirement the question was about.\n    db: The knowledge-base engine.\n\nReturns:\n    An empty 204.\n\nRaises:\n    HTTPException: 409 if the requirement raises no discovery question.",
+        "operationId": "decline_question_api_jobs__posting_id__discovery__requirement_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "requirement_id",
+            "required": true,
+            "schema": {
+              "title": "Requirement Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decline Question",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
     "/api/jobs/{posting_id}/gaps": {
       "get": {
         "description": "List a posting's `undocumented` and `gap` requirements from its stored matches.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The gap report; empty when everything is backed or no match has been run.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
@@ -3033,6 +3280,104 @@
         "summary": "Read Gaps",
         "tags": [
           "match"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}/interview": {
+      "get": {
+        "description": "List the interview questions: one per `undocumented` or `gap` requirement.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The questions, derived from the posting's stored matches.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
+        "operationId": "read_interview_api_jobs__posting_id__interview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuestionView"
+                  },
+                  "title": "Response Read Interview Api Jobs  Posting Id  Interview Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Interview",
+        "tags": [
+          "discovery"
+        ]
+      },
+      "post": {
+        "description": "Turn an interview transcript into one pending proposal (origin `interview`).\n\nOnly the user's answers are read as facts. Blank answers are dropped; a transcript with no\nsubstantive answer records nothing and calls no model.\n\nArgs:\n    posting_id: A posting id.\n    body: The answered questions.\n    db: The knowledge-base engine.\n    embedder: Used for similarity, if configured.\n    model_factory: Builds the model for this request.\n\nReturns:\n    The acknowledgement and the pending proposal.\n\nRaises:\n    HTTPException: 422 for an answer to a requirement that was not asked about; 502 if the\n        model fails.",
+        "operationId": "submit_interview_api_jobs__posting_id__interview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Interview",
+        "tags": [
+          "discovery"
         ]
       }
     },
