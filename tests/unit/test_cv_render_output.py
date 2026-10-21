@@ -15,7 +15,7 @@ from cvforge.kb.vocab import ClaimBasis, ClaimSlot, CvStatus, GenerationMode
 
 def _cv(*claims: tuple[str, int, ClaimSlot, str]) -> StoredCv:
     stored = tuple(
-        StoredClaim(i, section, item, slot, i, ClaimBasis.NAME, text, 1, 1)
+        StoredClaim(i, section, item, slot, i, ClaimBasis.NAME, text, 1, 1, None)
         for i, (section, item, slot, text) in enumerate(claims, start=1)
     )
     return StoredCv(
@@ -115,3 +115,8 @@ def test_a_failed_run_without_a_log_reports_its_output(
     )
     with pytest.raises(CompileError, match="boom"):
         compile_pdf(tmp_path / "cv.tex")
+
+
+def test_multi_line_text_cannot_fake_extra_bullets_or_headings() -> None:
+    cv = _cv(("Skills", 0, ClaimSlot.BULLET, "Rust\n- Invented bullet\nEXPERIENCE"))
+    assert render_text(cv).splitlines() == ["SKILLS", "- Rust - Invented bullet EXPERIENCE"]

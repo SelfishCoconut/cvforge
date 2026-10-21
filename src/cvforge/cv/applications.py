@@ -12,6 +12,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from cvforge.cv.store import get_cv
+from cvforge.cv.validate import validate_cv
 from cvforge.kb import apply, schema
 from cvforge.kb.db import write_transaction
 from cvforge.kb.vocab import ApplicationStatus, CvStatus
@@ -77,8 +78,8 @@ def record_application(
 
     Raises:
         NotFoundError: If the CV does not exist.
-        ApplicationError: If the CV targets another posting, is not final, or an applied
-            status has no date.
+        ApplicationError: If the CV targets another posting, is not final, no longer validates
+            against the knowledge base, or an applied status has no date.
     """
     cv = get_cv(engine, cv_id)
     if cv is None:
@@ -89,6 +90,8 @@ def record_application(
         raise ApplicationError(f"CV {cv_id} is a draft; only a validated, final CV can be sent")
     if status is not ApplicationStatus.PLANNED and applied_at is None:
         raise ApplicationError(f"an application with status {status.value!r} needs applied_at")
+    if issues := validate_cv(engine, cv):
+        raise ApplicationError("CV no longer validates: " + "; ".join(i.message for i in issues))
     with write_transaction(engine) as conn:
         new_id = int(
             conn.execute(

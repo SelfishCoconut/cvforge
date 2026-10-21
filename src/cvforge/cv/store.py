@@ -13,10 +13,11 @@ from typing import Any
 
 import sqlalchemy as sa
 
+from cvforge.cv.binding import claim_problem
 from cvforge.cv.model import ClaimDraft
-from cvforge.kb import apply, queries, schema
+from cvforge.kb import apply, schema
 from cvforge.kb.db import utc_now, write_transaction
-from cvforge.kb.vocab import ClaimBasis, ClaimSlot, CvStatus, GenerationMode, TargetKind
+from cvforge.kb.vocab import ClaimBasis, ClaimSlot, CvStatus, GenerationMode
 
 
 class WrongPostingError(Exception):
@@ -52,6 +53,7 @@ class StoredClaim:
     text: str
     entity_id: int
     assertion_id: int
+    link_assertion_id: int | None
 
 
 @dataclass(frozen=True)
@@ -87,16 +89,23 @@ class StoredCv:
     claims: tuple[StoredClaim, ...]
 
 
-def _check_supported(conn: sa.Connection, claim: ClaimDraft) -> None:
-    assertion = queries.get_assertion(conn, claim.assertion_id)
-    if (
-        assertion is None
-        or assertion.target_kind != TargetKind.ENTITY.value
-        or assertion.target_id != claim.entity_id
-    ):
-        raise UnsupportedClaimError(
-            f"claim {claim.text!r} names no supporting fact about subject {claim.entity_id}"
+def _check_supported(conn: sa.Connection, claims: Sequence[ClaimDraft]) -> None:
+    """Refuse the CV if any claim is not exactly what its assertion states."""
+    headers = {(c.section, c.item_index): c.entity_id for c in claims if c.slot is ClaimSlot.HEADER}
+    for claim in claims:
+        problem = claim_problem(
+            conn,
+            text=claim.text,
+            entity_id=claim.entity_id,
+            assertion_id=claim.assertion_id,
+            basis=claim.basis,
+            link_assertion_id=claim.link_assertion_id,
+            header_entity_id=headers.get((claim.section, claim.item_index)),
         )
+        if problem is not None:
+            raise UnsupportedClaimError(f"{problem[0]}: {problem[1]}")
+        if not claim.section.strip():
+            raise UnsupportedClaimError(f"{claim.text!r} has no section")
 
 
 def _check_parent(conn: sa.Connection, parent_cv_id: int, posting_id: int) -> None:
@@ -137,8 +146,7 @@ def save_cv(
         WrongPostingError: If the parent CV targets a different posting.
     """
     with write_transaction(engine) as conn:
-        for claim in claims:
-            _check_supported(conn, claim)
+        _check_supported(conn, claims)
         if parent_cv_id is not None:
             _check_parent(conn, parent_cv_id, posting_id)
         latest = conn.execute(
@@ -175,6 +183,7 @@ def save_cv(
                         "text": c.text,
                         "entity_id": c.entity_id,
                         "assertion_id": c.assertion_id,
+                        "link_assertion_id": c.link_assertion_id,
                     }
                     for c in claims
                 ],
@@ -199,6 +208,7 @@ def _claims(conn: sa.Connection, cv_id: int) -> tuple[StoredClaim, ...]:
             r.text,
             r.entity_id,
             r.assertion_id,
+            r.link_assertion_id,
         )
         for r in rows
     )
@@ -256,7 +266,9 @@ def list_cvs(engine: sa.Engine, posting_id: int) -> list[StoredCv]:
 
 
 def set_status(engine: sa.Engine, cv_id: int, status: CvStatus) -> None:
-    """Change a CV's status. Callers must have validated it before marking it final.
+    """Change a CV's status, with no checks of its own.
+
+    Only `cv.validate.finalize_cv` may use this to mark a CV final; it validates first.
 
     Args:
         engine: The knowledge-base engine.

@@ -2243,7 +2243,7 @@
     },
     "/api/cvs/{cv_id}/files/{kind}": {
       "get": {
-        "description": "Download one rendered file of a CV.\n\nArgs:\n    cv_id: A CV id.\n    kind: `tex`, `pdf` or `txt`.\n    db: The knowledge-base engine.\n\nReturns:\n    The file.\n\nRaises:\n    NotFoundError: If the CV is unknown or has not been rendered (404).",
+        "description": "Download one rendered file of a CV.\n\nArgs:\n    cv_id: A CV id.\n    kind: `tex`, `pdf` or `txt`.\n    db: The knowledge-base engine.\n\nReturns:\n    The file.\n\nRaises:\n    NotFoundError: If the CV is unknown or has not been rendered (404).\n    HTTPException: 409 if the CV no longer validates against the knowledge base.",
         "operationId": "download_api_cvs__cv_id__files__kind__get",
         "parameters": [
           {

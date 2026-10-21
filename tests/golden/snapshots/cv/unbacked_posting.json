@@ -4,7 +4,7 @@
     "item": 0,
     "section": "Education",
     "slot": "header",
-    "states": "existence",
+    "states": "name",
     "text": "BSc Computer Science"
   },
   {
@@ -20,7 +20,7 @@
     "item": 0,
     "section": "Certifications",
     "slot": "header",
-    "states": "existence",
+    "states": "name",
     "text": "AWS Certified Developer"
   },
   {

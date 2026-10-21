@@ -51,3 +51,22 @@ def test_generated_cv_matches_snapshot(
                 }
             )
     golden(f"cv/{name}", rows)
+
+
+def test_a_sparse_knowledge_base_yields_a_cv_with_nothing_beyond_what_is_stored(
+    kb: sa.Engine, propose: Any, golden: Callable[[str, object], None]
+) -> None:
+    """Deliberately sparse: skills exist but none has a recorded use, and nothing else does."""
+    from cvforge.kb import apply
+
+    apply.commit_proposal(
+        kb,
+        propose(
+            {"op_type": "create_entity", "kind": "skill", "name": "Rust"},
+            {"op_type": "create_entity", "kind": "skill", "name": "Python"},
+            accept=True,
+        ),
+    )
+    claims = generate_cv(kb, matched_posting(kb, "Rust", "Python", "Go"))
+    golden("cv/sparse_kb", [{"section": c.section, "text": c.text} for c in claims])
+    assert claims == []

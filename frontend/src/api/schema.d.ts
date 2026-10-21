@@ -233,6 +233,7 @@ export interface paths {
          *
          *     Raises:
          *         NotFoundError: If the CV is unknown or has not been rendered (404).
+         *         HTTPException: 409 if the CV no longer validates against the knowledge base.
          */
         get: operations["download_api_cvs__cv_id__files__kind__get"];
         put?: never;

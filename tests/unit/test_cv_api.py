@@ -207,3 +207,25 @@ def test_a_parent_from_another_posting_is_a_422(
     other = persist_posting(kb, page, JobAnalysis()).id
     response = client.post(f"/api/jobs/{other}/cvs", json={"parent_cv_id": first["id"]})
     assert response.status_code == 422
+
+
+def test_a_rendered_file_is_not_served_once_the_cv_stops_validating(
+    cvs: tuple[TestClient, int, Any],
+    kb: sa.Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client, posting, _ = cvs
+    client.app.state.settings.cv_out_dir = tmp_path / "out"  # type: ignore[attr-defined]
+    cv = client.post(f"/api/jobs/{posting}/cvs", json={}).json()
+    monkeypatch.setattr(
+        "cvforge.api.cvs.compile_pdf",
+        lambda tex: tex.with_suffix(".pdf").write_bytes(b"%PDF") and tex.with_suffix(".pdf"),
+    )
+    client.post(f"/api/cvs/{cv['id']}/render")
+    assert client.get(f"/api/cvs/{cv['id']}/files/txt").status_code == 200
+    with kb.begin() as conn:
+        conn.execute(
+            sa.update(schema.cv_claim).where(schema.cv_claim.c.text == "Rust").values(text="Rust+")
+        )
+    assert client.get(f"/api/cvs/{cv['id']}/files/txt").status_code == 409

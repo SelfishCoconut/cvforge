@@ -449,6 +449,9 @@ cv_claim = sa.Table(
     sa.Column("text", sa.String, nullable=False),
     sa.Column("entity_id", sa.Integer, sa.ForeignKey("entity.id"), nullable=False),
     sa.Column("assertion_id", sa.Integer, sa.ForeignKey("assertion.id"), nullable=False),
+    # The edge assertion that justifies placing this claim under the item's header (a role's
+    # organization, a role's project): juxtaposition states a relationship, so it needs support.
+    sa.Column("link_assertion_id", sa.Integer, sa.ForeignKey("assertion.id")),
     sa.UniqueConstraint("cv_id", "section", "item_index", "slot", "position"),
     sa.CheckConstraint("length(trim(text)) > 0", name="text_nonblank"),
     _in("slot", values(ClaimSlot), "slot"),
