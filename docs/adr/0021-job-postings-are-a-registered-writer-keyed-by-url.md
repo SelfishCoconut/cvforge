@@ -41,3 +41,8 @@ or alter an entity.
   posting changed.
 - Two URLs for one posting (tracking parameters) are two postings. Resolving that is a
   later, visible decision, not a silent merge.
+- The `web` source is recorded through `kb.apply.record_source` in its own transaction
+  before the posting is written. If the posting write then fails, an orphan `web` source
+  stays behind. It holds no entity and no assertion, so invariant 3 is intact; the cost is
+  a stray provenance row, accepted rather than widening `apply.py`'s surface to share a
+  connection (sanity audit 2026-10-21-m3, item 4a).

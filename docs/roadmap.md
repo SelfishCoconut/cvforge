@@ -4,7 +4,7 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-10-21 (M3 built) (M1 and M2 closed)
+Last updated: 2026-10-21 (M1 and M2 closed)
 
 ---
 
@@ -65,16 +65,19 @@ Done:
 
 ## Next action
 
-**M3 — job intake is built; the last PR is the jobs API (`POST /api/jobs`, NFR-07 golden
-test, ADR-0022).** Merged: sanity should-fix refactor (#139), FR-17 fetch (#140, ADR-0019),
-FR-18 job agent (#141, ADR-0020), FR-19 company research (#142), FR-20 persistence (#143,
-ADR-0021). When the API PR merges: close M3 with the `release` skill (version 0.4.0, sanity
-audit), then start **M4 — match & gaps** (FR-21..FR-23, issues #25-#27).
+**M4 — match & gaps (FR-21..FR-23, issues #25-#27).** Start from #25 (FR-21, match requirements
+against the knowledge base). Postings and their `requirement` rows exist (`GET/POST /api/jobs`,
+ADR-0021/0022); `requirement.normalized_skill_id` and `job_posting.organization_id` are empty
+and are M4's to fill, through `kb/apply.py` or a Proposal, never from `jobs/store.py`.
 
-Known loose ends carried into M4: #145 (flaky `test_document_dedup`, one CI occurrence, passes
-on re-run); no UI for jobs yet (the API is `GET/POST /api/jobs`); a concrete `SearchProvider`
-does not ship (opt-in); NFR-10 on the default reasoning model still fails until the native
-Ollama adapter (#129) lands.
+M3 closed as `v0.4.0` (2026-10-21): FR-17 fetch (ADR-0019), FR-18 tool-free job agent
+(ADR-0020), FR-19 optional company research, FR-20 persistence (ADR-0021), the jobs API and the
+NFR-07 golden test (ADR-0022). Sanity audit `docs/sanity/2026-10-21-m3.md`: HEALTHY, no must-fix.
+
+Loose ends: #145 (flaky `test_document_dedup`, moved to M4); no UI for jobs yet; no concrete
+`SearchProvider` ships (opt-in); Chromium keeps a DNS-rebinding window (ADR-0019); NFR-10 on the
+default reasoning model needs the native Ollama adapter (#129); #64 awaits Álvaro; ADRs 0010-0012,
+0015-0022 await his confirmation.
 
 Close-out scope calls (M1/M2): #107 closed as delivered; #73, #64 and #58 left M1 (not
 deliverables: #73 is the reference for two environment-dependent skips, #64 awaits Álvaro,
@@ -168,7 +171,7 @@ CI. Direct pushes to `main` are rejected, including for admins.
 | M0 | Foundations | Repo, CI/CD, coverage gate, security pipeline, SRS, ADRs, docs site, `.claude` toolkit, health skeleton | done |
 | M1 | Knowledge spine | Schema + provenance, LLM provider layer, conversational ingest, proposal→review→commit, chat + review UI | done (`v0.3.0`) |
 | M2 | Document ingestion | Upload → extract → classify new/known/duplicate/conflict → review | done (`v0.3.0`) |
-| M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | API PR in review |
+| M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | done (`v0.4.0`) |
 | M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | not started |
 | M5 | CV generation | LaTeX → PDF + ATS text, claim traceability, versions, application linkage, validation | not started |
 | M6 | Collaborative mode | Conversational CV editing, discovery questions, interview mode | not started |
