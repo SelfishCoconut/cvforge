@@ -17,6 +17,21 @@ Nothing to enable. Point `base_url` at a different local Ollama instance if
 yours doesn't run on the default port, and `model` at whichever model you have
 pulled.
 
+### Give Ollama a larger context window
+
+Ollama loads models with a **4096-token context window** by default, shared by
+the prompt, the tool schemas and the model's reasoning. A reasoning model such as
+`qwen3.6:27b` can spend all of it thinking and return no answer, which surfaces
+as a `502` ("Model token limit ... exceeded before any response was generated").
+Ollama's OpenAI-compatible endpoint, which CVForge uses for chat, ignores
+`options.num_ctx`, so the window can only be raised on the server:
+
+```bash
+OLLAMA_CONTEXT_LENGTH=16384 ollama serve
+```
+
+Check it with `ollama ps` (the `CONTEXT` column) after the first request.
+
 ## Anthropic or OpenAI (opt-in)
 
 Selecting either without opting in is refused with a `422` (via `/api/settings`)
