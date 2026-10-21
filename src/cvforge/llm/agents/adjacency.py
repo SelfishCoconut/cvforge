@@ -5,6 +5,7 @@ The matching engine validates every id this returns against the candidates it of
 the model can lower a verdict's certainty but never invent support.
 """
 
+import logging
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from pydantic_ai.models import Model
 from cvforge.llm.fence import fence
 from cvforge.match.verdicts import Candidate, Judgment
 
+logger = logging.getLogger(__name__)
 _PROMPT = (Path(__file__).parent.parent / "prompts" / "adjacency.md").read_text(encoding="utf-8")
 
 

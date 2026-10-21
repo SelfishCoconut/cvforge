@@ -5,6 +5,7 @@ knowledge. The verdicts are decided by the database; the optional model judge ca
 choose among entities the engine itself offered (ADR-0023).
 """
 
+import logging
 from typing import Annotated
 
 import sqlalchemy as sa
@@ -20,6 +21,8 @@ from cvforge.llm.agents.adjacency import ModelJudge
 from cvforge.match.evidence import DetailedMatch, detailed_matches, gap_report
 from cvforge.match.store import list_matches, replace_matches
 from cvforge.match.verdicts import match_posting
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["match"])
 Engine = Annotated[sa.Engine, Depends(engine)]
