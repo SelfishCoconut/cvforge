@@ -38,3 +38,25 @@ class IngestResult(BaseModel):
     reply: str
     facts: list[ExtractedFact] = Field(default_factory=list)
     edges: list[ExtractedEdge] = Field(default_factory=list)
+
+
+class DocumentFact(ExtractedFact):
+    """A fact read from a document, with the passage that states it.
+
+    The page is not asked for: the server knows which page each chunk came from.
+    """
+
+    excerpt: str = Field(description="The passage that states this fact, copied verbatim.")
+
+
+class DocumentEdge(ExtractedEdge):
+    """A relationship read from a document, with the passage that states it."""
+
+    excerpt: str = Field(description="The passage that states this, copied verbatim.")
+
+
+class DocumentResult(BaseModel):
+    """What the document agent extracted from one chunk of a document."""
+
+    facts: list[DocumentFact] = Field(default_factory=list)
+    edges: list[DocumentEdge] = Field(default_factory=list)

@@ -1,0 +1,34 @@
+{
+  "filename": "cv.md",
+  "text": "# Experience\n\nBackend engineer at Acme Logistics, 2019 to 2022.\n\nBuilt a log parser in Rust that processes two gigabytes per second.\n\n# Skills\n\nPython, SQL and Docker.\n",
+  "model_output": {
+    "facts": [
+      {
+        "local_id": "r",
+        "kind": "role",
+        "name": "Backend engineer",
+        "excerpt": "Backend engineer at Acme Logistics, 2019 to 2022."
+      },
+      {
+        "local_id": "s",
+        "kind": "skill",
+        "name": "Rust",
+        "excerpt": "Built a log parser in Rust"
+      },
+      {
+        "local_id": "p",
+        "kind": "project",
+        "name": "Log parser",
+        "excerpt": "Built a log parser in Rust that processes two gigabytes per second."
+      }
+    ],
+    "edges": [
+      {
+        "src": "s",
+        "rel": "used_in",
+        "dst": "p",
+        "excerpt": "Built a log parser in Rust"
+      }
+    ]
+  }
+}

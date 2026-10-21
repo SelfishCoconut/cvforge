@@ -24,6 +24,12 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.ingest.documents
 
+::: cvforge.ingest.extract
+
+::: cvforge.ingest.locators
+
+::: cvforge.ingest.chunking
+
 ## Review API
 
 ::: cvforge.api.proposals

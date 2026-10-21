@@ -1,0 +1,37 @@
+{
+  "body": {
+    "chunks": 1,
+    "proposal": {
+      "id": 1,
+      "operations": [
+        {
+          "classification": "new",
+          "id": 1,
+          "op_type": "create_entity",
+          "payload": {
+            "attributes": {},
+            "evidence_id": 1,
+            "kind": "skill",
+            "name": "Docker",
+            "op_type": "create_entity",
+            "state": "confirmed",
+            "summary": null
+          },
+          "seq": 0,
+          "target_id": null,
+          "target_kind": null
+        }
+      ]
+    },
+    "rejected": [],
+    "similarity_available": true,
+    "source_id": 1
+  },
+  "evidence": [
+    {
+      "excerpt": "I have used Docker for three years.",
+      "locator": "page:1 chars:82-117"
+    }
+  ],
+  "status": 200
+}

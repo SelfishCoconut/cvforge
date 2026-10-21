@@ -26,3 +26,4 @@ was decided, and when, is the whole point.
 | [0014](0014-ndjson-streaming-and-unpersisted-replies.md) | Chat streams as NDJSON over a POST, and assistant replies are not persisted | proposed | 2026-10-05 |
 | [0015](0015-frontend-radix-editorial-router-query.md) | The frontend: Radix primitives, an editorial look, React Router and TanStack Query, generated API types | proposed | 2026-10-05 |
 | [0016](0016-document-upload-storage-and-extraction.md) | Uploaded documents are stored by content hash and parsed to page-separated text | proposed | 2026-10-21 |
+| [0017](0017-document-extraction-quotes-and-server-side-locators.md) | The model quotes, the server locates: evidence locators for document facts | proposed | 2026-10-21 |

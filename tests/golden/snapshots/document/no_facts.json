@@ -1,0 +1,14 @@
+{
+  "body": {
+    "chunks": 1,
+    "proposal": {
+      "id": null,
+      "operations": []
+    },
+    "rejected": [],
+    "similarity_available": true,
+    "source_id": 1
+  },
+  "evidence": [],
+  "status": 200
+}

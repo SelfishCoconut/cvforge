@@ -46,6 +46,18 @@ class EdgeRecord:
 
 
 @dataclass(frozen=True)
+class SourceRecord:
+    """A recorded source: a conversation, document, web page or manual entry."""
+
+    id: int
+    kind: str
+    label: str
+    uri: str | None
+    content_hash: str | None
+    raw_text_path: str | None
+
+
+@dataclass(frozen=True)
 class ProvenanceRecord:
     """One assertion resolved back to the literal evidence it cites (FR-03)."""
 
@@ -541,3 +553,26 @@ def message_count(conn: sa.Connection, source_id: int) -> int | None:
         .select_from(schema.evidence)
         .where(schema.evidence.c.source_id == source_id)
     ).scalar_one()
+
+
+def get_source(conn: sa.Connection, source_id: int) -> SourceRecord | None:
+    """Return one source, or None if there is no such id.
+
+    Args:
+        conn: An open connection.
+        source_id: The source id.
+
+    Returns:
+        The source, or None.
+    """
+    row = conn.execute(
+        sa.select(
+            schema.source.c.id,
+            schema.source.c.kind,
+            schema.source.c.label,
+            schema.source.c.uri,
+            schema.source.c.content_hash,
+            schema.source.c.raw_text_path,
+        ).where(schema.source.c.id == source_id)
+    ).one_or_none()
+    return None if row is None else SourceRecord(*row)
