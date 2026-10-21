@@ -116,7 +116,7 @@ def test_an_invalid_analysis_is_a_502_and_stores_nothing(jobs: TestClient) -> No
     jobs.app.state.model_factory = lambda _e: Spy({"working_model": "on a boat"}).model()  # type: ignore[attr-defined]
     response = jobs.post("/api/jobs", json={"url": URL})
 
-    assert response.status_code == 502
+    assert response.status_code == 502 and "no valid job analysis" in response.json()["detail"]
     assert jobs.get("/api/jobs").json() == []
 
 
@@ -162,3 +162,35 @@ def test_a_hostile_posting_is_stored_as_data_with_no_tool_offered_and_no_knowled
         0,
         0,
     )
+
+
+def test_listing_is_newest_first_with_each_postings_own_requirements(jobs: TestClient) -> None:
+    first = jobs.post("/api/jobs", json={"url": URL}).json()
+    other = Spy({"title": "Other", "required_skills": ["Go"]})
+    jobs.app.state.model_factory = lambda _e: other.model()  # type: ignore[attr-defined]
+    second = jobs.post("/api/jobs", json={"url": URL + "-2"}).json()
+
+    listed = jobs.get("/api/jobs").json()
+
+    assert [p["id"] for p in listed] == [second["id"], first["id"]]
+    assert [r["text"] for r in listed[0]["requirements"]] == ["Go"]
+    assert len(listed[1]["requirements"]) == 4
+
+
+def test_a_second_take_in_replaces_requirements_rather_than_appending(jobs: TestClient) -> None:
+    jobs.post("/api/jobs", json={"url": URL})
+    again = jobs.post("/api/jobs", json={"url": URL}).json()
+    assert len(again["requirements"]) == 4
+
+
+def test_no_company_means_no_research_even_with_a_provider(jobs: TestClient) -> None:
+    jobs.app.state.search_provider = Search()  # type: ignore[attr-defined]
+    jobs.app.state.model_factory = lambda _e: Spy({**ANALYSIS, "company": None}).model()  # type: ignore[attr-defined]
+    assert jobs.post("/api/jobs", json={"url": URL}).json()["research"] is None
+
+
+def test_an_unstated_work_model_reads_back_as_none(jobs: TestClient) -> None:
+    jobs.app.state.model_factory = lambda _e: Spy({"title": "T"}).model()  # type: ignore[attr-defined]
+    posted = jobs.post("/api/jobs", json={"url": URL}).json()
+    assert posted["work_model"] is None
+    assert jobs.get(f"/api/jobs/{posted['id']}").json()["work_model"] is None

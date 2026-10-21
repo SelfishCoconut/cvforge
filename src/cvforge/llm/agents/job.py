@@ -5,6 +5,7 @@ nothing from the knowledge base (matching is a later step), so there is nothing 
 hostile posting could talk the model into calling.
 """
 
+import re
 from pathlib import Path
 
 from pydantic_ai import Agent
@@ -15,6 +16,7 @@ from cvforge.llm.schemas import JobAnalysis
 
 _PROMPT = (Path(__file__).parent.parent / "prompts" / "job.md").read_text(encoding="utf-8")
 _CLOSE = "</posting>"
+_CLOSE_PATTERN = re.compile(r"<\s*/\s*posting\s*>", re.IGNORECASE)
 
 
 class AnalysisError(Exception):
@@ -35,7 +37,7 @@ def build_job_agent(model: Model) -> Agent[None, JobAnalysis]:
 
 def _prompt(posting_text: str) -> str:
     """Fence the posting so it reads as data; a closing tag inside it cannot end the fence."""
-    safe = posting_text.replace(_CLOSE, "")
+    safe = _CLOSE_PATTERN.sub("", posting_text)
     return f"<posting>\n{safe}\n{_CLOSE}"
 
 
