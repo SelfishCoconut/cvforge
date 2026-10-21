@@ -17,18 +17,19 @@ describe("App shell", () => {
     vi.unstubAllGlobals();
   });
 
-  it("offers the four primary destinations as links", () => {
+  it("offers the five primary destinations as links", () => {
     stubHealthy();
     renderApp(<App />, { route: "/chat" });
     const nav = screen.getByRole("navigation", { name: "Primary" });
     const names = within(nav)
       .getAllByRole("link")
       .map((a) => a.textContent);
-    expect(names).toEqual(["Chat", "Review", "Knowledge", "Settings"]);
+    expect(names).toEqual(["Chat", "Documents", "Review", "Knowledge", "Settings"]);
   });
 
   it.each([
     ["/chat", "Chat"],
+    ["/documents", "Documents"],
     ["/review", "Review"],
     ["/review/3", "Review"],
     ["/knowledge/7", "Knowledge"],
@@ -52,6 +53,7 @@ describe("App shell", () => {
 
   it.each([
     ["/chat", "Chat"],
+    ["/documents", "Documents"],
     ["/review", "Review queue"],
     ["/review/3", "Review proposal"],
     ["/knowledge", "Knowledge"],

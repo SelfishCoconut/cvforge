@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from scripts.demo.ui_demo import build_app, run_loop
+from scripts.demo.ui_demo import build_app, run_document_loop, run_loop
 
 from cvforge.kb import queries
 
@@ -22,10 +22,11 @@ def _dist(tmp_path: Path) -> Path:
     return dist
 
 
-def test_chat_to_provenance_loop_keeps_invariant_three(tmp_path: Path) -> None:
+def test_chat_then_document_loop_keeps_invariant_three(tmp_path: Path) -> None:
     app = build_app(tmp_path / "data", _dist(tmp_path))
     with TestClient(app, base_url="http://127.0.0.1") as client:
         run_loop(client)
+        run_document_loop(client)
         deep_link = client.get("/review/1")
         assert deep_link.status_code == 200
         assert "<div id=" in deep_link.text

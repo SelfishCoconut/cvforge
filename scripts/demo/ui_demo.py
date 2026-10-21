@@ -27,21 +27,34 @@ from cvforge.kb.db import make_engine
 from cvforge.kb.schema import metadata
 
 STATEMENT = "I worked at Acme as a backend engineer using Python"
+# `excerpt` is read by the document agent and ignored by the chat agent, so one script
+# serves both: each quote below is a passage of STATEMENT, which is also the upload text.
 SCRIPTED = {
     "reply": "Noted: backend engineer at Acme, using Python.",
     "facts": [
-        {"local_id": "o", "kind": "organization", "name": "Acme"},
-        {"local_id": "r", "kind": "role", "name": "Backend engineer"},
+        {"local_id": "o", "kind": "organization", "name": "Acme", "excerpt": "Acme"},
+        {
+            "local_id": "r",
+            "kind": "role",
+            "name": "Backend engineer",
+            "excerpt": "backend engineer",
+        },
         {
             "local_id": "s",
             "kind": "skill",
             "name": "Python",
             "attributes": {"category": "language"},
+            "excerpt": "Python",
         },
     ],
     "edges": [
-        {"src": "r", "rel": "at_organization", "dst": "o"},
-        {"src": "s", "rel": "used_in", "dst": "r"},
+        {
+            "src": "r",
+            "rel": "at_organization",
+            "dst": "o",
+            "excerpt": "worked at Acme as a backend engineer",
+        },
+        {"src": "s", "rel": "used_in", "dst": "r", "excerpt": "backend engineer using Python"},
     ],
 }
 
@@ -129,6 +142,42 @@ def run_loop(client: TestClient) -> int:
     return int(entities["Python"])
 
 
+def run_document_loop(client: TestClient) -> None:
+    """Upload a document that restates what chat already committed, and re-ingest it cleanly.
+
+    Run after `run_loop`. Acme and Python are identified by name, so they classify `known`;
+    a role is not (two roles with one title are usually different jobs), so the role and the
+    edges that touch it classify `new`. Committing must add exactly that one entity, and each
+    fact must cite the exact passage it was read from (FR-14, FR-15, FR-16).
+
+    Args:
+        client: A client of an app whose model is the scripted one.
+
+    Raises:
+        AssertionError: A step behaved differently than the design says it must.
+    """
+    before = len(client.get("/api/entities").json())
+    uploaded = client.post("/api/documents", files={"file": ("cv.md", STATEMENT.encode())})
+    _require(uploaded.status_code == 201, uploaded.text)
+    extracted = client.post(f"/api/documents/{uploaded.json()['source_id']}/extract")
+    _require(extracted.status_code == 200, extracted.text)
+    body = extracted.json()
+    proposal = body["proposal"]
+    classes = [op["classification"] for op in proposal["operations"]]
+    expected = ["known", "new", "known", "new", "new"]
+    _require(classes == expected and body["rejected"] == [], (classes, body["rejected"]))
+    for op in proposal["operations"]:
+        url = f"/api/proposals/{proposal['id']}/operations/{op['id']}/review"
+        _require(client.post(url, json={"decision": "accept"}).status_code == 200, op)
+    committed = client.post(f"/api/proposals/{proposal['id']}/commit")
+    _require(committed.status_code == 200, committed.text)
+    entities = client.get("/api/entities").json()
+    _require(len(entities) == before + 1, "only the role should have been created")
+    python = next(e["id"] for e in entities if e["name"] == "Python")
+    cited = {o["excerpt"] for o in client.get(f"/api/provenance/entity/{python}").json()}
+    _require({STATEMENT, "Python"} <= cited, cited)
+
+
 def check() -> int:
     """Boot the app in process on a temp database and run the loop.
 
@@ -139,6 +188,7 @@ def check() -> int:
         app = build_app(Path(tmp))
         with TestClient(app, base_url="http://127.0.0.1") as client:
             run_loop(client)
+            run_document_loop(client)
     print("ok")
     return 0
 
