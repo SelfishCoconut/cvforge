@@ -109,6 +109,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{source_id}/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extract
+         * @description Read an uploaded document with the model and record a pending proposal.
+         *
+         *     Every fact carries the passage that states it; a fact whose passage cannot be
+         *     found in the document is dropped. Nothing is written to the knowledge base until
+         *     the proposal is reviewed and committed.
+         *
+         *     Args:
+         *         db: The knowledge-base engine.
+         *         source_id: A document source id from `POST /api/documents`.
+         *         embedder: Used for similarity, if configured.
+         *         model_factory: Builds the model for this request.
+         *
+         *     Returns:
+         *         The proposal and anything dropped.
+         *
+         *     Raises:
+         *         HTTPException: 404 for an unknown document; 502 if the model fails.
+         */
+        post: operations["extract_api_documents__source_id__extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/entities": {
         parameters: {
             query?: never;
@@ -634,6 +670,28 @@ export interface components {
             /** Source Label */
             source_label: string;
         };
+        /**
+         * ExtractionView
+         * @description The result of extracting a document.
+         *
+         *     Attributes:
+         *         source_id: The document.
+         *         chunks: How many chunks it was read in.
+         *         proposal: The pending proposal; empty when nothing was extracted.
+         *         rejected: What the agent produced that was dropped, and why.
+         *         similarity_available: False if duplicate detection could not run.
+         */
+        ExtractionView: {
+            /** Chunks */
+            chunks: number;
+            proposal: components["schemas"]["ProposalView"];
+            /** Rejected */
+            rejected: components["schemas"]["RejectedView"][];
+            /** Similarity Available */
+            similarity_available: boolean;
+            /** Source Id */
+            source_id: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1035,6 +1093,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extract_api_documents__source_id__extract_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionView"];
                 };
             };
             /** @description Validation Error */
