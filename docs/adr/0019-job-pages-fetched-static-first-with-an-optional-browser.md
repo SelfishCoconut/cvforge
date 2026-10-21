@@ -38,7 +38,11 @@ or proposal. Analysis (FR-18) and persistence (FR-20) are separate steps.
   hostname) is not caught: the check is on literals, to stay offline and deterministic.
   Resolving and pinning the address is the follow-up if this tool is ever exposed
   beyond one user's machine.
-- The browser fallback checks only the URL it is given; subresources and in-page
-  redirects inside Chromium are not filtered.
+- The browser fallback screens every request Chromium makes (navigations, redirect
+  hops and subresources) with the same literal check, and re-checks the URL it ended
+  on. It shares the DNS limitation above.
+- The download is capped at 5 MiB after decoding (the request asks for an
+  uncompressed body, and a declared `Content-Length` over the cap is refused up
+  front) and must finish within 30 s overall, redirects included.
 - Some boards block non-browser clients; they surface as an HTTP error, and the user
   can paste the posting text instead (a later task).
