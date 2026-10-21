@@ -145,6 +145,8 @@ def save_cv(
         NotFoundError: If the parent CV does not exist.
         WrongPostingError: If the parent CV targets a different posting.
     """
+    if mode is GenerationMode.AUTOMATIC and any(c.basis is ClaimBasis.REWORD for c in claims):
+        raise UnsupportedClaimError("an automatic CV may not carry reworded claims")
     with write_transaction(engine) as conn:
         _check_supported(conn, claims)
         if parent_cv_id is not None:

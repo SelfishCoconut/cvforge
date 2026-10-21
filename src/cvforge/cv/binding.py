@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from cvforge.cv.facts import claim_source
 from cvforge.cv.grounding import ungrounded_terms
 from cvforge.kb import queries
-from cvforge.kb.vocab import ClaimBasis, KnowledgeState, TargetKind
+from cvforge.kb.vocab import ClaimBasis, KnowledgeState, Rel, TargetKind
 
 
 def claim_problem(
@@ -62,15 +62,22 @@ def claim_problem(
     return _link_problem(conn, text, entity_id, link_assertion_id, header_entity_id)
 
 
+_RELATED_RELS = frozenset(
+    rel.value for rel in (Rel.USED_IN, Rel.PART_OF, Rel.AT_ORGANIZATION, Rel.PRODUCED, Rel.INVOLVED)
+)
+
+
 def _facts_about(conn: sa.Connection, entity_id: int) -> list[str]:
-    """Every stored text a line about the entity may draw on: its own and its neighbours' names."""
+    """Stored texts a line about the entity may draw on: its own, and its confirmed neighbours."""
     record = queries.get_entity(conn, entity_id)
     if record is None:
         return []
     texts = [record.name, record.summary or "", *(str(v) for v in record.attributes.values())]
     for edge in queries.neighbours(conn, entity_id):
+        if edge.rel not in _RELATED_RELS:
+            continue
         other = queries.get_entity(conn, edge.dst_id if edge.src_id == entity_id else edge.src_id)
-        if other is not None:
+        if other is not None and other.state is KnowledgeState.CONFIRMED:
             texts.append(other.name)
     return texts
 
@@ -83,10 +90,19 @@ def _reword_problem(
     link_assertion_id: int | None,
     header_entity_id: int | None,
 ) -> tuple[str, str] | None:
-    """A reworded claim keeps a name or summary assertion and adds no new fact."""
-    if assertion.field not in ("name", "summary"):
-        return "wrong_assertion", f"{text!r} rewords a fact its assertion does not state"
-    novel = ungrounded_terms(_facts_about(conn, entity_id), text)
+    """A reworded claim keeps the current name or summary assertion and adds no new fact."""
+    record = queries.get_entity(conn, entity_id)
+    current = None if record is None else {"name": record.name, "summary": record.summary}
+    field = assertion.field
+    if (
+        current is None
+        or field not in current
+        or queries.entity_assertion_id(conn, entity_id, field) != assertion.id
+        or str(assertion.value) != str(current[field])
+    ):
+        return "wrong_assertion", f"{text!r} rewords a fact its assertion no longer states"
+    others = [e.name for e in queries.list_entities(conn)]
+    novel = ungrounded_terms(_facts_about(conn, entity_id), text, other_entities=others)
     if novel:
         return "ungrounded", f"{text!r} adds {novel}, which nothing stored about it says"
     return _link_problem(conn, text, entity_id, link_assertion_id, header_entity_id)
