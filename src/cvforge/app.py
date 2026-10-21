@@ -23,6 +23,7 @@ from cvforge.api.health import router as health_router
 from cvforge.api.jobs import default_fetcher
 from cvforge.api.jobs import router as jobs_router
 from cvforge.api.knowledge import router as knowledge_router
+from cvforge.api.learning import router as learning_router
 from cvforge.api.matches import router as matches_router
 from cvforge.api.proposals import router as proposals_router
 from cvforge.api.security import install_security_middleware
@@ -122,6 +123,7 @@ def create_app(
     app.include_router(documents_router, prefix="/api")
     app.include_router(jobs_router, prefix="/api")
     app.include_router(knowledge_router, prefix="/api")
+    app.include_router(learning_router, prefix="/api")
     app.include_router(matches_router, prefix="/api")
     app.include_router(proposals_router, prefix="/api")
     app.include_router(settings_router, prefix="/api")

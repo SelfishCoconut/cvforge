@@ -107,6 +107,7 @@ nav:
       - 0026 CV lineage and applications: adr/0026-cv-lineage-and-applications.md
       - 0027 Discovery and interviews: adr/0027-discovery-questions-and-interviews-feed-the-review-pipeline.md
       - 0028 Collaborative CV edits: adr/0028-collaborative-cv-edits-reword-without-adding-facts.md
+      - 0029 Learning plans: adr/0029-learning-plans-are-advice-and-completion-only-proposes.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md

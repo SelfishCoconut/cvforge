@@ -65,7 +65,7 @@ Done:
 
 ## Next action
 
-**M7 — learning plans (FR-33, FR-34; issues #37, #38).** Start from #37 (FR-33): a plan agent that, for a
+**M7 — learning plans (FR-33, FR-34; issues #37, #38).** Built, in review (ADR-0029). Original note: a plan agent that, for a
 `gap` requirement (`GET /api/jobs/{id}/gaps`, verdict `gap` only), returns concrete steps/resources and
 writes nothing. #38 (FR-34) moves an entity `learning` -> `confirmed` only through an approved `set_state`
 operation in the normal review pipeline (invariant 4); progress against an entity never recorded as
