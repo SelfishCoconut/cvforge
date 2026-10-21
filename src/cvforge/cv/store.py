@@ -19,6 +19,10 @@ from cvforge.kb.db import utc_now, write_transaction
 from cvforge.kb.vocab import ClaimBasis, ClaimSlot, CvStatus, GenerationMode, TargetKind
 
 
+class WrongPostingError(Exception):
+    """A CV was derived from a CV that targets a different posting."""
+
+
 class UnsupportedClaimError(Exception):
     """A claim names no assertion, or one that is not about its entity."""
 
@@ -95,6 +99,16 @@ def _check_supported(conn: sa.Connection, claim: ClaimDraft) -> None:
         )
 
 
+def _check_parent(conn: sa.Connection, parent_cv_id: int, posting_id: int) -> None:
+    parent = conn.execute(
+        sa.select(schema.cv.c.job_posting_id).where(schema.cv.c.id == parent_cv_id)
+    ).first()
+    if parent is None:
+        raise apply.NotFoundError(f"no CV {parent_cv_id}")
+    if parent.job_posting_id != posting_id:
+        raise WrongPostingError(f"CV {parent_cv_id} belongs to another posting")
+
+
 def save_cv(
     engine: sa.Engine,
     posting_id: int,
@@ -120,18 +134,13 @@ def save_cv(
     Raises:
         UnsupportedClaimError: If any claim lacks a supporting assertion; nothing is stored.
         NotFoundError: If the parent CV does not exist.
+        WrongPostingError: If the parent CV targets a different posting.
     """
     with write_transaction(engine) as conn:
         for claim in claims:
             _check_supported(conn, claim)
-        if (
-            parent_cv_id is not None
-            and conn.execute(
-                sa.select(schema.cv.c.id).where(schema.cv.c.id == parent_cv_id)
-            ).first()
-            is None
-        ):
-            raise apply.NotFoundError(f"no CV {parent_cv_id}")
+        if parent_cv_id is not None:
+            _check_parent(conn, parent_cv_id, posting_id)
         latest = conn.execute(
             sa.select(sa.func.max(schema.cv.c.version)).where(
                 schema.cv.c.job_posting_id == posting_id

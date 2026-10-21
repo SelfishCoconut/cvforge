@@ -169,3 +169,41 @@ def test_a_latex_failure_is_a_502_not_a_corrupt_file(
 
     assert response.status_code == 502 and "Missing $" in response.json()["detail"]
     assert client.get(f"/api/cvs/{cv['id']}/files/pdf").status_code == 404
+
+
+def test_lineage_and_applications_over_http(cvs: tuple[TestClient, int, Any]) -> None:
+    client, posting, _ = cvs
+    first = client.post(f"/api/jobs/{posting}/cvs", json={}).json()
+    second = client.post(f"/api/jobs/{posting}/cvs", json={"parent_cv_id": first["id"]}).json()
+    assert [c["id"] for c in client.get(f"/api/cvs/{second['id']}/lineage").json()] == [
+        first["id"],
+        second["id"],
+    ]
+    assert client.get("/api/cvs/999/lineage").status_code == 404
+
+    body = {"job_posting_id": posting, "cv_id": second["id"], "applied_at": "2026-10-21T09:30:00"}
+    assert client.post("/api/applications", json=body).status_code == 422  # still a draft
+    client.post(f"/api/cvs/{second['id']}/final")
+    created = client.post("/api/applications", json=body)
+    assert created.status_code == 201 and created.json()["status"] == "applied"
+
+    used = client.get("/api/applications", params={"cv_id": second["id"]}).json()
+    assert [a["id"] for a in used] == [created.json()["id"]]
+    moved = client.post(
+        f"/api/applications/{created.json()['id']}/status", json={"status": "offer"}
+    )
+    assert moved.json()["status"] == "offer"
+    assert client.post("/api/applications/999/status", json={"status": "offer"}).status_code == 404
+    assert client.post("/api/applications", json={**body, "cv_id": 999}).status_code == 404
+    assert client.post("/api/applications", json={**body, "status": "ghosted"}).status_code == 422
+
+
+def test_a_parent_from_another_posting_is_a_422(
+    cvs: tuple[TestClient, int, Any], kb: sa.Engine
+) -> None:
+    client, posting, _ = cvs
+    first = client.post(f"/api/jobs/{posting}/cvs", json={}).json()
+    page = FetchedPage("https://j.test/77", "https://j.test/77", "J", "t", "static")
+    other = persist_posting(kb, page, JobAnalysis()).id
+    response = client.post(f"/api/jobs/{other}/cvs", json={"parent_cv_id": first["id"]})
+    assert response.status_code == 422
