@@ -16,10 +16,9 @@ constructs a write. Its public surface is deliberately small, and fixed by
   (invariant 3).
 """
 
-from collections.abc import Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date
 from typing import Any, Literal
 
 import sqlalchemy as sa
@@ -27,6 +26,7 @@ from pydantic import JsonValue, ValidationError
 
 from cvforge.kb import schema
 from cvforge.kb.classify import NAME_IS_IDENTITY, NEW, SimilarFinder, Verdict, classify
+from cvforge.kb.db import utc_now, write_transaction
 from cvforge.kb.models import (
     COMMON_FIELDS,
     KIND_ATTRIBUTES,
@@ -107,39 +107,6 @@ class CommitResult:
     reindex_ids: list[int]
 
 
-def _now() -> datetime:
-    return datetime.now(UTC).replace(tzinfo=None)
-
-
-@contextmanager
-def _write_transaction(engine: sa.Engine) -> Iterator[sa.Connection]:
-    """Open a transaction that holds SQLite's write lock before anything is read.
-
-    pysqlite begins a transaction lazily, just before the first INSERT, UPDATE or
-    DELETE. A plain `engine.begin()` therefore runs its checks (is the proposal
-    still open? which operations are pending?) outside any lock and then writes
-    on what it read, so two requests can pass the same check and both write: a
-    proposal committed twice, or a reject landing after the commit it should have
-    prevented. `BEGIN IMMEDIATE` takes the lock first. The second request waits,
-    then reads the state the first one left behind.
-
-    Args:
-        engine: The knowledge-base engine.
-
-    Yields:
-        A connection inside the transaction. It is committed when the block ends
-        and rolled back if the block raises.
-    """
-    with engine.connect() as conn:
-        conn.exec_driver_sql("BEGIN IMMEDIATE")
-        try:
-            yield conn
-        except BaseException:
-            conn.rollback()
-            raise
-        conn.commit()
-
-
 def _json(value: date | float | str | None) -> JsonValue:
     """Render a column value the way an assertion's `value_json` stores it."""
     return value.isoformat() if isinstance(value, date) else value
@@ -177,7 +144,7 @@ def record_source(
                 label=label,
                 uri=uri,
                 content_hash=content_hash,
-                captured_at=_now(),
+                captured_at=utc_now(),
                 raw_text_path=raw_text_path,
             )
         )
@@ -247,7 +214,7 @@ def record_proposal(
     """
     with engine.connect() as conn:
         first = _classify_in_order(conn, draft.operations, similar)
-    with _write_transaction(engine) as conn:
+    with write_transaction(engine) as conn:
         _require(conn, schema.source, draft.source_id, "source")
         for op in draft.operations:
             _require(conn, schema.evidence, op.payload.evidence_id, "evidence")
@@ -258,7 +225,7 @@ def record_proposal(
                     source_id=draft.source_id,
                     status=ProposalStatus.OPEN.value,
                     summary=draft.summary,
-                    created_at=_now(),
+                    created_at=utc_now(),
                 )
             )
         )
@@ -325,7 +292,7 @@ def review_operation(
     earlier edit of it. An `edited` operation is already approved: to approve it
     as edited there is nothing more to do.
 
-    The whole review runs under the write lock (`_write_transaction`), so it
+    The whole review runs under the write lock (`write_transaction`), so it
     cannot land between a commit's checks and its writes.
 
     Args:
@@ -340,7 +307,7 @@ def review_operation(
         InvalidEditError: If an edit is missing, changes the operation type, or
             does not validate, or if an edited payload accompanies accept or reject.
     """
-    with _write_transaction(engine) as conn:
+    with write_transaction(engine) as conn:
         row = conn.execute(
             sa.select(schema.operation.c.op_type, schema.proposal.c.status)
             .join(schema.proposal, schema.proposal.c.id == schema.operation.c.proposal_id)
@@ -410,7 +377,7 @@ def commit_proposal(engine: sa.Engine, proposal_id: int) -> CommitResult:
             refuses to run without them; build the engine with `kb.db.make_engine`.
         sqlalchemy.exc.IntegrityError: If the database rejects a row; nothing is kept.
     """
-    with _write_transaction(engine) as conn:
+    with write_transaction(engine) as conn:
         if conn.exec_driver_sql("PRAGMA foreign_keys").scalar() != 1:
             raise RuntimeError(
                 "foreign-key enforcement is off, so commit refuses to run; "
@@ -439,7 +406,7 @@ def commit_proposal(engine: sa.Engine, proposal_id: int) -> CommitResult:
                 committer.apply(op)
                 applied.append(op.id)
 
-        now = _now()
+        now = utc_now()
         if applied:
             conn.execute(
                 sa.update(schema.operation)
@@ -567,7 +534,7 @@ class _Committer:
             self.entity_ids[op.seq] = op.target_id
 
     def _create_entity(self, payload: CreateEntity) -> int:
-        now = _now()
+        now = utc_now()
         entity_id = _pk(
             self.conn.execute(
                 sa.insert(schema.entity).values(
@@ -598,7 +565,7 @@ class _Committer:
 
     def _update_field(self, payload: UpdateField) -> None:
         kind = self._entity_kind(payload.entity_id)
-        now = _now()
+        now = utc_now()
         if payload.field in COMMON_FIELDS:
             values: dict[str, Any] = {payload.field: payload.value, "updated_at": now}
             if payload.field == "name":
@@ -684,7 +651,7 @@ class _Committer:
         self.conn.execute(
             sa.update(schema.entity)
             .where(schema.entity.c.id == entity_id)
-            .values(state=payload.state.value, updated_at=_now())
+            .values(state=payload.state.value, updated_at=utc_now())
         )
         self._assert(TargetKind.ENTITY, entity_id, "state", payload.state.value, payload)
 
@@ -703,7 +670,7 @@ class _Committer:
                 field=field,
                 value_json=value,
                 evidence_id=payload.evidence_id,
-                created_at=_now(),
+                created_at=utc_now(),
             )
         )
 

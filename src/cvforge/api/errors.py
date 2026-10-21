@@ -86,7 +86,7 @@ async def _integrity_error(_request: Request, error: Exception) -> JSONResponse:
 async def _operational_error(_request: Request, error: Exception) -> JSONResponse:
     reason = str(getattr(error, "orig", error))
     if "locked" in reason:
-        # Review and commit take SQLite's write lock before they read (`apply._write_transaction`),
+        # Review and commit take SQLite's write lock before they read (`db.write_transaction`),
         # so a request that waits longer than the busy timeout never began: nothing was written.
         return JSONResponse(
             status_code=503,
