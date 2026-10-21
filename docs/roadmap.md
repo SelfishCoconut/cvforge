@@ -4,7 +4,7 @@
 what happens next, and the single next action. Keep it updated in the same PR
 whenever milestone state changes.
 
-Last updated: 2026-10-05
+Last updated: 2026-10-21
 
 ---
 
@@ -99,17 +99,29 @@ ADR-0014 — is PR #82 (it replaced #80, which GitHub auto-closed when #79's bra
 deleted). B5 — the real-model latency benchmark, NFR-10 — is PR #81, closing #47. The
 benchmark ships as a tool; its first recorded run is `docs/sanity/2026-10-19-nfr10-latency.md`
 (instruct model p95 8.0 s; the default reasoning model fails on the token limit, #123).
-**C1 is complete locally, on stacked branches that are not pushed and not merged:**
-the backend additions (`GET /api/proposals`, evidence lookup, SPA history fallback),
-the frontend foundation (ADR-0015 `proposed`, `docs/architecture/frontend.md`), and
-the chat, review, knowledge and settings views, plus `make demo-ui` (the real app
-serving the SPA with a scripted model on a throwaway database) and `make
-demo-ui-check` (the same HTTP loop in process, in `test-demos`), also run by
-`tests/system/test_ui_loop.py`. **Next action: Álvaro reviews and approves the
-stacked PRs in order** — PR0 `feat/api-proposal-list` → PR1 `feat/ui-foundation` →
-PR2 `feat/fr-13-chat-ui` → PR3 `feat/fr-10-review-ui` → PR4 `feat/fr-04-knowledge-ui`
-→ PR5 `feat/fr-39-settings-ui` → PR6 `feat/ui-e2e-demo` — **then the milestone
-close-out via the `release` skill.**
+**C1 is merged** (the stack ending at #106): the chat, review, knowledge and settings views, the
+ADR-0015 frontend foundation (`proposed`), `make demo-ui` / `make demo-ui-check` and
+`tests/system/test_ui_loop.py`. The NFR-10 benchmark fix is PR #122 (merged).
+**#123 was mis-diagnosed:** the default reasoning model fails because Ollama loads it with a
+4096-token context window and its `/v1` endpoint ignores `options.num_ctx`, not because of
+`max_tokens`. PR #124 makes the 502 name the cause and documents `OLLAMA_CONTEXT_LENGTH`
+(`docs/guides/providers.md`). A native `/api/chat` adapter with a `num_ctx` setting is the
+real fix and needs an ADR. **Next action:** merge #126 (certifi, clears a pip-audit
+advisory) then #124; record the NFR-10 run on the default model with
+`OLLAMA_CONTEXT_LENGTH=16384`; then close M1 via the `release` skill.
+**M2 (document ingestion) backend is done, as stacked branches pushed but not merged:**
+FR-14 upload and text extraction (PR #132, `feat/fr-14-document-upload`, ADR-0016) →
+FR-15 cited-fact extraction (`feat/fr-15-document-extraction`, ADR-0017) → FR-16
+(`feat/fr-16-document-dedup`, ADR-0018) → UI. FR-16 surfaced a real M1 bug: an edge between
+entities that classified `known` was classified `new` and then violated the edge's unique
+key at commit, refusing the whole proposal; `classify` and the commit-time check now resolve
+`OpRef` ends (ADR-0018). Open each PR against `main` only after the one below it merges
+(a PR whose base branch is deleted is auto-closed). The UI (`feat/m2-documents-ui`, #133) is the top of the stack and
+is browser-unverified (no Chrome for Playwright on this machine; vitest, the HTTP loop and
+`make demo-ui` pass). **Remaining for M2:** NFR-07 (#46) verification and the milestone close-out. Before pushing
+a route or an ADR run `make docs`, `make ui-gen` (regenerate `schema.d.ts`) and the other
+CI equivalents; the first push of #132 failed on exactly those.
+
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 **M1 infra backlog cleared (2026-10-05):** `mkdocs<2` ceiling (#57), Dependabot npm
