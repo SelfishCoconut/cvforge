@@ -69,7 +69,7 @@ Done:
 ADR-0030) is PR #168; FR-36 (#40, suggestions from the selected CV, `form_fill_session`) and FR-37
 (#41, `forms/fill.py`: confirmed fields only, headed persistent profile, never submits, pinned by an
 AST test) are built on `feat/fr-36-form-options` (stacked on #168). **Remaining for M8:** open the
-PRs once #168 merges, the API routes (analyse, confirm, fill) and UI, then the `release` skill for
+PRs once #168 merges, the UI for the `/api/forms/fills` routes (start, confirm, fill), then the `release` skill for
 M8. Form pages are untrusted data (NFR-07): analyse, never obey.
 
 M7 closed as `v0.8.0` (2026-10-21): FR-33 learning plans for `gap` requirements and FR-34 progress

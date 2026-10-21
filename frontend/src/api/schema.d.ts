@@ -619,6 +619,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/forms/fills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Session
+         * @description Fetch a form, list its fields and suggest a value for each from the chosen CV.
+         *
+         *     Nothing is filled and nothing is confirmed yet.
+         *
+         *     Args:
+         *         body: The form URL and CV.
+         *         db: The knowledge-base engine.
+         *         fetcher: Fetches the page's HTML.
+         *
+         *     Returns:
+         *         The stored session.
+         *
+         *     Raises:
+         *         NotFoundError: If the CV does not exist (404).
+         *         HTTPException: 422 if the page cannot be fetched or holds no fillable form.
+         */
+        post: operations["start_session_api_forms_fills_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forms/fills/{fill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Session
+         * @description Read one session.
+         *
+         *     Args:
+         *         fill_id: A session id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The session.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such session (404).
+         */
+        get: operations["read_session_api_forms_fills__fill_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forms/fills/{fill_id}/fields/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Confirm
+         * @description Approve the value to fill into one field.
+         *
+         *     Args:
+         *         fill_id: A session id.
+         *         key: The field's key.
+         *         body: The approved value.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The session after the confirmation.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such session (404).
+         *         HTTPException: 409 if the session was filled or the field cannot take the value.
+         */
+        put: operations["confirm_api_forms_fills__fill_id__fields__key__put"];
+        post?: never;
+        /**
+         * Unconfirm
+         * @description Withdraw a confirmation; the field is then left untouched by the fill.
+         *
+         *     Args:
+         *         fill_id: A session id.
+         *         key: The field's key.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The session after the change.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such session (404).
+         *         HTTPException: 409 if the session was filled or has no such field.
+         */
+        delete: operations["unconfirm_api_forms_fills__fill_id__fields__key__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forms/fills/{fill_id}/fill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fill
+         * @description Open the form in a visible browser and write the confirmed values; never submit.
+         *
+         *     The request returns when the window is closed, so the user can review the form and submit it
+         *     themself. A session can be filled once.
+         *
+         *     Args:
+         *         fill_id: A session id.
+         *         db: The knowledge-base engine.
+         *         filler: Runs the browser.
+         *
+         *     Returns:
+         *         Which fields were written and which confirmed ones were skipped.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such session (404).
+         *         HTTPException: 409 if it was already filled or nothing is confirmed; 422 if the page
+         *             cannot be opened.
+         */
+        post: operations["fill_api_forms_fills__fill_id__fill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1526,6 +1675,17 @@ export interface components {
             index_pending: number[];
         };
         /**
+         * ConfirmRequest
+         * @description The value the user approved for a field.
+         *
+         *     Attributes:
+         *         value: The value to fill; the suggestion as is, or the user's edit.
+         */
+        ConfirmRequest: {
+            /** Value */
+            value: string;
+        };
+        /**
          * CvEvidenceView
          * @description The source span a fact comes from.
          *
@@ -1796,6 +1956,28 @@ export interface components {
             /** Type */
             type: string;
         };
+        /**
+         * FillResult
+         * @description What a fill run did.
+         *
+         *     Attributes:
+         *         filled: Keys of the fields written.
+         *         skipped: Confirmed fields that were not written, with the reason.
+         */
+        FillResult: {
+            /** Filled */
+            filled: string[];
+            /** Skipped */
+            skipped: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * FillStatus
+         * @description Where a form-fill session stands.
+         * @enum {string}
+         */
+        FillStatus: "analyzed" | "filled";
         /**
          * GapView
          * @description A requirement the knowledge base does not back.
@@ -2406,6 +2588,86 @@ export interface components {
             items: components["schemas"]["ItemView"][];
             /** Title */
             title: string;
+        };
+        /**
+         * SessionFieldView
+         * @description One field with its suggestion and confirmation state.
+         *
+         *     Attributes:
+         *         key: The field's key within the form.
+         *         label: What the page calls it.
+         *         type: The control type.
+         *         required: Whether the page marks it required.
+         *         options: The choices of a select or radio group.
+         *         suggested: The value drawn from the CV, or None if no stored fact answers.
+         *         claim_ids: The CV claims the suggestion came from.
+         *         reason: Why there is, or is not, a suggestion.
+         *         confirmed: Whether the user approved a value to fill.
+         *         confirmed_value: The approved value.
+         */
+        SessionFieldView: {
+            /** Claim Ids */
+            claim_ids: number[];
+            /** Confirmed */
+            confirmed: boolean;
+            /** Confirmed Value */
+            confirmed_value: string | null;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Options */
+            options: string[];
+            /** Reason */
+            reason: string;
+            /** Required */
+            required: boolean;
+            /** Suggested */
+            suggested: string | null;
+            /** Type */
+            type: string;
+        };
+        /**
+         * SessionRequest
+         * @description Which form to analyse and whose CV to draw suggestions from.
+         *
+         *     Attributes:
+         *         url: The application form's page.
+         *         cv_id: The CV whose claims supply the suggested values.
+         *         application_id: The application this is for, if tracked.
+         */
+        SessionRequest: {
+            /** Application Id */
+            application_id?: number | null;
+            /** Cv Id */
+            cv_id: number;
+            /** Url */
+            url: string;
+        };
+        /**
+         * SessionView
+         * @description A form-fill session.
+         *
+         *     Attributes:
+         *         id: The session id.
+         *         application_id: The application, if any.
+         *         cv_id: The CV the suggestions came from.
+         *         url: The form's page.
+         *         status: `analyzed` or `filled`.
+         *         fields: The fields in page order.
+         */
+        SessionView: {
+            /** Application Id */
+            application_id: number | null;
+            /** Cv Id */
+            cv_id: number;
+            /** Fields */
+            fields: components["schemas"]["SessionFieldView"][];
+            /** Id */
+            id: number;
+            status: components["schemas"]["FillStatus"];
+            /** Url */
+            url: string;
         };
         /**
          * SettingsView
@@ -3184,6 +3446,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FieldView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_session_api_forms_fills_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_session_api_forms_fills__fill_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_api_forms_fills__fill_id__fields__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fill_id: number;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unconfirm_api_forms_fills__fill_id__fields__key__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fill_id: number;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fill_api_forms_fills__fill_id__fill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FillResult"];
                 };
             };
             /** @description Validation Error */

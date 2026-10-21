@@ -7,7 +7,9 @@ This module never clicks, presses a key or submits: the user reviews the filled 
 it themself (ADR-0030, D-BA). A test pins that by reading this file's syntax tree.
 
 The browser runs headed by default, in a dedicated persistent profile under `data/`, never the
-user's own browser profile. Playwright is imported lazily (optional extra `cvforge[browser]`).
+user's own browser profile. Requests and WebSockets are screened like the job-page fetcher's;
+like it, this does not defend against DNS rebinding inside Chromium (a known limit).
+Playwright is imported lazily (optional extra `cvforge[browser]`).
 """
 
 from dataclasses import dataclass
@@ -125,6 +127,14 @@ def fill_session(
         else:
             route.continue_()
 
+    def screen_socket(socket: Any) -> None:
+        try:
+            check_url(socket.url.replace("ws", "http", 1), allow_local=allow_local)
+        except FetchError:
+            socket.close()
+        else:
+            socket.connect_to_server()
+
     profile_dir.mkdir(parents=True, exist_ok=True)
     try:
         with sync_playwright() as playwright:
@@ -133,6 +143,7 @@ def fill_session(
             )
             try:
                 context.route("**/*", screen)
+                context.route_web_socket("**/*", screen_socket)
                 page = context.new_page()
                 page.goto(session.url, wait_until="networkidle", timeout=NAVIGATION_TIMEOUT_MS)
                 check_url(page.url, allow_local=allow_local)
