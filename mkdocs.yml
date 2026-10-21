@@ -101,6 +101,7 @@ nav:
       - 0020 Job agent: adr/0020-the-job-agent-has-no-tools-and-reads-the-posting-as-fenced-data.md
       - 0021 Job postings store: adr/0021-job-postings-are-a-registered-writer-keyed-by-url.md
       - 0022 Job intake request: adr/0022-job-intake-is-one-request-and-research-is-not-persisted.md
+      - 0023 Requirement matching: adr/0023-requirement-matching-is-decided-by-the-database.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md

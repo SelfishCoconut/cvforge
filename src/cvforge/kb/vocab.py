@@ -146,3 +146,12 @@ class RequirementKind(StrEnum):
     REQUIRED = "required"
     PREFERRED = "preferred"
     RESPONSIBILITY = "responsibility"
+
+
+class MatchVerdict(StrEnum):
+    """How well the knowledge base backs a job requirement (spec §4.6)."""
+
+    SATISFIED = "satisfied"
+    EVIDENCED = "evidenced"
+    UNDOCUMENTED = "undocumented"
+    GAP = "gap"

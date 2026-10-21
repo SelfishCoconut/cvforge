@@ -164,10 +164,12 @@ class StoredRequirement:
     """One requirement row.
 
     Attributes:
+        id: The `requirement` row id.
         kind: `required`, `preferred` or `responsibility`.
         text: What the posting asks.
     """
 
+    id: int
     kind: RequirementKind
     text: str
 
@@ -213,7 +215,7 @@ def _stored(row: sa.Row[Any], requirements: Sequence[sa.Row[Any]]) -> StoredPost
         analysis=JobAnalysis.model_validate_json(row.analysis_json),
         fetched_at=row.fetched_at,
         requirements=tuple(
-            StoredRequirement(RequirementKind(r.kind), r.text) for r in requirements
+            StoredRequirement(r.id, RequirementKind(r.kind), r.text) for r in requirements
         ),
     )
 
