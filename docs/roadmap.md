@@ -109,6 +109,15 @@ ADR-0015 frontend foundation (`proposed`), `make demo-ui` / `make demo-ui-check`
 real fix and needs an ADR. **Next action:** merge #126 (certifi, clears a pip-audit
 advisory) then #124; record the NFR-10 run on the default model with
 `OLLAMA_CONTEXT_LENGTH=16384`; then close M1 via the `release` skill.
+**M2 (document ingestion) is under way, as stacked branches pushed but not merged:**
+FR-14 upload and text extraction (PR #132, `feat/fr-14-document-upload`, ADR-0016) then
+FR-15 cited-fact extraction (`feat/fr-15-document-extraction`, ADR-0017; open its PR
+against `main` once #132 merges). FR-16 (classify against the knowledge base) needs no
+new classifier — `record_proposal` already classifies; what remains is the integration
+test `tests/integration/test_document_dedup.py` and a UI upload view. Before pushing a
+route or an ADR run `make docs`, `make ui-gen` (regenerate `schema.d.ts`) and the other
+CI equivalents; the first push of #132 failed on exactly those.
+
 Known gap, not scheduled: the write-path scanner does not cover DDL.
 
 **M1 infra backlog cleared (2026-10-05):** `mkdocs<2` ceiling (#57), Dependabot npm
