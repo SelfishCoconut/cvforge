@@ -16,7 +16,7 @@ constructs a write. Its public surface is deliberately small, and fixed by
   (invariant 3).
 """
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -35,6 +35,7 @@ from cvforge.kb.models import (
     CreateEntity,
     EntityRef,
     MergeDuplicate,
+    OperationInput,
     OpRef,
     ProposalInput,
     SetState,
@@ -245,7 +246,7 @@ def record_proposal(
         NotFoundError: If the source or any cited evidence row does not exist.
     """
     with engine.connect() as conn:
-        first = {op.seq: classify(conn, op.payload, similar=similar) for op in draft.operations}
+        first = _classify_in_order(conn, draft.operations, similar)
     with _write_transaction(engine) as conn:
         _require(conn, schema.source, draft.source_id, "source")
         for op in draft.operations:
@@ -261,8 +262,10 @@ def record_proposal(
                 )
             )
         )
+        resolved: dict[int, int] = {}
         for op in sorted(draft.operations, key=lambda o: o.seq):
-            verdict = _settled(first[op.seq], classify(conn, op.payload))
+            verdict = _settled(first[op.seq], classify(conn, op.payload, resolved=resolved))
+            _remember(resolved, op, verdict)
             conn.execute(
                 sa.insert(schema.operation).values(
                     proposal_id=proposal_id,
@@ -277,6 +280,28 @@ def record_proposal(
                 )
             )
         return proposal_id
+
+
+def _classify_in_order(
+    conn: sa.Connection, operations: Sequence[OperationInput], similar: SimilarFinder | None
+) -> dict[int, Verdict]:
+    """Classify `operations` in `seq` order, so an edge sees what its endpoints resolved to."""
+    resolved: dict[int, int] = {}
+    verdicts: dict[int, Verdict] = {}
+    for op in sorted(operations, key=lambda o: o.seq):
+        verdicts[op.seq] = classify(conn, op.payload, similar=similar, resolved=resolved)
+        _remember(resolved, op, verdicts[op.seq])
+    return verdicts
+
+
+def _remember(resolved: dict[int, int], op: OperationInput, verdict: Verdict) -> None:
+    """Record the stored entity a `known` or `duplicate` create resolves to."""
+    if (
+        isinstance(op.payload, CreateEntity)
+        and verdict.classification in (Classification.KNOWN, Classification.DUPLICATE)
+        and verdict.target_id is not None
+    ):
+        resolved[op.seq] = verdict.target_id
 
 
 def _settled(unlocked: Verdict, locked: Verdict) -> Verdict:
@@ -524,7 +549,12 @@ class _Committer:
                 schema.edge.c.id == edge_id
             )
         ).one()
-        return (row.src_id, row.rel, row.dst_id) == (payload.src, payload.rel.value, payload.dst)
+        src, dst = self._existing_end(payload.src), self._existing_end(payload.dst)
+        return (row.src_id, row.rel, row.dst_id) == (src, payload.rel.value, dst)
+
+    def _existing_end(self, ref: EntityRef) -> int | None:
+        """The entity an edge end names: an id, or what an earlier operation resolved to."""
+        return self.entity_ids.get(ref.op) if isinstance(ref, OpRef) else ref
 
     # known / duplicate: the fact is already recorded, so accepting it only adds
     # this evidence to the existing target (ADR-0009). No new entity or edge row.
