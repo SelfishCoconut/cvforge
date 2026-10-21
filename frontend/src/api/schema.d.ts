@@ -74,6 +74,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Document
+         * @description Accept a PDF, DOCX, Markdown or plain-text file and extract its text.
+         *
+         *     The extension is checked before any byte is parsed; a corrupt file is refused
+         *     before anything is stored.
+         *
+         *     Args:
+         *         db: The knowledge-base engine.
+         *         request: The request, for the configured data directory.
+         *         file: The uploaded file.
+         *
+         *     Returns:
+         *         The recorded source and the size of the extracted text.
+         *
+         *     Raises:
+         *         HTTPException: 413 above 20 MiB, 415 for an unsupported format, 422 for a
+         *             corrupt file or one with no text.
+         */
+        post: operations["upload_document_api_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/entities": {
         parameters: {
             query?: never;
@@ -424,6 +459,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_upload_document_api_documents_post */
+        Body_upload_document_api_documents_post: {
+            /** File */
+            file: string;
+        };
         /**
          * ChatRequest
          * @description One user message. The text is stored literally, not trimmed.
@@ -489,6 +529,26 @@ export interface components {
              * @default []
              */
             index_pending: number[];
+        };
+        /**
+         * DocumentView
+         * @description The result of an upload.
+         *
+         *     Attributes:
+         *         source_id: The `document` source recorded for it.
+         *         filename: The name it was uploaded under.
+         *         pages: How many pages of text were extracted.
+         *         characters: Total extracted characters.
+         */
+        DocumentView: {
+            /** Characters */
+            characters: number;
+            /** Filename */
+            filename: string;
+            /** Pages */
+            pages: number;
+            /** Source Id */
+            source_id: number;
         };
         /**
          * EdgeRecord
@@ -942,6 +1002,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_document_api_documents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_document_api_documents_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentView"];
                 };
             };
             /** @description Validation Error */

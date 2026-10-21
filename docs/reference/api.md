@@ -18,6 +18,12 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.api.knowledge
 
+## Documents API
+
+::: cvforge.api.documents
+
+::: cvforge.ingest.documents
+
 ## Review API
 
 ::: cvforge.api.proposals
