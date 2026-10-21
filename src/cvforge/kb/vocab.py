@@ -181,11 +181,12 @@ class ClaimSlot(StrEnum):
 
 
 class ClaimBasis(StrEnum):
-    """Which stored fact a claim's text is copied from."""
+    """Which stored fact a claim's text is copied from (or, for `reword`, rephrases)."""
 
     NAME = "name"
     SUMMARY = "summary"
     PERIOD = "period"
+    REWORD = "reword"
 
 
 class ApplicationStatus(StrEnum):

@@ -166,6 +166,12 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.cv.applications
 
+::: cvforge.cv.edit
+
+::: cvforge.cv.grounding
+
+::: cvforge.llm.agents.cv_edit
+
 ::: cvforge.api.applications
 
 ::: cvforge.api.cvs

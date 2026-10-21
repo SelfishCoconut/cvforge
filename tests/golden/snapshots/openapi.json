@@ -528,6 +528,71 @@
         "title": "EdgeRecord",
         "type": "object"
       },
+      "EditRequest": {
+        "description": "A chat instruction for editing a CV.\n\nAttributes:\n    instruction: What the user wants changed (emphasis, rewording, shortening, focus).",
+        "properties": {
+          "instruction": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Instruction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instruction"
+        ],
+        "title": "EditRequest",
+        "type": "object"
+      },
+      "EditResponse": {
+        "description": "The outcome of an edit.\n\nAttributes:\n    reply: The agent's short account.\n    cv: The new draft version, or None if no operation could be applied.\n    applied: What was done.\n    refused: What was not done, and why.\n    issues: Validation problems with the new version; it cannot be finalised or rendered\n        until they are gone.",
+        "properties": {
+          "applied": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applied",
+            "type": "array"
+          },
+          "cv": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CvView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/IssueView"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "refused": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Refused",
+            "type": "array"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply",
+          "cv",
+          "applied",
+          "refused",
+          "issues"
+        ],
+        "title": "EditResponse",
+        "type": "object"
+      },
       "EntityKind": {
         "description": "The eight entity kinds (spec §4.1).",
         "enum": [
@@ -2329,6 +2394,59 @@
           }
         },
         "summary": "Read Claim",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
+    "/api/cvs/{cv_id}/edit": {
+      "post": {
+        "description": "Edit a CV from a chat instruction, producing a new version rather than changing history.\n\nEvery operation is checked against the stored facts; one that cannot be supported is refused\nwith a reason. The new version is validated, and its issues (if any) are returned: a version\nwith issues is a draft that cannot be finalised or rendered.\n\nArgs:\n    cv_id: The CV to edit.\n    body: The instruction.\n    db: The knowledge-base engine.\n    model_factory: Builds the model for this request.\n\nReturns:\n    The reply, the new version if anything changed, and what was applied or refused.\n\nRaises:\n    NotFoundError: If there is no such CV (404).\n    HTTPException: 502 if the model fails.",
+        "operationId": "edit_cv_api_cvs__cv_id__edit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Cv",
         "tags": [
           "cv"
         ]

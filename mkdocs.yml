@@ -106,6 +106,7 @@ nav:
       - 0025 CV rendering: adr/0025-cv-rendering-is-claims-in-a-fixed-template-compiled-by-latexmk.md
       - 0026 CV lineage and applications: adr/0026-cv-lineage-and-applications.md
       - 0027 Discovery and interviews: adr/0027-discovery-questions-and-interviews-feed-the-review-pipeline.md
+      - 0028 Collaborative CV edits: adr/0028-collaborative-cv-edits-reword-without-adding-facts.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md
