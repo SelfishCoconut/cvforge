@@ -6,13 +6,13 @@ knowledge — no assertion, no evidence — so it does not go through `kb/apply.
 
 import os
 from collections.abc import Mapping
-from datetime import UTC, datetime
 from typing import Any
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field
 
 from cvforge.kb import schema
+from cvforge.kb.db import utc_now
 from cvforge.kb.vocab import Provider
 
 ENV_PREFIX = "CVFORGE_LLM_"
@@ -46,10 +46,6 @@ class ProviderSettings(BaseModel):
     embedding_provider: str = "ollama"
     embedding_model: str = "nomic-embed-text"
     similarity_threshold: float = Field(default=0.85, ge=0, le=1)
-
-
-def _now() -> datetime:
-    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _row_values(settings: ProviderSettings) -> dict[str, Any]:
@@ -122,7 +118,9 @@ def load_settings(
             return _from_row(row)
         settings = _seed_from_environ(environ)
         conn.execute(
-            sa.insert(schema.app_setting).values(id=1, updated_at=_now(), **_row_values(settings))
+            sa.insert(schema.app_setting).values(
+                id=1, updated_at=utc_now(), **_row_values(settings)
+            )
         )
         return settings
 
@@ -141,12 +139,12 @@ def save_settings(engine: sa.Engine, settings: ProviderSettings) -> ProviderSett
         result = conn.execute(
             sa.update(schema.app_setting)
             .where(schema.app_setting.c.id == 1)
-            .values(updated_at=_now(), **_row_values(settings))
+            .values(updated_at=utc_now(), **_row_values(settings))
         )
         if result.rowcount == 0:
             conn.execute(
                 sa.insert(schema.app_setting).values(
-                    id=1, updated_at=_now(), **_row_values(settings)
+                    id=1, updated_at=utc_now(), **_row_values(settings)
                 )
             )
     return settings

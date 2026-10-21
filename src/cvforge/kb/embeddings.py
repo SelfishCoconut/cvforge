@@ -13,8 +13,7 @@ this module is never seen referencing a knowledge table.
 """
 
 import re
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
@@ -23,6 +22,7 @@ import sqlalchemy as sa
 from sqlite_vec import serialize_float32
 
 from cvforge.kb import queries
+from cvforge.kb.db import write_transaction
 from cvforge.kb.vocab import EntityKind
 
 
@@ -132,31 +132,6 @@ def _current_dimension(conn: sa.Connection) -> int | None:
     return int(match.group(1)) if match else None
 
 
-@contextmanager
-def _write_transaction(engine: sa.Engine) -> Iterator[sa.Connection]:
-    """BEGIN IMMEDIATE before any read.
-
-    Mirrors `kb.apply._write_transaction`'s rationale (see its docstring):
-    `ensure_index` decides whether to rebuild from what it reads, so the read
-    and the rebuild must share one lock or two concurrent callers can race.
-
-    Args:
-        engine: The knowledge-base engine.
-
-    Yields:
-        A connection inside the transaction. It is committed when the block ends
-        and rolled back if the block raises.
-    """
-    with engine.connect() as conn:
-        conn.exec_driver_sql("BEGIN IMMEDIATE")
-        try:
-            yield conn
-        except BaseException:
-            conn.rollback()
-            raise
-        conn.commit()
-
-
 def ensure_index(engine: sa.Engine, dimension: int) -> None:
     """Create the similarity index, or rebuild it if its recorded dimension differs (D-D).
 
@@ -169,7 +144,7 @@ def ensure_index(engine: sa.Engine, dimension: int) -> None:
     """
     if dimension < 1:
         raise ValueError(f"embedding dimension must be positive, got {dimension}")
-    with _write_transaction(engine) as conn:
+    with write_transaction(engine) as conn:
         if _current_dimension(conn) == dimension:
             return
         conn.exec_driver_sql(f"DROP TABLE IF EXISTS {_TABLE}")
@@ -187,6 +162,31 @@ def _indexed_ids(conn: sa.Connection) -> set[int]:
 def _index_text(record: queries.EntityRecord) -> str:
     """The text indexed for one entity: its name, plus its summary if it has one (FR-05)."""
     return f"{record.name} {record.summary}" if record.summary else record.name
+
+
+def _load_present(
+    engine: sa.Engine, entity_ids: Sequence[int]
+) -> tuple[list[tuple[int, str]], list[int]]:
+    """Split `entity_ids` into (id, text to embed) pairs that exist and ids that no longer do."""
+    with engine.connect() as conn:
+        records = [queries.get_entity(conn, eid) for eid in entity_ids]
+    present = [
+        (eid, _index_text(r)) for eid, r in zip(entity_ids, records, strict=True) if r is not None
+    ]
+    missing = [eid for eid, r in zip(entity_ids, records, strict=True) if r is None]
+    return present, missing
+
+
+def _replace_rows(engine: sa.Engine, rows: Sequence[tuple[int, Sequence[float]]]) -> None:
+    """Replace each entity's row in the similarity index with its new vector, in one transaction."""
+    with write_transaction(engine) as conn:
+        for eid, vector in rows:
+            # `vec0` rejects INSERT OR REPLACE on an existing key, so replace by hand.
+            conn.exec_driver_sql("DELETE FROM entity_vec WHERE entity_id = ?", (eid,))
+            conn.exec_driver_sql(
+                "INSERT INTO entity_vec(entity_id, embedding) VALUES (?, ?)",
+                (eid, serialize_float32(vector)),
+            )
 
 
 def index_entities(
@@ -207,26 +207,16 @@ def index_entities(
         ensure_index(engine, provider.dimension)  # the first call may probe the embedder
     except EmbeddingError:
         return list(entity_ids)
-    with engine.connect() as conn:
-        records = [queries.get_entity(conn, eid) for eid in entity_ids]
-    present = [
-        (eid, _index_text(r)) for eid, r in zip(entity_ids, records, strict=True) if r is not None
-    ]
-    missing = [eid for eid, r in zip(entity_ids, records, strict=True) if r is None]
+    present, missing = _load_present(engine, entity_ids)
     if not present:
         return missing
     try:
         vectors = provider.embed([text for _, text in present])
     except EmbeddingError:
         return [eid for eid, _text in present] + missing
-    with _write_transaction(engine) as conn:
-        for (eid, _text), vector in zip(present, vectors, strict=True):
-            # `vec0` rejects INSERT OR REPLACE on an existing key, so replace by hand.
-            conn.exec_driver_sql("DELETE FROM entity_vec WHERE entity_id = ?", (eid,))
-            conn.exec_driver_sql(
-                "INSERT INTO entity_vec(entity_id, embedding) VALUES (?, ?)",
-                (eid, serialize_float32(vector)),
-            )
+    _replace_rows(
+        engine, [(eid, vector) for (eid, _text), vector in zip(present, vectors, strict=True)]
+    )
     return missing
 
 

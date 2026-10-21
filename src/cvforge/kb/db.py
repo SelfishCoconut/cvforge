@@ -1,6 +1,9 @@
 """Engine construction for the single-file knowledge base (ADR-0001, NFR-09)."""
 
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -61,3 +64,37 @@ def make_engine(path: Path | None) -> sa.Engine:
         engine = sa.create_engine(f"sqlite:///{path}")
     sa.event.listen(engine, "connect", _on_connect)
     return engine
+
+
+def utc_now() -> datetime:
+    """The current UTC time as a naive datetime, the form every timestamp column stores."""
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+@contextmanager
+def write_transaction(engine: sa.Engine) -> Iterator[sa.Connection]:
+    """Open a transaction that holds SQLite's write lock before anything is read.
+
+    pysqlite begins a transaction lazily, just before the first INSERT, UPDATE or
+    DELETE. A plain `engine.begin()` therefore runs its checks (is the proposal
+    still open? which operations are pending?) outside any lock and then writes
+    on what it read, so two requests can pass the same check and both write: a
+    proposal committed twice, or a reject landing after the commit it should have
+    prevented. `BEGIN IMMEDIATE` takes the lock first. The second request waits,
+    then reads the state the first one left behind.
+
+    Args:
+        engine: The knowledge-base engine.
+
+    Yields:
+        A connection inside the transaction. It is committed when the block ends
+        and rolled back if the block raises.
+    """
+    with engine.connect() as conn:
+        conn.execute(sa.text("BEGIN IMMEDIATE"))
+        try:
+            yield conn
+        except BaseException:
+            conn.rollback()
+            raise
+        conn.commit()
