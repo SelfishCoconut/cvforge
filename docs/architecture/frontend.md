@@ -60,6 +60,7 @@ flowchart LR
   end
   subgraph features["src/features"]
     chat
+    documents
     review
     knowledge
     settings

@@ -17,6 +17,8 @@ export type EntityKind = S["EntityKind"];
 export type KnowledgeState = S["KnowledgeState"];
 export type ProposalView = S["ProposalView"];
 export type RejectedView = S["RejectedView"];
+export type DocumentView = S["DocumentView"];
+export type ExtractionView = S["ExtractionView"];
 
 /** One line of the `/api/chat/messages/stream` NDJSON response. */
 export type ChatEvent =

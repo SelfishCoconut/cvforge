@@ -91,6 +91,24 @@ describe("api requests", () => {
     expect(new Headers(init.headers).get("Content-Type")).toBe("application/json");
   });
 
+  it("uploadDocument sends multipart form data without forcing a JSON content type", async () => {
+    const fn = stub(json({ source_id: 1 }, 201));
+    await api.uploadDocument(new File(["hello"], "cv.md"));
+    const [url, init] = fn.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/documents");
+    expect(init.method).toBe("POST");
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(new Headers(init.headers).has("Content-Type")).toBe(false);
+  });
+
+  it("extractDocument posts to the document's extract URL", async () => {
+    const fn = stub(json({}));
+    await api.extractDocument(7);
+    const [url, init] = fn.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/documents/7/extract");
+    expect(init.method).toBe("POST");
+  });
+
   it("commitProposal posts to the commit URL", async () => {
     const fn = stub(json({}));
     await api.commitProposal(3);

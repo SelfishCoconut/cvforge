@@ -1,9 +1,11 @@
 import type {
   Committed,
+  DocumentView,
   EdgeRecord,
   EntityKind,
   EntityRecord,
   EvidenceRecord,
+  ExtractionView,
   KnowledgeState,
   ProposalRecord,
   ProposalSummary,
@@ -48,7 +50,9 @@ async function errorMessage(response: Response): Promise<string> {
 
 async function send(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
-  if (init.body !== undefined && !headers.has("Content-Type")) {
+  // A FormData body needs the browser's own multipart Content-Type, boundary included.
+  const isForm = init.body instanceof FormData;
+  if (init.body !== undefined && !isForm && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
   let response: Response;
@@ -106,6 +110,13 @@ export const api = {
   getSettings: () => request<SettingsView>("/api/settings"),
   putSettings: (s: ProviderSettings) =>
     request<SettingsView>("/api/settings", { method: "PUT", body: JSON.stringify(s) }),
+  uploadDocument: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<DocumentView>("/api/documents", { method: "POST", body: form });
+  },
+  extractDocument: (sourceId: number) =>
+    post<ExtractionView>(`/api/documents/${sourceId}/extract`),
   streamChat: (text: string, conversationId: number | null, signal?: AbortSignal) =>
     send("/api/chat/messages/stream", {
       method: "POST",
