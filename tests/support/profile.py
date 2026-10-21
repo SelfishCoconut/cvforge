@@ -87,3 +87,36 @@ def matched_posting(kb: sa.Engine, *skills: str) -> int:
     assert results is not None
     replace_matches(kb, posting, results)
     return posting
+
+
+def build_profile_with(engine: sa.Engine) -> Profile:
+    """Build the profile into `engine` without pytest fixtures (integration tests, demos)."""
+    from cvforge.kb.models import ProposalInput
+    from cvforge.kb.vocab import SourceKind
+
+    source = apply.record_source(engine, SourceKind.CONVERSATION, "synthetic")
+    evidence = apply.record_evidence(engine, source, "message:1", "Synthetic profile.")
+
+    def propose(*payloads: dict[str, Any], accept: bool = False) -> int:
+        draft = ProposalInput.model_validate(
+            {
+                "origin": "chat",
+                "source_id": source,
+                "summary": "s",
+                "operations": [
+                    {"seq": i, "payload": {"evidence_id": evidence, **p}}
+                    for i, p in enumerate(payloads)
+                ],
+            }
+        )
+        proposal = apply.record_proposal(engine, draft)
+        if accept:
+            from cvforge.kb import queries
+
+            with engine.connect() as conn:
+                record = queries.get_proposal(conn, proposal)
+            for op in record.operations if record else []:
+                apply.review_operation(engine, op.id, "accept")
+        return proposal
+
+    return build_profile(engine, propose)

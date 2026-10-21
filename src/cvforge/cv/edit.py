@@ -160,11 +160,13 @@ def _resolve(conn: sa.Connection, name: str) -> queries.EntityRecord | None:
 
 
 def _move_item_to_front(claims: list[ClaimDraft], head: ClaimDraft) -> None:
-    """Bring the whole item `head` heads to the front of its section."""
+    """Bring the whole item `head` heads to the front of its section, leaving sections in place."""
     group = [c for c in claims if (c.section, c.item_index) == (head.section, head.item_index)]
+    origin = claims.index(group[0])
     rest = [c for c in claims if c not in group]
-    first = next((i for i, c in enumerate(rest) if c.section == head.section), len(rest))
-    claims[:] = [*rest[:first], *group, *rest[first:]]
+    first = next((i for i, c in enumerate(rest) if c.section == head.section), None)
+    at = origin if first is None else first
+    claims[:] = [*rest[:at], *group, *rest[at:]]
 
 
 def _move_bullet_to_front(claims: list[ClaimDraft], bullet: ClaimDraft) -> None:

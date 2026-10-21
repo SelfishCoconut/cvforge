@@ -306,3 +306,38 @@ def test_an_automatic_cv_cannot_carry_reworded_claims(kb: sa.Engine, propose: An
     bullet = next(c for c in claims if c.basis is ClaimBasis.SUMMARY)
     with pytest.raises(UnsupportedClaimError, match="automatic"):
         save_cv(kb, posting, [replace(bullet, basis=ClaimBasis.REWORD)])
+
+
+def test_emphasising_a_role_moves_its_whole_item_and_blank_rewording_is_refused(
+    kb: sa.Engine, propose: Any
+) -> None:
+    from cvforge.cv.edit import Emphasize, Reword, apply_edits
+    from cvforge.cv.generate import generate_cv
+    from cvforge.cv.store import get_cv, save_cv
+
+    build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    cv = get_cv(kb, save_cv(kb, posting, generate_cv(kb, posting)))
+    assert cv is not None
+    bullet = next(c for c in cv.claims if c.text == "Built data services")
+
+    result = apply_edits(kb, cv, [Emphasize("Backend Engineer"), Reword(bullet.id, "   ")])
+
+    assert result.applied == ["emphasised 'Backend Engineer'"]
+    assert "new wording is empty" in result.refused[0]
+    assert [c.text for c in result.claims][:2] == ["Rust", "Backend Engineer"]
+
+
+def test_emphasising_a_confirmed_non_skill_that_is_not_on_the_cv_is_redirected(
+    kb: sa.Engine, propose: Any
+) -> None:
+    from cvforge.cv.edit import Emphasize, apply_edits
+    from cvforge.cv.generate import generate_cv
+    from cvforge.cv.store import get_cv, save_cv
+
+    build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    cv = get_cv(kb, save_cv(kb, posting, generate_cv(kb, posting)))
+    assert cv is not None
+    result = apply_edits(kb, cv, [Emphasize("Log parser")])  # a project; not shown as its own item
+    assert result.applied or "nothing confirmed" in result.refused[0]

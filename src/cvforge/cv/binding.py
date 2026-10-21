@@ -46,10 +46,9 @@ def claim_problem(
         or assertion.target_id != entity_id
     ):
         return "unsupported", f"{text!r} cites no assertion about its entity"
-    entity = queries.get_entity(conn, entity_id)
-    if entity is None or entity.state is not KnowledgeState.CONFIRMED:
-        state = "missing" if entity is None else entity.state.value
-        return "inactive_entity", f"{text!r} rests on an entity that is {state}"
+    inactive = _inactive_problem(conn, text, entity_id)
+    if inactive is not None:
+        return inactive
     if basis is ClaimBasis.REWORD:
         return _reword_problem(
             conn, text, entity_id, assertion, link_assertion_id, header_entity_id
@@ -65,6 +64,14 @@ def claim_problem(
 _RELATED_RELS = frozenset(
     rel.value for rel in (Rel.USED_IN, Rel.PART_OF, Rel.AT_ORGANIZATION, Rel.PRODUCED, Rel.INVOLVED)
 )
+
+
+def _inactive_problem(conn: sa.Connection, text: str, entity_id: int) -> tuple[str, str] | None:
+    entity = queries.get_entity(conn, entity_id)
+    if entity is not None and entity.state is KnowledgeState.CONFIRMED:
+        return None
+    state = "missing" if entity is None else entity.state.value
+    return "inactive_entity", f"{text!r} rests on an entity that is {state}"
 
 
 def _facts_about(conn: sa.Connection, entity_id: int) -> list[str]:
