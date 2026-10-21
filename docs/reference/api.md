@@ -133,3 +133,13 @@ Generated from docstrings. Update the docstring, not this page.
 ## Jobs API
 
 ::: cvforge.api.jobs
+
+## Matching
+
+::: cvforge.match.verdicts
+
+::: cvforge.match.store
+
+::: cvforge.api.matches
+
+::: cvforge.llm.agents.adjacency

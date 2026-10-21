@@ -637,6 +637,69 @@
         "title": "KnowledgeState",
         "type": "string"
       },
+      "MatchVerdict": {
+        "description": "How well the knowledge base backs a job requirement (spec §4.6).",
+        "enum": [
+          "satisfied",
+          "evidenced",
+          "undocumented",
+          "gap"
+        ],
+        "title": "MatchVerdict",
+        "type": "string"
+      },
+      "MatchView": {
+        "description": "The verdict for one requirement.\n\nAttributes:\n    requirement_id: The requirement judged.\n    kind: The requirement's kind.\n    text: What the posting asks.\n    verdict: `satisfied`, `evidenced`, `undocumented` or `gap`.\n    score: Closeness of the best backing or plausible entity, if any.\n    rationale: Why.\n    support: Backing entity ids; empty for `undocumented` and `gap`.",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/RequirementKind"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "requirement_id": {
+            "title": "Requirement Id",
+            "type": "integer"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "support": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Support",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/MatchVerdict"
+          }
+        },
+        "required": [
+          "requirement_id",
+          "kind",
+          "text",
+          "verdict",
+          "score",
+          "rationale",
+          "support"
+        ],
+        "title": "MatchView",
+        "type": "object"
+      },
       "OperationRecord": {
         "description": "One operation of a proposal, with its review state.",
         "properties": {
@@ -1770,6 +1833,98 @@
         "summary": "Read Job",
         "tags": [
           "jobs"
+        ]
+      }
+    },
+    "/api/jobs/{posting_id}/match": {
+      "get": {
+        "description": "Read the stored verdicts for a posting; empty until a match has been run.\n\nArgs:\n    posting_id: A posting id.\n    db: The knowledge-base engine.\n\nReturns:\n    The verdicts in requirement order.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
+        "operationId": "read_match_api_jobs__posting_id__match_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MatchView"
+                  },
+                  "title": "Response Read Match Api Jobs  Posting Id  Match Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Match",
+        "tags": [
+          "match"
+        ]
+      },
+      "post": {
+        "description": "Match every requirement of a posting and store the verdicts, replacing any earlier run.\n\nArgs:\n    posting_id: A posting id from `POST /api/jobs`.\n    db: The knowledge-base engine.\n    embedder: Used for similarity, if configured.\n    model_factory: Builds the model for the optional adjacency judge.\n\nReturns:\n    One verdict per requirement.\n\nRaises:\n    NotFoundError: If there is no such posting (404).",
+        "operationId": "run_match_api_jobs__posting_id__match_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "posting_id",
+            "required": true,
+            "schema": {
+              "title": "Posting Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MatchView"
+                  },
+                  "title": "Response Run Match Api Jobs  Posting Id  Match Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Match",
+        "tags": [
+          "match"
         ]
       }
     },

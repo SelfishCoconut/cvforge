@@ -11,10 +11,10 @@ from pydantic_ai import Agent
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models import Model
 
+from cvforge.llm.fence import fence
 from cvforge.llm.schemas import JobAnalysis
 
 _PROMPT = (Path(__file__).parent.parent / "prompts" / "job.md").read_text(encoding="utf-8")
-_CLOSE = "</posting>"
 
 
 class AnalysisError(Exception):
@@ -33,12 +33,6 @@ def build_job_agent(model: Model) -> Agent[None, JobAnalysis]:
     return Agent(model, output_type=JobAnalysis, instructions=_PROMPT)
 
 
-def _prompt(posting_text: str) -> str:
-    """Fence the posting as data; every `<` in it is escaped, so it cannot close the fence."""
-    safe = posting_text.replace("<", "&lt;")  # one linear pass: no tag can be written or rebuilt
-    return f"<posting>\n{safe}\n{_CLOSE}"
-
-
 def analyze_posting(model: Model, posting_text: str) -> JobAnalysis:
     """Analyse a posting's text.
 
@@ -53,6 +47,6 @@ def analyze_posting(model: Model, posting_text: str) -> JobAnalysis:
         AnalysisError: If the model's output never validated against `JobAnalysis`.
     """
     try:
-        return build_job_agent(model).run_sync(_prompt(posting_text)).output
+        return build_job_agent(model).run_sync(fence("posting", posting_text)).output
     except UnexpectedModelBehavior as exc:
         raise AnalysisError(f"the model returned no valid job analysis: {exc}") from exc

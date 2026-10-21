@@ -362,6 +362,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/{posting_id}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Match
+         * @description Read the stored verdicts for a posting; empty until a match has been run.
+         *
+         *     Args:
+         *         posting_id: A posting id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The verdicts in requirement order.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such posting (404).
+         */
+        get: operations["read_match_api_jobs__posting_id__match_get"];
+        put?: never;
+        /**
+         * Run Match
+         * @description Match every requirement of a posting and store the verdicts, replacing any earlier run.
+         *
+         *     Args:
+         *         posting_id: A posting id from `POST /api/jobs`.
+         *         db: The knowledge-base engine.
+         *         embedder: Used for similarity, if configured.
+         *         model_factory: Builds the model for the optional adjacency judge.
+         *
+         *     Returns:
+         *         One verdict per requirement.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such posting (404).
+         */
+        post: operations["run_match_api_jobs__posting_id__match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals": {
         parameters: {
             query?: never;
@@ -893,6 +939,39 @@ export interface components {
          * @enum {string}
          */
         KnowledgeState: "confirmed" | "learning" | "gap" | "archived";
+        /**
+         * MatchVerdict
+         * @description How well the knowledge base backs a job requirement (spec §4.6).
+         * @enum {string}
+         */
+        MatchVerdict: "satisfied" | "evidenced" | "undocumented" | "gap";
+        /**
+         * MatchView
+         * @description The verdict for one requirement.
+         *
+         *     Attributes:
+         *         requirement_id: The requirement judged.
+         *         kind: The requirement's kind.
+         *         text: What the posting asks.
+         *         verdict: `satisfied`, `evidenced`, `undocumented` or `gap`.
+         *         score: Closeness of the best backing or plausible entity, if any.
+         *         rationale: Why.
+         *         support: Backing entity ids; empty for `undocumented` and `gap`.
+         */
+        MatchView: {
+            kind: components["schemas"]["RequirementKind"];
+            /** Rationale */
+            rationale: string;
+            /** Requirement Id */
+            requirement_id: number;
+            /** Score */
+            score: number | null;
+            /** Support */
+            support: number[];
+            /** Text */
+            text: string;
+            verdict: components["schemas"]["MatchVerdict"];
+        };
         /**
          * OperationRecord
          * @description One operation of a proposal, with its review state.
@@ -1574,6 +1653,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_match_api_jobs__posting_id__match_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_match_api_jobs__posting_id__match_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                posting_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchView"][];
                 };
             };
             /** @description Validation Error */

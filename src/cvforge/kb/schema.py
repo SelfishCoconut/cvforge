@@ -23,6 +23,7 @@ from cvforge.kb.vocab import (
     Classification,
     EntityKind,
     KnowledgeState,
+    MatchVerdict,
     OpStatus,
     OpType,
     Origin,
@@ -366,4 +367,42 @@ requirement = sa.Table(
     sa.Column("normalized_skill_id", sa.Integer, sa.ForeignKey("entity.id")),
     _in("kind", values(RequirementKind), "requirement_kind"),
     sa.CheckConstraint("length(trim(text)) > 0", name="requirement_text_nonblank"),
+)
+
+# --- matching (M4, FR-21). Derived from knowledge, not knowledge itself. --------------------
+# Written by `match/store.py`, a registered writer (ADR-0023). One row per requirement;
+# a new run for a posting replaces its rows. `match_support` names the entities behind a
+# satisfied/evidenced verdict and is empty for undocumented/gap (FR-22).
+match = sa.Table(
+    "match",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column(
+        "job_posting_id",
+        sa.Integer,
+        sa.ForeignKey("job_posting.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column(
+        "requirement_id",
+        sa.Integer,
+        sa.ForeignKey("requirement.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    ),
+    sa.Column("verdict", sa.String, nullable=False),
+    sa.Column("score", sa.Float),
+    sa.Column("rationale", sa.String, nullable=False),
+    sa.Column("computed_at", sa.DateTime, nullable=False),
+    _in("verdict", values(MatchVerdict), "verdict"),
+    sa.CheckConstraint("length(trim(rationale)) > 0", name="rationale_nonblank"),
+)
+
+match_support = sa.Table(
+    "match_support",
+    metadata,
+    sa.Column(
+        "match_id", sa.Integer, sa.ForeignKey("match.id", ondelete="CASCADE"), primary_key=True
+    ),
+    sa.Column("entity_id", sa.Integer, sa.ForeignKey("entity.id"), primary_key=True),
 )
