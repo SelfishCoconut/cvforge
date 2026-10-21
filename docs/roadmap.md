@@ -65,20 +65,22 @@ Done:
 
 ## Next action
 
-**M4 — match & gaps (FR-21..FR-23, issues #25-#27).** FR-21 (#25, verdict engine, `POST/GET
-/api/jobs/{id}/match`, ADR-0023) is in review (#149); FR-22 (#26, evidence behind each verdict) and FR-23 (#27, gap
-report) are built on top of it, in review next. Then close M4 with the `release` skill. Postings and their `requirement` rows exist (`GET/POST /api/jobs`,
-ADR-0021/0022); `requirement.normalized_skill_id` and `job_posting.organization_id` are empty
-and are M4's to fill, through `kb/apply.py` or a Proposal, never from `jobs/store.py`.
+**M5 — CV generation (FR-24..FR-29, NFR-05; issues #28-#33, #45).** Start from #28 (FR-24,
+generate a CV from stored facts only). Read first: invariant 5 and ADR-0023's M5 notes. A stored
+`match` is a snapshot, not a licence: a claim must cite a live assertion (an `evidenced`
+verdict backs the *supporting entity's* claim, never the requirement's own text; `rationale`
+is free text and never a source of claims). The `cv-template` skill covers rendering.
 
-M3 closed as `v0.4.0` (2026-10-21): FR-17 fetch (ADR-0019), FR-18 tool-free job agent
-(ADR-0020), FR-19 optional company research, FR-20 persistence (ADR-0021), the jobs API and the
-NFR-07 golden test (ADR-0022). Sanity audit `docs/sanity/2026-10-21-m3.md`: HEALTHY, no must-fix.
+M4 closed as `v0.5.0` (2026-10-21): FR-21 verdicts (`match/verdicts.py`, ADR-0023), FR-22
+evidence and FR-23 gap report (`match/evidence.py`), `POST/GET /api/jobs/{id}/match` and
+`GET /api/jobs/{id}/gaps`. Sanity audit `docs/sanity/2026-10-21-m4.md`: WATCH, no must-fix; its
+Mediums were fixed in the close-out PR.
 
-Loose ends: #145 (flaky `test_document_dedup`, moved to M4); no UI for jobs yet; no concrete
-`SearchProvider` ships (opt-in); Chromium keeps a DNS-rebinding window (ADR-0019); NFR-10 on the
-default reasoning model needs the native Ollama adapter (#129); #64 awaits Álvaro; ADRs 0010-0012,
-0015-0022 await his confirmation.
+Loose ends: #145 (flaky `test_document_dedup`, now in M5); no UI for jobs or matches yet; the
+shared "text between tags is data" prompt wording is repeated across four prompts (audit 7a);
+`persist_posting` leaves an orphan `web` source if the posting write fails (ADR-0021); no
+concrete `SearchProvider`; NFR-10 on the default model needs the native Ollama adapter (#129);
+#64 awaits Álvaro; ADRs 0010-0012 and 0015-0023 await his confirmation.
 
 Close-out scope calls (M1/M2): #107 closed as delivered; #73, #64 and #58 left M1 (not
 deliverables: #73 is the reference for two environment-dependent skips, #64 awaits Álvaro,
@@ -173,7 +175,7 @@ CI. Direct pushes to `main` are rejected, including for admins.
 | M1 | Knowledge spine | Schema + provenance, LLM provider layer, conversational ingest, proposal→review→commit, chat + review UI | done (`v0.3.0`) |
 | M2 | Document ingestion | Upload → extract → classify new/known/duplicate/conflict → review | done (`v0.3.0`) |
 | M3 | Job intake | URL → fetch → structured `JobPosting`; optional company research | done (`v0.4.0`) |
-| M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | not started |
+| M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | done (`v0.5.0`) |
 | M5 | CV generation | LaTeX → PDF + ATS text, claim traceability, versions, application linkage, validation | not started |
 | M6 | Collaborative mode | Conversational CV editing, discovery questions, interview mode | not started |
 | M7 | Learning plans | Gap → plan → tracked `learning` state | not started |

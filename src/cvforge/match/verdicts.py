@@ -123,7 +123,11 @@ def _from_recorded(conn: sa.Connection, recorded: list[queries.EntityRecord]) ->
             f"recorded as {names} (confirmed) with {uses} recorded use(s)",
             tuple(r.id for r, _ in backed),
         )
-    first = recorded[0]
+    return _unbacked(recorded[0])
+
+
+def _unbacked(first: queries.EntityRecord) -> Outcome:
+    """The verdict for a recorded entity that no recorded use backs."""
     if first.state is KnowledgeState.GAP:
         return Outcome(MatchVerdict.GAP, None, f"'{first.name}' is recorded as a gap")
     if first.state is KnowledgeState.LEARNING:
@@ -154,15 +158,25 @@ def _usable(
     return usable, (best.score if best else None), (best.name if best else None)
 
 
+def _validated(judgment: Judgment, usable: list[Candidate]) -> list[Candidate] | None:
+    """The candidates a judgment picks, or None if it must be ignored.
+
+    A judgment is ignored if it names an id it was not offered, picks nothing, or gives no
+    rationale.
+    """
+    by_id = {c.entity_id: c for c in usable}
+    if any(i not in by_id for i in judgment.entity_ids) or not judgment.rationale.strip():
+        return None
+    return [by_id[i] for i in dict.fromkeys(judgment.entity_ids)] or None
+
+
 def _judged(judge: AdjacencyJudge | None, text: str, usable: list[Candidate]) -> Outcome | None:
     """An `evidenced` outcome from the judge, only if its answer survives validation."""
     if judge is None or not usable:
         return None
     judgment = judge.judge(text, usable)
-    by_id = {c.entity_id: c for c in usable}
-    chosen = [by_id[i] for i in dict.fromkeys(judgment.entity_ids) if i in by_id]
-    unknown = [i for i in judgment.entity_ids if i not in by_id]
-    if not chosen or unknown or not judgment.rationale.strip():
+    chosen = _validated(judgment, usable)
+    if chosen is None:
         return None
     return Outcome(
         MatchVerdict.EVIDENCED,
