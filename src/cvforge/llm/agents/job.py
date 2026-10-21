@@ -37,7 +37,9 @@ def build_job_agent(model: Model) -> Agent[None, JobAnalysis]:
 
 def _prompt(posting_text: str) -> str:
     """Fence the posting so it reads as data; a closing tag inside it cannot end the fence."""
-    safe = _CLOSE_PATTERN.sub("", posting_text)
+    safe = posting_text
+    while (stripped := _CLOSE_PATTERN.sub("", safe)) != safe:  # a removal can rebuild a closer
+        safe = stripped
     return f"<posting>\n{safe}\n{_CLOSE}"
 
 

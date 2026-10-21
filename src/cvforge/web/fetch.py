@@ -141,6 +141,7 @@ def _get_html(client: httpx.Client, url: str, *, allow_local: bool) -> tuple[str
         check_url(current, allow_local=allow_local)
         try:
             with client.stream("GET", current, headers=_REQUEST_HEADERS) as response:
+                _check_peer(response, allow_local=allow_local)
                 if response.status_code in _REDIRECT_STATUSES:
                     location = response.headers.get("location")
                     if not location:
@@ -154,6 +155,18 @@ def _get_html(client: httpx.Client, url: str, *, allow_local: bool) -> tuple[str
         except httpx.HTTPError as exc:
             raise FetchError(f"could not fetch {current}: {exc}") from exc
     raise FetchError(f"more than {MAX_REDIRECTS} redirects from {url}")
+
+
+def _check_peer(response: httpx.Response, *, allow_local: bool) -> None:
+    """Refuse a response from a local address, whatever the name resolved to earlier.
+
+    This closes the gap between the resolution in `check_url` and the connection (DNS
+    rebinding). Transports with no real socket (tests) expose no peer and are skipped.
+    """
+    stream = response.extensions.get("network_stream")
+    peer = stream.get_extra_info("server_addr") if stream is not None else None
+    if not allow_local and peer and _is_local_host(str(peer[0]).split("%")[0]):
+        raise FetchError(f"the connection went to a local address: {peer[0]}")
 
 
 def _read_capped(response: httpx.Response, deadline: float) -> bytes:
