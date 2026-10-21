@@ -121,3 +121,7 @@ Generated from docstrings. Update the docstring, not this page.
 ## Job analysis
 
 ::: cvforge.llm.agents.job
+
+## Company research
+
+::: cvforge.web.search
