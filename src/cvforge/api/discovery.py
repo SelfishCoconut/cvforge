@@ -26,7 +26,6 @@ from cvforge.discovery.questions import Question, questions_for
 from cvforge.jobs.store import get_posting
 from cvforge.kb import apply
 from cvforge.kb.vocab import MatchVerdict, Origin
-from cvforge.llm.agents.ingest import build_ingest_agent
 from cvforge.llm.agents.interview import build_interview_agent
 from cvforge.llm.fence import fence
 from cvforge.llm.tools import KbDeps
@@ -91,6 +90,14 @@ def _view(question: Question) -> QuestionView:
         requirement_text=question.requirement_text,
         verdict=question.verdict,
         text=question.text,
+    )
+
+
+def _transcript(turns: list[tuple[Question, str]]) -> str:
+    """Q&A as separately fenced blocks: a question cannot forge an answer or close its fence."""
+    return "\n\n".join(
+        f"{fence('question', question.text)}\n{fence('answer', answer)}"
+        for question, answer in turns
     )
 
 
@@ -161,10 +168,11 @@ def answer_question(
     conversation, evidence = store_message(
         db, ChatRequest(text=body.answer, conversation_id=body.conversation_id)
     )
-    prompt = f"{fence('question', question.text)}\n\nThe user answered:\n{body.answer}"
     try:
         result = (
-            build_ingest_agent(model_factory(db)).run_sync(prompt, deps=KbDeps(db, embedder)).output
+            build_interview_agent(model_factory(db))
+            .run_sync(_transcript([(question, body.answer)]), deps=KbDeps(db, embedder))
+            .output
         )
     except Exception as exc:
         raise HTTPException(502, failure_message(exc)) from exc
@@ -250,7 +258,6 @@ def submit_interview(
             rejected=[],
             similarity_available=embedder is not None,
         )
-    transcript = "\n\n".join(f"Q: {q.text}\nA: {answer}" for q, answer in answered)
     conversation, evidence = store_message(
         db,
         ChatRequest(text="\n\n".join(answer for _, answer in answered)),
@@ -259,7 +266,7 @@ def submit_interview(
     try:
         result = (
             build_interview_agent(model_factory(db))
-            .run_sync(fence("interview", transcript), deps=KbDeps(db, embedder))
+            .run_sync(_transcript(answered), deps=KbDeps(db, embedder))
             .output
         )
     except Exception as exc:
