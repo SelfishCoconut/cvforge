@@ -79,6 +79,13 @@ def claim_source(conn: sa.Connection, entity_id: int, basis: ClaimBasis) -> tupl
             return None
         assertion = _stating(conn, entity_id, "summary", record.summary)
         return None if assertion is None else (record.summary, assertion)
+    return _period_source(conn, entity_id, record)
+
+
+def _period_source(
+    conn: sa.Connection, entity_id: int, record: queries.EntityRecord
+) -> tuple[str, int] | None:
+    """The period text and its start-date assertion; an end date shown needs its own assertion."""
     period = _period(record.attributes)
     if period is None:
         return None

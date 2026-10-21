@@ -116,3 +116,16 @@ def test_period_formats_for_open_ended_and_single_date_facts() -> None:
         "started_at",
     )
     assert _period({}) is None
+
+
+def test_a_missing_entity_or_a_fact_it_lacks_yields_no_claim_source(
+    kb: sa.Engine, propose: Any
+) -> None:
+    from cvforge.cv.facts import claim_source
+    from cvforge.kb.vocab import ClaimBasis
+
+    profile = build_profile(kb, propose)
+    with kb.connect() as conn:
+        assert claim_source(conn, 9999, ClaimBasis.NAME) is None
+        assert claim_source(conn, profile.rust, ClaimBasis.PERIOD) is None  # a skill has no dates
+        assert claim_source(conn, profile.rust, ClaimBasis.SUMMARY) is None  # and no summary

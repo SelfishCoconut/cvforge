@@ -265,10 +265,11 @@ def list_cvs(engine: sa.Engine, posting_id: int) -> list[StoredCv]:
         return [_stored(conn, row) for row in rows]
 
 
-def set_status(engine: sa.Engine, cv_id: int, status: CvStatus) -> None:
+def _set_status(engine: sa.Engine, cv_id: int, status: CvStatus) -> None:
     """Change a CV's status, with no checks of its own.
 
-    Only `cv.validate.finalize_cv` may use this to mark a CV final; it validates first.
+    Private on purpose: only `cv.validate.finalize_cv` calls it to mark a CV final, after
+    validating (a test pins every call site).
 
     Args:
         engine: The knowledge-base engine.
