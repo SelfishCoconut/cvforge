@@ -18,16 +18,41 @@ class _FakePlaywrightError(Exception):
     pass
 
 
+class _Request:
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+
+class _Route:
+    def __init__(self, url: str) -> None:
+        self.request = _Request(url)
+        self.outcome = ""
+
+    def abort(self) -> None:
+        self.outcome = "abort"
+
+    def continue_(self) -> None:
+        self.outcome = "continue"
+
+
 class _Page:
-    def __init__(self, fail: bool) -> None:
+    def __init__(self, fail: bool, lands_on: str | None = None) -> None:
         self.fail = fail
+        self.lands_on = lands_on
         self.visited: list[str] = []
+        self.url = ""
+        self.screen: Any = None
+
+    def route(self, pattern: str, handler: Any) -> None:
+        assert pattern == "**/*"
+        self.screen = handler
 
     def goto(self, url: str, *, wait_until: str, timeout: int) -> None:
         assert wait_until == "networkidle"
         if self.fail:
             raise _FakePlaywrightError("net::ERR_NAME_NOT_RESOLVED")
         self.visited.append(url)
+        self.url = self.lands_on or url
 
     def content(self) -> str:
         return "<html>rendered</html>"
@@ -48,8 +73,10 @@ class _Browser:
         self.closed = True
 
 
-def _install_fake(monkeypatch: pytest.MonkeyPatch, *, fail: bool = False) -> _Browser:
-    browser = _Browser(_Page(fail))
+def _install_fake(
+    monkeypatch: pytest.MonkeyPatch, *, fail: bool = False, lands_on: str | None = None
+) -> _Browser:
+    browser = _Browser(_Page(fail, lands_on))
 
     @contextmanager
     def sync_playwright() -> Iterator[Any]:
@@ -98,3 +125,18 @@ def test_a_refused_url_never_starts_a_browser(monkeypatch: pytest.MonkeyPatch, u
     with pytest.raises(FetchError):
         PlaywrightFetcher().render(url)
     assert browser.page.visited == []
+
+
+def test_every_request_the_page_makes_is_screened(monkeypatch: pytest.MonkeyPatch) -> None:
+    browser = _install_fake(monkeypatch)
+    PlaywrightFetcher().render(URL)
+    allowed, refused = _Route("https://cdn.example.test/app.js"), _Route("http://10.0.0.1/admin")
+    browser.page.screen(allowed)
+    browser.page.screen(refused)
+    assert (allowed.outcome, refused.outcome) == ("continue", "abort")
+
+
+def test_a_page_that_ends_on_a_local_address_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fake(monkeypatch, lands_on="http://127.0.0.1:8000/internal")
+    with pytest.raises(FetchError, match="local address"):
+        PlaywrightFetcher().render(URL)

@@ -164,3 +164,29 @@ def test_an_instruction_in_the_page_is_returned_as_text_and_nothing_more() -> No
     page = fetch_page(URL, client=_client({URL: _html(hostile)}))
     assert "Ignore previous instructions" in page.text
     assert page.method == "static"
+
+
+def test_a_declared_oversized_body_is_refused_before_it_is_read() -> None:
+    declared = httpx.Response(
+        200, text="x", headers={"content-length": str(MAX_RESPONSE_BYTES + 1)}
+    )
+    with pytest.raises(FetchError, match="larger than"):
+        fetch_page(URL, client=_client({URL: declared}))
+
+
+def test_the_request_asks_for_an_uncompressed_body() -> None:
+    seen: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return _html(STATIC_HTML)
+
+    fetch_page(URL, client=httpx.Client(transport=httpx.MockTransport(respond)))
+    assert seen[0].headers["accept-encoding"] == "identity"
+
+
+def test_a_download_past_the_deadline_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = iter([0.0, 1000.0, 1000.0, 1000.0])
+    monkeypatch.setattr("cvforge.web.fetch.time.monotonic", lambda: next(ticks, 1000.0))
+    with pytest.raises(FetchError, match="took longer"):
+        fetch_page(URL, client=_client({URL: _html(STATIC_HTML)}))

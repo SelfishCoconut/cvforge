@@ -6,7 +6,7 @@ fetcher uses a fresh, throwaway browser context with no stored login: the persis
 profile of M8's form filling is deliberately not used for reading postings.
 """
 
-from typing import Final
+from typing import Any, Final
 
 from cvforge.web.fetch import FetchError, check_url
 
@@ -23,6 +23,15 @@ class PlaywrightFetcher:
             allow_local: Permit local hosts (tests and the offline demo only).
         """
         self._allow_local = allow_local
+
+    def _screen(self, route: Any) -> None:
+        """Abort any request, navigation or redirect hop, that `check_url` refuses."""
+        try:
+            check_url(route.request.url, allow_local=self._allow_local)
+        except FetchError:
+            route.abort()
+        else:
+            route.continue_()
 
     def render(self, url: str) -> str:
         """Load `url` in headless Chromium, wait for the network to settle, return the HTML.
@@ -50,8 +59,11 @@ class PlaywrightFetcher:
                 browser = playwright.chromium.launch(headless=True)
                 try:
                     page = browser.new_context().new_page()
+                    page.route("**/*", self._screen)
                     page.goto(url, wait_until="networkidle", timeout=NAVIGATION_TIMEOUT_MS)
-                    return page.content()
+                    check_url(page.url, allow_local=self._allow_local)
+                    html: str = page.content()
+                    return html
                 finally:
                     browser.close()
         except Error as exc:

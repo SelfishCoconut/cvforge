@@ -14,6 +14,7 @@ empty content is never returned silently.
 """
 
 import ipaddress
+import time
 from dataclasses import dataclass
 from typing import Final, Literal, Protocol, runtime_checkable
 from urllib.parse import urljoin, urlsplit
@@ -25,8 +26,11 @@ MAX_RESPONSE_BYTES: Final = 5 * 1024 * 1024
 MAX_REDIRECTS: Final = 5
 MIN_STATIC_CHARS: Final = 200
 TIMEOUT_SECONDS: Final = 15.0
+DEADLINE_SECONDS: Final = 30.0
 USER_AGENT: Final = "Mozilla/5.0 (compatible; CVForge/0.3; personal job-search tool)"
 
+# Ask for an uncompressed body, so the size cap is applied to what the server really sends.
+_REQUEST_HEADERS = {"User-Agent": USER_AGENT, "Accept-Encoding": "identity"}
 _ALLOWED_SCHEMES = frozenset({"http", "https"})
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
@@ -99,12 +103,16 @@ def check_url(url: str, *, allow_local: bool = False) -> None:
 
 
 def _get_html(client: httpx.Client, url: str, *, allow_local: bool) -> tuple[str, str]:
-    """GET `url`, following redirects by hand so each hop is checked; return (html, final URL)."""
+    """GET `url`, following redirects by hand so each hop is checked; return (html, final URL).
+
+    The whole fetch, redirects included, must finish within `DEADLINE_SECONDS`.
+    """
     current = url
+    deadline = time.monotonic() + DEADLINE_SECONDS
     for _ in range(MAX_REDIRECTS + 1):
         check_url(current, allow_local=allow_local)
         try:
-            with client.stream("GET", current, headers={"User-Agent": USER_AGENT}) as response:
+            with client.stream("GET", current, headers=_REQUEST_HEADERS) as response:
                 if response.status_code in _REDIRECT_STATUSES:
                     location = response.headers.get("location")
                     if not location:
@@ -113,20 +121,26 @@ def _get_html(client: httpx.Client, url: str, *, allow_local: bool) -> tuple[str
                     continue
                 if response.status_code >= 400:
                     raise FetchError(f"{current} answered HTTP {response.status_code}")
-                body = _read_capped(response)
+                body = _read_capped(response, deadline)
                 return body.decode(response.encoding or "utf-8", errors="replace"), current
         except httpx.HTTPError as exc:
             raise FetchError(f"could not fetch {current}: {exc}") from exc
     raise FetchError(f"more than {MAX_REDIRECTS} redirects from {url}")
 
 
-def _read_capped(response: httpx.Response) -> bytes:
+def _read_capped(response: httpx.Response, deadline: float) -> bytes:
+    """Read the body, refusing one over `MAX_RESPONSE_BYTES` (decoded) or past `deadline`."""
+    declared = response.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_RESPONSE_BYTES:
+        raise FetchError(f"the page is larger than {MAX_RESPONSE_BYTES} bytes")
     chunks: list[bytes] = []
     size = 0
     for chunk in response.iter_bytes():
         size += len(chunk)
         if size > MAX_RESPONSE_BYTES:
             raise FetchError(f"the page is larger than {MAX_RESPONSE_BYTES} bytes")
+        if time.monotonic() > deadline:
+            raise FetchError(f"the page took longer than {DEADLINE_SECONDS:.0f} s to download")
         chunks.append(chunk)
     return b"".join(chunks)
 
