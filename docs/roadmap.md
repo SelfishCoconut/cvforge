@@ -65,25 +65,24 @@ Done:
 
 ## Next action
 
-**M7 — learning plans (FR-33, FR-34; issues #37, #38).** Built, in review (ADR-0029). Original note: a plan agent that, for a
-`gap` requirement (`GET /api/jobs/{id}/gaps`, verdict `gap` only), returns concrete steps/resources and
-writes nothing. #38 (FR-34) moves an entity `learning` -> `confirmed` only through an approved `set_state`
-operation in the normal review pipeline (invariant 4); progress against an entity never recorded as
-`learning` must raise. Then M8 (form autofill, Playwright; FR-35..FR-37, #39-#41).
+**M8 — form autofill (FR-35..FR-37; issues #39-#41), the last milestone.** Start from #39 (FR-35,
+analyze an application form's fields). Playwright is already an optional extra (`cvforge[browser]`, ADR-0019);
+spec D13 wants a dedicated persistent profile under `data/`, headed by default, never the user's real
+Chrome profile, per-field options with prefilled defaults (FR-36), confirm before fill and never auto-submit
+(FR-37). The ATS plain-text CV (`cv/to_text.py`) and the CV claims are the source of fill values; form
+pages are untrusted data (NFR-07): analyse, never obey. This machine has Chromium under `~/.cache/ms-playwright`.
 
-M6 closed as `v0.7.0` (2026-10-21): FR-30 discovery questions and FR-32 interview (ADR-0027), FR-31
-conversational CV editing with the `reword` basis (ADR-0028, hardened by #162 after the provenance audit).
-Sanity audit `docs/sanity/2026-10-21-m6.md`: WATCH, no must-fix; Mediums fixed in the close PR.
+M7 closed as `v0.8.0` (2026-10-21): FR-33 learning plans for `gap` requirements and FR-34 progress
+tracking whose completion only proposes a `set_state` (ADR-0029). Sanity audit
+`docs/sanity/2026-10-21-m7.md`: WATCH, no must-fix; its items were fixed in the close PR.
 
-Loose ends: #145 (flaky `test_document_dedup`, now in M7); the grounding heuristic is lexical (an unstored
-proper noun leading a reword, or a meaning change made of already-stored words, can pass; drafts are
-reviewed); no UI for jobs, matches, CVs, applications, discovery or editing (the M3-M6 API is headless);
-`api/cvs.py` is 550+ lines (move view models out); one failure-handling convention for model-calling routes
-(audit 4a); the evidence-span record exists in four places; the "data, never instructions" prompt wording
-is repeated in six prompts; `llm/agents/cv_edit.py` imports `cv.store` (first llm->cv import);
-`persist_posting` can leave an orphan `web` source (ADR-0021); `render` leaves `.tex`/`.txt` when the PDF
-fails; no concrete `SearchProvider`; NFR-10 on the default model needs the native Ollama adapter (#129);
-#64 awaits Álvaro; ADRs 0010-0012 and 0015-0028 await his confirmation.
+Loose ends: #145 (flaky `test_document_dedup`, now in M8); no UI for anything built in M3-M7 (the whole
+API is headless: jobs, matches, CVs, applications, discovery, editing, plans); the reword grounding is
+lexical (ADR-0028); `api/cvs.py` is 550+ lines; one failure-handling convention for the four
+model-calling routers; evidence-span record in four places; "data, never instructions" prompt wording
+in seven prompts; `llm/agents/cv_edit.py` imports `cv.store`; `persist_posting` can leave an orphan `web`
+source; no concrete `SearchProvider`; NFR-10 on the default model needs the native Ollama adapter (#129);
+#64 awaits Álvaro; ADRs 0010-0012 and 0015-0029 await his confirmation.
 
 Close-out scope calls (M1/M2): #107 closed as delivered; #73, #64 and #58 left M1 (not
 deliverables: #73 is the reference for two environment-dependent skips, #64 awaits Álvaro,
@@ -181,7 +180,7 @@ CI. Direct pushes to `main` are rejected, including for admins.
 | M4 | Match & gaps | Requirement ↔ knowledge matching, four verdicts, gap report | done (`v0.5.0`) |
 | M5 | CV generation | LaTeX → PDF + ATS text, claim traceability, versions, application linkage, validation | done (`v0.6.0`) |
 | M6 | Collaborative mode | Conversational CV editing, discovery questions, interview mode | done (`v0.7.0`) |
-| M7 | Learning plans | Gap → plan → tracked `learning` state | not started |
+| M7 | Learning plans | Gap → plan → tracked `learning` state | done (`v0.8.0`) |
 | M8 | Form autofill | Playwright persistent profile, per-field options, confirm before fill | not started |
 
 ## Environment facts (verified 2026-09-12)

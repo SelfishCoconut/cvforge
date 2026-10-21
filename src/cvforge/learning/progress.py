@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 from cvforge.kb import apply, intake, queries
 from cvforge.kb.models import SetState
-from cvforge.kb.vocab import KnowledgeState, Origin, SourceKind
+from cvforge.kb.vocab import KnowledgeState, OpStatus, Origin, SourceKind
 from cvforge.learning.store import StoredPlan, record_completion_proposal
 
 
@@ -41,6 +41,17 @@ def require_learning(engine: sa.Engine, plan: StoredPlan) -> int:
     return plan.entity_id
 
 
+def _still_live(engine: sa.Engine, proposal_id: int) -> bool:
+    """True unless the earlier completion proposal had every operation rejected."""
+    with engine.connect() as conn:
+        record = queries.get_proposal(conn, proposal_id)
+    if record is None:
+        return False
+    return not record.operations or any(
+        op.status != OpStatus.REJECTED.value for op in record.operations
+    )
+
+
 def propose_completion(engine: sa.Engine, plan: StoredPlan) -> int | None:
     """Raise the `set_state` proposal if, and only if, every step is complete.
 
@@ -49,14 +60,15 @@ def propose_completion(engine: sa.Engine, plan: StoredPlan) -> int | None:
         plan: The plan as it stands after the latest step was marked.
 
     Returns:
-        The pending proposal id (the earlier one if already raised), or None while steps remain.
+        The pending proposal id (the earlier one if it is still open or applied; a new one if it
+        was rejected), or None while steps remain.
 
     Raises:
         ProgressError: If the entity is not recorded as `learning`.
     """
     if any(step.completed_at is None for step in plan.steps):
         return None
-    if plan.completion_proposal_id is not None:
+    if plan.completion_proposal_id is not None and _still_live(engine, plan.completion_proposal_id):
         return plan.completion_proposal_id
     entity_id = require_learning(engine, plan)
     source = apply.record_source(engine, SourceKind.MANUAL, f"learning plan {plan.id} completed")

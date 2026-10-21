@@ -139,3 +139,24 @@ def test_unknown_plans_and_steps_are_404(tracking: tuple[TestClient, int, Profil
         404,
         409,
     )
+
+
+def test_a_rejected_completion_proposal_can_be_raised_again(
+    tracking: tuple[TestClient, int, Profile], kb: sa.Engine, propose: Any
+) -> None:
+    client, posting, profile = tracking
+    plan = _plan(client, posting, "Haskell")
+    _learning(kb, propose, profile.haskell)
+    ids = [s["id"] for s in plan["steps"]]
+    for step in ids:
+        done = client.post(f"/api/plans/{plan['id']}/steps/{step}/complete").json()
+    first = done["proposal"]
+    for op in first["operations"]:
+        client.post(
+            f"/api/proposals/{first['id']}/operations/{op['id']}/review",
+            json={"decision": "reject"},
+        )
+
+    again = client.post(f"/api/plans/{plan['id']}/steps/{ids[0]}/complete").json()
+
+    assert again["proposal"]["id"] not in (None, first["id"])
