@@ -186,3 +186,14 @@ class ClaimBasis(StrEnum):
     NAME = "name"
     SUMMARY = "summary"
     PERIOD = "period"
+
+
+class ApplicationStatus(StrEnum):
+    """Where a job application stands."""
+
+    PLANNED = "planned"
+    APPLIED = "applied"
+    INTERVIEWING = "interviewing"
+    OFFER = "offer"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"

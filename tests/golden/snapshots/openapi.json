@@ -1,6 +1,118 @@
 {
   "components": {
     "schemas": {
+      "ApplicationRequest": {
+        "description": "An application to record.\n\nAttributes:\n    job_posting_id: The posting applied to.\n    cv_id: The CV used; it must target that posting and be final.\n    status: Where it stands (default `applied`).\n    applied_at: When it was sent; required unless the status is `planned`.\n    notes: Free notes.",
+        "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "cv_id": {
+            "title": "Cv Id",
+            "type": "integer"
+          },
+          "job_posting_id": {
+            "title": "Job Posting Id",
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApplicationStatus",
+            "default": "applied"
+          }
+        },
+        "required": [
+          "job_posting_id",
+          "cv_id"
+        ],
+        "title": "ApplicationRequest",
+        "type": "object"
+      },
+      "ApplicationStatus": {
+        "description": "Where a job application stands.",
+        "enum": [
+          "planned",
+          "applied",
+          "interviewing",
+          "offer",
+          "rejected",
+          "withdrawn"
+        ],
+        "title": "ApplicationStatus",
+        "type": "string"
+      },
+      "ApplicationView": {
+        "description": "A recorded application.\n\nAttributes:\n    id: The application id.\n    job_posting_id: The posting applied to.\n    cv_id: The CV used.\n    status: Where it stands.\n    applied_at: When it was sent, if it was.\n    notes: Free notes.",
+        "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "cv_id": {
+            "title": "Cv Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_posting_id": {
+            "title": "Job Posting Id",
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApplicationStatus"
+          }
+        },
+        "required": [
+          "id",
+          "job_posting_id",
+          "cv_id",
+          "status",
+          "applied_at",
+          "notes"
+        ],
+        "title": "ApplicationView",
+        "type": "object"
+      },
       "Body_upload_document_api_documents_post": {
         "properties": {
           "file": {
@@ -1646,6 +1758,19 @@
         "title": "SettingsView",
         "type": "object"
       },
+      "StatusRequest": {
+        "description": "A new status.\n\nAttributes:\n    status: The status to move to.",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ApplicationStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StatusRequest",
+        "type": "object"
+      },
       "SupportView": {
         "description": "An entity a verdict rests on.\n\nAttributes:\n    entity_id: The entity (fetch it with `GET /api/entities/{id}`).\n    name: Its name.\n    kind: Its kind.\n    state: Its current knowledge state.\n    archived: True if it was archived after the match, so it no longer backs a claim.\n    evidence: Spans stating the entity or one of its recorded uses.",
         "properties": {
@@ -1776,6 +1901,169 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/applications": {
+      "get": {
+        "description": "List applications, optionally those that used one CV or went to one posting.\n\nArgs:\n    db: The knowledge-base engine.\n    cv_id: Only applications that used this CV.\n    job_posting_id: Only applications to this posting.\n\nReturns:\n    The applications.",
+        "operationId": "read_applications_api_applications_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cv_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cv Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "job_posting_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicationView"
+                  },
+                  "title": "Response Read Applications Api Applications Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Applications",
+        "tags": [
+          "applications"
+        ]
+      },
+      "post": {
+        "description": "Record that a final CV was used for a posting.\n\nArgs:\n    body: The application.\n    db: The knowledge-base engine.\n\nReturns:\n    The stored application.\n\nRaises:\n    NotFoundError: If the CV does not exist (404).\n    HTTPException: 422 if the CV targets another posting, is not final, or the status\n        needs a date.",
+        "operationId": "create_application_api_applications_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Application",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/applications/{application_id}/status": {
+      "post": {
+        "description": "Move an application to a new status.\n\nArgs:\n    application_id: The application id.\n    body: The new status.\n    db: The knowledge-base engine.\n    response: The response, unused on success.\n\nReturns:\n    The updated application.\n\nRaises:\n    NotFoundError: If there is no such application (404).\n    HTTPException: 422 if the status needs a date the application lacks.",
+        "operationId": "change_status_api_applications__application_id__status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "title": "Application Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Status",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
     "/api/chat/messages": {
       "post": {
         "description": "Store a message, extract facts from it, and record them as a pending proposal.\n\nThe message is written as provenance before the model runs; a model failure\nafterwards leaves the message and no proposal.\n\nArgs:\n    db: The knowledge-base engine.\n    body: The message.\n    embedder: Used for similarity, if configured.\n    model_factory: Builds the model for this request.\n\nReturns:\n    The reply, the pending proposal and anything the agent produced that was dropped.\n\nRaises:\n    HTTPException: 404 for an unknown conversation; 502 if the model fails.",
@@ -2046,6 +2334,53 @@
           }
         },
         "summary": "Finalise",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
+    "/api/cvs/{cv_id}/lineage": {
+      "get": {
+        "description": "Read a CV's ancestry, root version first and ending with the CV itself.\n\nArgs:\n    cv_id: A CV id.\n    db: The knowledge-base engine.\n\nReturns:\n    The chain of CVs it was derived through.\n\nRaises:\n    NotFoundError: If there is no such CV (404).",
+        "operationId": "read_lineage_api_cvs__cv_id__lineage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "title": "Cv Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CvView"
+                  },
+                  "title": "Response Read Lineage Api Cvs  Cv Id  Lineage Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Lineage",
         "tags": [
           "cv"
         ]
@@ -2603,7 +2938,7 @@
         ]
       },
       "post": {
-        "description": "Generate a CV for a matched posting from stored facts only.\n\nArgs:\n    posting_id: A posting id.\n    body: Optionally the CV this one derives from.\n    db: The knowledge-base engine.\n\nReturns:\n    The new draft CV.\n\nRaises:\n    NotFoundError: If the posting or the parent CV does not exist (404).\n    HTTPException: 409 if the posting has requirements but has not been matched.",
+        "description": "Generate a CV for a matched posting from stored facts only.\n\nArgs:\n    posting_id: A posting id.\n    body: Optionally the CV this one derives from.\n    db: The knowledge-base engine.\n\nReturns:\n    The new draft CV.\n\nRaises:\n    NotFoundError: If the posting or the parent CV does not exist (404).\n    HTTPException: 409 if the posting has requirements but has not been matched; 422 if\n        the parent CV targets a different posting.",
         "operationId": "create_cv_api_jobs__posting_id__cvs_post",
         "parameters": [
           {

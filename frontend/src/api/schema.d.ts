@@ -4,6 +4,83 @@
  */
 
 export interface paths {
+    "/api/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Applications
+         * @description List applications, optionally those that used one CV or went to one posting.
+         *
+         *     Args:
+         *         db: The knowledge-base engine.
+         *         cv_id: Only applications that used this CV.
+         *         job_posting_id: Only applications to this posting.
+         *
+         *     Returns:
+         *         The applications.
+         */
+        get: operations["read_applications_api_applications_get"];
+        put?: never;
+        /**
+         * Create Application
+         * @description Record that a final CV was used for a posting.
+         *
+         *     Args:
+         *         body: The application.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The stored application.
+         *
+         *     Raises:
+         *         NotFoundError: If the CV does not exist (404).
+         *         HTTPException: 422 if the CV targets another posting, is not final, or the status
+         *             needs a date.
+         */
+        post: operations["create_application_api_applications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/applications/{application_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Status
+         * @description Move an application to a new status.
+         *
+         *     Args:
+         *         application_id: The application id.
+         *         body: The new status.
+         *         db: The knowledge-base engine.
+         *         response: The response, unused on success.
+         *
+         *     Returns:
+         *         The updated application.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such application (404).
+         *         HTTPException: 422 if the status needs a date the application lacks.
+         */
+        post: operations["change_status_api_applications__application_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chat/messages": {
         parameters: {
             query?: never;
@@ -191,6 +268,36 @@ export interface paths {
          *         HTTPException: 409 listing the issues if validation fails; nothing changes.
          */
         post: operations["finalise_api_cvs__cv_id__final_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cvs/{cv_id}/lineage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Lineage
+         * @description Read a CV's ancestry, root version first and ending with the CV itself.
+         *
+         *     Args:
+         *         cv_id: A CV id.
+         *         db: The knowledge-base engine.
+         *
+         *     Returns:
+         *         The chain of CVs it was derived through.
+         *
+         *     Raises:
+         *         NotFoundError: If there is no such CV (404).
+         */
+        get: operations["read_lineage_api_cvs__cv_id__lineage_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -580,7 +687,8 @@ export interface paths {
          *
          *     Raises:
          *         NotFoundError: If the posting or the parent CV does not exist (404).
-         *         HTTPException: 409 if the posting has requirements but has not been matched.
+         *         HTTPException: 409 if the posting has requirements but has not been matched; 422 if
+         *             the parent CV targets a different posting.
          */
         post: operations["create_cv_api_jobs__posting_id__cvs_post"];
         delete?: never;
@@ -877,6 +985,60 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApplicationRequest
+         * @description An application to record.
+         *
+         *     Attributes:
+         *         job_posting_id: The posting applied to.
+         *         cv_id: The CV used; it must target that posting and be final.
+         *         status: Where it stands (default `applied`).
+         *         applied_at: When it was sent; required unless the status is `planned`.
+         *         notes: Free notes.
+         */
+        ApplicationRequest: {
+            /** Applied At */
+            applied_at?: string | null;
+            /** Cv Id */
+            cv_id: number;
+            /** Job Posting Id */
+            job_posting_id: number;
+            /** Notes */
+            notes?: string | null;
+            /** @default applied */
+            status: components["schemas"]["ApplicationStatus"];
+        };
+        /**
+         * ApplicationStatus
+         * @description Where a job application stands.
+         * @enum {string}
+         */
+        ApplicationStatus: "planned" | "applied" | "interviewing" | "offer" | "rejected" | "withdrawn";
+        /**
+         * ApplicationView
+         * @description A recorded application.
+         *
+         *     Attributes:
+         *         id: The application id.
+         *         job_posting_id: The posting applied to.
+         *         cv_id: The CV used.
+         *         status: Where it stands.
+         *         applied_at: When it was sent, if it was.
+         *         notes: Free notes.
+         */
+        ApplicationView: {
+            /** Applied At */
+            applied_at: string | null;
+            /** Cv Id */
+            cv_id: number;
+            /** Id */
+            id: number;
+            /** Job Posting Id */
+            job_posting_id: number;
+            /** Notes */
+            notes: string | null;
+            status: components["schemas"]["ApplicationStatus"];
+        };
         /** Body_upload_document_api_documents_post */
         Body_upload_document_api_documents_post: {
             /** File */
@@ -1759,6 +1921,16 @@ export interface components {
             settings: components["schemas"]["ProviderSettings"];
         };
         /**
+         * StatusRequest
+         * @description A new status.
+         *
+         *     Attributes:
+         *         status: The status to move to.
+         */
+        StatusRequest: {
+            status: components["schemas"]["ApplicationStatus"];
+        };
+        /**
          * SupportView
          * @description An entity a verdict rests on.
          *
@@ -1832,6 +2004,106 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    read_applications_api_applications_get: {
+        parameters: {
+            query?: {
+                cv_id?: number | null;
+                job_posting_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_application_api_applications_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_status_api_applications__application_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     post_message_api_chat_messages_post: {
         parameters: {
             query?: never;
@@ -2011,6 +2283,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CvView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_lineage_api_cvs__cv_id__lineage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvView"][];
                 };
             };
             /** @description Validation Error */

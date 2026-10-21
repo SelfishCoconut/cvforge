@@ -16,9 +16,18 @@ from cvforge.api.errors import engine
 from cvforge.cv.compile import CompileError, compile_pdf
 from cvforge.cv.generate import generate_cv
 from cvforge.cv.render import render_tex
-from cvforge.cv.store import StoredCv, get_cv, list_cvs, save_cv, set_artifacts, set_status
+from cvforge.cv.store import (
+    StoredCv,
+    WrongPostingError,
+    get_cv,
+    list_cvs,
+    save_cv,
+    set_artifacts,
+    set_status,
+)
 from cvforge.cv.to_text import render_text
 from cvforge.cv.validate import Issue, validate_cv
+from cvforge.cv.versions import lineage
 from cvforge.jobs.store import get_posting
 from cvforge.kb import apply, queries
 from cvforge.kb.vocab import ClaimSlot, CvStatus, GenerationMode, TargetKind
@@ -213,14 +222,18 @@ def create_cv(posting_id: int, body: GenerateRequest, db: Engine) -> CvView:
 
     Raises:
         NotFoundError: If the posting or the parent CV does not exist (404).
-        HTTPException: 409 if the posting has requirements but has not been matched.
+        HTTPException: 409 if the posting has requirements but has not been matched; 422 if
+            the parent CV targets a different posting.
     """
     posting = get_posting(db, posting_id)
     if posting is None:
         raise apply.NotFoundError(f"no job posting {posting_id}")
     if posting.requirements and not list_matches(db, posting_id):
         raise HTTPException(409, "match the posting's requirements before generating a CV")
-    cv_id = save_cv(db, posting_id, generate_cv(db, posting_id), parent_cv_id=body.parent_cv_id)
+    try:
+        cv_id = save_cv(db, posting_id, generate_cv(db, posting_id), parent_cv_id=body.parent_cv_id)
+    except WrongPostingError as exc:
+        raise HTTPException(422, str(exc)) from exc
     return _view(_require(db, cv_id))
 
 
@@ -413,3 +426,21 @@ def download(cv_id: int, kind: Literal["tex", "pdf", "txt"], db: Engine) -> File
     if path is None or not Path(path).is_file():
         raise apply.NotFoundError(f"CV {cv_id} has no rendered {kind}; render it first")
     return FileResponse(path, media_type=_MEDIA[kind])
+
+
+@router.get("/cvs/{cv_id}/lineage")
+def read_lineage(cv_id: int, db: Engine) -> list[CvView]:
+    """Read a CV's ancestry, root version first and ending with the CV itself.
+
+    Args:
+        cv_id: A CV id.
+        db: The knowledge-base engine.
+
+    Returns:
+        The chain of CVs it was derived through.
+
+    Raises:
+        NotFoundError: If there is no such CV (404).
+    """
+    _require(db, cv_id)
+    return [_view(cv) for cv in lineage(db, cv_id)]

@@ -51,6 +51,7 @@ REGISTERED_WRITERS: dict[str, frozenset[str]] = {
     "jobs/store.py": frozenset({"job_posting", "requirement"}),
     "match/store.py": frozenset({"match", "match_support"}),
     "cv/store.py": frozenset({"cv", "cv_claim"}),
+    "cv/applications.py": frozenset({"application"}),
 }
 KNOWLEDGE_TABLES = frozenset(schema.metadata.tables) - frozenset().union(
     *REGISTERED_WRITERS.values()
@@ -292,6 +293,7 @@ def test_registering_a_writer_is_a_visible_change() -> None:
         "jobs/store.py",
         "match/store.py",
         "cv/store.py",
+        "cv/applications.py",
     }
 
 

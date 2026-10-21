@@ -20,6 +20,7 @@ from cvforge.kb.vocab import (
     CREDENTIAL_TYPES,
     ORG_TYPES,
     SKILL_CATEGORIES,
+    ApplicationStatus,
     ClaimBasis,
     ClaimSlot,
     Classification,
@@ -452,4 +453,18 @@ cv_claim = sa.Table(
     sa.CheckConstraint("length(trim(text)) > 0", name="text_nonblank"),
     _in("slot", values(ClaimSlot), "slot"),
     _in("basis", values(ClaimBasis), "basis"),
+)
+
+# --- applications (M5, FR-28): which CV went to which posting, and when. --------------------
+# Written by `cv/applications.py`, a registered writer (ADR-0026).
+application = sa.Table(
+    "application",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("job_posting_id", sa.Integer, sa.ForeignKey("job_posting.id"), nullable=False),
+    sa.Column("cv_id", sa.Integer, sa.ForeignKey("cv.id"), nullable=False),
+    sa.Column("status", sa.String, nullable=False),
+    sa.Column("applied_at", sa.DateTime),
+    sa.Column("notes", sa.String),
+    _in("status", values(ApplicationStatus), "status"),
 )

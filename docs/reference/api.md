@@ -162,4 +162,10 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.cv.compile
 
+::: cvforge.cv.versions
+
+::: cvforge.cv.applications
+
+::: cvforge.api.applications
+
 ::: cvforge.api.cvs

@@ -104,6 +104,7 @@ nav:
       - 0023 Requirement matching: adr/0023-requirement-matching-is-decided-by-the-database.md
       - 0024 CV claims: adr/0024-a-cv-is-its-claim-rows-copied-from-stored-facts.md
       - 0025 CV rendering: adr/0025-cv-rendering-is-claims-in-a-fixed-template-compiled-by-latexmk.md
+      - 0026 CV lineage and applications: adr/0026-cv-lineage-and-applications.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md
