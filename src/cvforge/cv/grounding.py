@@ -66,26 +66,35 @@ def ungrounded_terms(
     """
     fact_list = list(facts)
     known = {t.lower() for fact in fact_list for t in _tokens(fact)}
-    tokens = _tokens(text)
     entity_words = {t.lower() for name in other_entities for t in _tokens(name)} - known
-    found: list[str] = []
-    for index, token in enumerate(tokens):
-        low = token.lower()
-        if low in known:
-            continue
-        if (
-            _is_number(token)
-            or (index > 0 and token[:1].isupper())  # the first word is capitalised anyway
-            or low in entity_words
-            or _strong(token)
-            or low in NEGATIONS
-        ):
-            found.append(token)
+    tokens = _tokens(text)
+    found = [
+        token
+        for index, token in enumerate(tokens)
+        if token.lower() not in known and _makes_a_claim(token, index, entity_words)
+    ]
     found += _order_problems(fact_list, tokens)
-    original = max((len(_tokens(f)) for f in fact_list), default=0)
-    if original and len(tokens) > original + GROWTH_WORDS:
-        found.append(f"{len(tokens)} words (more than {original} + {GROWTH_WORDS})")
+    found += _growth_problem(fact_list, tokens)
     return list(dict.fromkeys(found))
+
+
+def _makes_a_claim(token: str, index: int, entity_words: set[str]) -> bool:
+    """True for a token that is not in the facts and would add a number, name or claim."""
+    return (
+        _is_number(token)
+        or (index > 0 and token[:1].isupper())  # the first word is capitalised anyway
+        or token.lower() in entity_words
+        or _strong(token)
+        or token.lower() in NEGATIONS
+    )
+
+
+def _growth_problem(facts: list[str], tokens: list[str]) -> list[str]:
+    """A rewording may not add clauses: it stays within a few words of the longest stored line."""
+    original = max((len(_tokens(f)) for f in facts), default=0)
+    if original and len(tokens) > original + GROWTH_WORDS:
+        return [f"{len(tokens)} words (more than {original} + {GROWTH_WORDS})"]
+    return []
 
 
 def _order_problems(facts: list[str], tokens: list[str]) -> list[str]:
