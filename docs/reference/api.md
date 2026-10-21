@@ -193,3 +193,9 @@ Generated from docstrings. Update the docstring, not this page.
 ::: cvforge.llm.agents.plan
 
 ::: cvforge.api.learning
+
+## Application forms
+
+::: cvforge.forms.analyze
+
+::: cvforge.api.forms

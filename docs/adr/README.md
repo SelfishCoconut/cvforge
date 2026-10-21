@@ -39,3 +39,4 @@ was decided, and when, is the whole point.
 | [0027](0027-discovery-questions-and-interviews-feed-the-review-pipeline.md) | Discovery questions and interviews feed the review pipeline | proposed | 2026-10-21 |
 | [0028](0028-collaborative-cv-edits-reword-without-adding-facts.md) | Collaborative CV edits may reword but never add a fact | proposed | 2026-10-21 |
 | [0029](0029-learning-plans-are-advice-and-completion-only-proposes.md) | Learning plans are advice; completing one only proposes a state change | proposed | 2026-10-21 |
+| [0030](0030-application-forms-are-analysed-offline-and-filled-only-on-confirmation.md) | Application forms are analysed offline and filled only on confirmation | proposed | 2026-10-21 |

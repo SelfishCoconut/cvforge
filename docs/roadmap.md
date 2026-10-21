@@ -65,8 +65,8 @@ Done:
 
 ## Next action
 
-**M8 — form autofill (FR-35..FR-37; issues #39-#41), the last milestone.** Start from #39 (FR-35,
-analyze an application form's fields). Playwright is already an optional extra (`cvforge[browser]`, ADR-0019);
+**M8 — form autofill (FR-35..FR-37; issues #39-#41), the last milestone.** FR-35 (#39, analysis, ADR-0030)
+is in review; next FR-36 (#40, suggested values + `form_fill_session`) and FR-37 (#41, confirmed fill, never submit). Playwright is already an optional extra (`cvforge[browser]`, ADR-0019);
 spec D13 wants a dedicated persistent profile under `data/`, headed by default, never the user's real
 Chrome profile, per-field options with prefilled defaults (FR-36), confirm before fill and never auto-submit
 (FR-37). The ATS plain-text CV (`cv/to_text.py`) and the CV claims are the source of fill values; form

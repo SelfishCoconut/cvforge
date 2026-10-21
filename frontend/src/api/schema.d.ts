@@ -589,6 +589,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/forms/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze
+         * @description List the fields of the application form at a URL.
+         *
+         *     Args:
+         *         body: The page URL.
+         *         fetch: Fetches the page's HTML.
+         *
+         *     Returns:
+         *         The fields in document order; empty if the page has no form.
+         *
+         *     Raises:
+         *         HTTPException: 422 if the page cannot be fetched or is refused.
+         */
+        post: operations["analyze_api_forms_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1297,6 +1327,17 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AnalyzeRequest
+         * @description A form page to analyse.
+         *
+         *     Attributes:
+         *         url: The page's http(s) URL.
+         */
+        AnalyzeRequest: {
+            /** Url */
+            url: string;
+        };
+        /**
          * AnswerRequest
          * @description An answer to a discovery question.
          *
@@ -1722,6 +1763,38 @@ export interface components {
             similarity_available: boolean;
             /** Source Id */
             source_id: number;
+        };
+        /**
+         * FieldView
+         * @description One field of a form.
+         *
+         *     Attributes:
+         *         key: A stable identifier within the form.
+         *         label: What the page calls it (`Field N` when it gives no label).
+         *         labelled: False when the label is a placeholder.
+         *         type: The inferred type.
+         *         required: Whether the page marks it required.
+         *         name: The `name` attribute, if any.
+         *         options: The choices of a select or radio group.
+         *         sensitive: True for a password field, which is never suggested or filled.
+         */
+        FieldView: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Labelled */
+            labelled: boolean;
+            /** Name */
+            name: string | null;
+            /** Options */
+            options: string[];
+            /** Required */
+            required: boolean;
+            /** Sensitive */
+            sensitive: boolean;
+            /** Type */
+            type: string;
         };
         /**
          * GapView
@@ -3078,6 +3151,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvidenceRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_api_forms_analyze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalyzeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldView"][];
                 };
             };
             /** @description Validation Error */
