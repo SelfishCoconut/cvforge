@@ -97,6 +97,7 @@ nav:
       - 0016 Document upload and extraction storage: adr/0016-document-upload-storage-and-extraction.md
       - 0017 Document extraction locators: adr/0017-document-extraction-quotes-and-server-side-locators.md
       - 0018 Edges between known entities: adr/0018-edges-between-known-entities-classify-against-stored-edges.md
+      - 0019 Job page fetching: adr/0019-job-pages-fetched-static-first-with-an-optional-browser.md
   - Guides:
       - LLM providers: guides/providers.md
       - Benchmarks: guides/benchmarks.md

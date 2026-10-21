@@ -19,7 +19,13 @@ dependencies = [
     "python-multipart>=0.0.32",
     "sqlalchemy>=2.1.2",
     "sqlite-vec>=0.1.9",
+    "trafilatura>=2.3.1",
     "uvicorn>=0.54.0",
+]
+
+[project.optional-dependencies]
+browser = [
+    "playwright>=1.64.0",
 ]
 
 [dependency-groups]

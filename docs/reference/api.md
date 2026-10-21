@@ -111,3 +111,9 @@ Generated from docstrings. Update the docstring, not this page.
 ### Chat endpoint
 
 ::: cvforge.api.chat
+
+## Job page fetching
+
+::: cvforge.web.fetch
+
+::: cvforge.web.browser

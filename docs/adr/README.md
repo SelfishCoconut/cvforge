@@ -28,3 +28,4 @@ was decided, and when, is the whole point.
 | [0016](0016-document-upload-storage-and-extraction.md) | Uploaded documents are stored by content hash and parsed to page-separated text | proposed | 2026-10-21 |
 | [0017](0017-document-extraction-quotes-and-server-side-locators.md) | The model quotes, the server locates: evidence locators for document facts | proposed | 2026-10-21 |
 | [0018](0018-edges-between-known-entities-classify-against-stored-edges.md) | An edge between entities that resolve to stored ones is classified against the stored edge | proposed | 2026-10-21 |
+| [0019](0019-job-pages-fetched-static-first-with-an-optional-browser.md) | Job pages are fetched static-first, with an optional browser fallback and a local-address bar | proposed | 2026-10-21 |
