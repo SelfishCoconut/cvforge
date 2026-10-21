@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001
 """FR-31: conversational edits reword, drop and emphasise without losing support."""
 
 from collections.abc import Iterator
@@ -223,8 +224,85 @@ def test_a_failing_model_is_a_502_and_an_unknown_cv_a_404(
         (["Rust", "Log parser"], "Built a Rust log parser", []),
         (["Log parser"], "Built a Rust log parser", ["Rust"]),
         (["Log parser"], "Parser built in 2019", ["2019"]),
-        (["x"], "Capitalised first word is fine", []),
+        (["Capitalised first word is fine"], "Capitalised first word is fine", []),
     ],
 )
 def test_the_grounding_heuristic(facts: list[str], text: str, expected: list[str]) -> None:
     assert ungrounded_terms(facts, text) == expected
+
+
+@pytest.mark.parametrize(
+    ("facts", "text", "needle"),
+    [
+        (["Parsed logs"], "Led parsed logs", "Led"),  # a strong verb leading the line
+        (["Parsed logs"], "Never parsed logs", "Never"),  # a negation the facts lack
+        (["Cut latency 40% and served 3x users"], "Cut latency 3x and served 40% users", "order"),
+        (["Parsed logs"], "Lideré parsed logs", "Lideré"),  # non-English leadership verb
+        (
+            ["Parsed logs"],
+            "Parsed logs for ５０ teams",
+            "50",
+        ),  # fullwidth digits (NFKC)
+        (["Parsed logs"], "Parsed logs and mentoring", "mentoring"),
+        (["Parsed logs"], "Parsed logs, wrote docs, gave talks, ran tools", "words"),  # growth
+    ],
+)
+def test_the_hardened_grounding_catches_what_a_bag_of_tokens_missed(
+    facts: list[str], text: str, needle: str
+) -> None:
+    assert any(needle in term for term in ungrounded_terms(facts, text))
+
+
+def test_a_lowercase_mention_of_another_stored_entity_is_flagged() -> None:
+    assert ungrounded_terms(
+        ["Parsed logs"], "parsed logs on kubernetes", other_entities=["Kubernetes"]
+    ) == ["kubernetes"]
+    assert (
+        ungrounded_terms(
+            ["Parsed Kubernetes logs"], "parsed kubernetes logs", other_entities=["Kubernetes"]
+        )
+        == []
+    )
+
+
+def test_a_reword_citing_a_superseded_assertion_is_refused(
+    editing: tuple[TestClient, dict[str, Any], Planner], kb: sa.Engine, propose: Any
+) -> None:
+    from cvforge.kb import apply
+
+    client, cv, planner = editing
+    bullet = _claim(cv, "Parsed two gigabytes per second")
+    apply.commit_proposal(
+        kb,
+        propose(
+            {
+                "op_type": "update_field",
+                "entity_id": bullet["entity_id"],
+                "field": "summary",
+                "value": "Parsed three gigabytes per second",
+            },
+            accept=True,
+        ),
+    )
+    body = _edit(
+        client,
+        cv,
+        planner,
+        {"kind": "reword", "claim_id": bullet["id"], "text": "Parsed two gigabytes a second"},
+    ).json()
+    assert body["cv"] is None and "no longer states" in body["refused"][0]
+
+
+def test_an_automatic_cv_cannot_carry_reworded_claims(kb: sa.Engine, propose: Any) -> None:
+    from dataclasses import replace
+
+    from cvforge.cv.generate import generate_cv
+    from cvforge.cv.store import UnsupportedClaimError, save_cv
+    from cvforge.kb.vocab import ClaimBasis
+
+    build_profile(kb, propose)
+    posting = matched_posting(kb, "Rust")
+    claims = generate_cv(kb, posting)
+    bullet = next(c for c in claims if c.basis is ClaimBasis.SUMMARY)
+    with pytest.raises(UnsupportedClaimError, match="automatic"):
+        save_cv(kb, posting, [replace(bullet, basis=ClaimBasis.REWORD)])

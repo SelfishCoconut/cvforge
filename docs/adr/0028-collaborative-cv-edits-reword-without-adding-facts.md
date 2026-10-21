@@ -17,10 +17,16 @@ leadership role.
 `assertion_id` (the assertion must still be a `name` or `summary` one), carries the new text, and
 is checked by the same `binding.claim_problem` as every other claim, in the store and in the
 validator. For `reword` the check replaces "text equals the stored fact" with a grounding check
-(`cv/grounding.py`): every number, every capitalised non-initial term and every strong-claim verb
-(`led`, `managed`, `founded`...) in the new text must already appear in the facts stored about the
-entity or the names of entities directly related to it. This is a heuristic backstop; plain
-wording is free, and a human reviews a draft before it is final.
+(`cv/grounding.py`): the new text may not grow more than three words past the stored line; every number (NFKC-
+normalised, in the stored order, `%` kept), every non-initial capitalised term, every token naming
+another stored entity, every strong-claim or seniority stem (lead, manag, found, senior, expert...,
+including Spanish forms) and every negation must already appear in the facts about the entity or
+the names of its *confirmed* neighbours through `used_in`/`part_of`/`at_organization`/`produced`/
+`involved`. The cited assertion must still be the latest one for its field with the entity's current
+value. A `reword` claim is refused in an automatic CV by the store and flagged by the validator
+(`reword_in_automatic`). This is a heuristic backstop; plain wording is free, and a human reviews a
+draft before it is final. Known residual: an unstored proper noun leading the line, or a lowercase
+claim made of ordinary words, can still pass (found by the FR-31 audit; mitigated by the growth cap).
 
 **D-AT — edits are operations the code checks one by one.** The edit agent (tool-free, the CV
 fenced as data) proposes `reword` / `drop` / `emphasize`; `cv/edit.py` applies each against the

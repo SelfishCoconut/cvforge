@@ -19,9 +19,11 @@ from cvforge.cv.store import StoredClaim, StoredCv, _set_status, get_cv
 from cvforge.jobs.store import get_posting
 from cvforge.kb import apply, queries
 from cvforge.kb.vocab import (
+    ClaimBasis,
     ClaimSlot,
     CvStatus,
     EntityKind,
+    GenerationMode,
     KnowledgeState,
     MatchVerdict,
     Rel,
@@ -177,7 +179,14 @@ def validate_cv(engine: sa.Engine, cv: StoredCv) -> list[Issue]:
     """
     with engine.connect() as conn:
         claim_issues = [issue for claim in cv.claims for issue in _claim_issues(conn, cv, claim)]
+        automatic_reword = (
+            [Issue("reword_in_automatic", "an automatic CV carries reworded claims")]
+            if cv.generation_mode is GenerationMode.AUTOMATIC
+            and any(c.basis is ClaimBasis.REWORD for c in cv.claims)
+            else []
+        )
         return [
+            *automatic_reword,
             *claim_issues,
             *_overlapping_roles(conn, cv),
             *_use_outside_period(conn, cv),

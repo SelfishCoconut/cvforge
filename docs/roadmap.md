@@ -65,8 +65,9 @@ Done:
 
 ## Next action
 
-**M6 — collaborative mode (FR-30..FR-32, issues #34-#36).** Start from #34 (FR-30, ask discovery
-questions for plausible gaps): the `undocumented` matches of a posting are its input (`GET
+**M6 — collaborative mode (FR-30..FR-32, issues #34-#36).** FR-30/32 (#159, ADR-0027) and FR-31 (#160,
+ADR-0028) are merged; #161 hardens the reword grounding after the audit. Left: close M6 with the
+`release` skill (sanity audit, 0.7.0), then M7. Original note on FR-30: the `undocumented` matches of a posting are its input (`GET
 /api/jobs/{id}/gaps`), and every answer becomes a *proposal* reviewed like any other fact
 (invariant 4), never a direct write. #35 (FR-31) edits a CV conversationally and must create
 child versions (`parent_cv_id`, ADR-0026) whose every new line is still a `cv_claim` bound to a
