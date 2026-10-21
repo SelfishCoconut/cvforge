@@ -117,3 +117,7 @@ Generated from docstrings. Update the docstring, not this page.
 ::: cvforge.web.fetch
 
 ::: cvforge.web.browser
+
+## Job analysis
+
+::: cvforge.llm.agents.job
