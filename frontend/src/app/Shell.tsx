@@ -6,6 +6,7 @@ import { api } from "../api/client";
 const NAV = [
   { to: "/chat", label: "Chat" },
   { to: "/documents", label: "Documents" },
+  { to: "/forms", label: "Forms" },
   { to: "/review", label: "Review" },
   { to: "/knowledge", label: "Knowledge" },
   { to: "/settings", label: "Settings" },
