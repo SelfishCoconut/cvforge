@@ -14,6 +14,7 @@ empty content is never returned silently.
 """
 
 import ipaddress
+import re
 import socket
 import time
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ USER_AGENT: Final = "Mozilla/5.0 (compatible; CVForge/0.3; personal job-search t
 
 # Ask for an uncompressed body, so the size cap is applied to what the server really sends.
 _REQUEST_HEADERS = {"User-Agent": USER_AGENT, "Accept-Encoding": "identity"}
+_SCRIPTS = re.compile(r"<script\b.*?</script>", re.DOTALL | re.IGNORECASE)
 _ALLOWED_SCHEMES = frozenset({"http", "https"})
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
@@ -234,3 +236,39 @@ def fetch_page(
     if not text:
         raise FetchError(f"{final_url} has no readable text even when rendered in a browser")
     return FetchedPage(url, final_url, title, text, "browser")
+
+
+def fetch_html(
+    url: str,
+    *,
+    client: httpx.Client | None = None,
+    browser: BrowserFetcher | None = None,
+    allow_local: bool = False,
+) -> str:
+    """Fetch a page's HTML, rendering it in a browser if the static HTML holds no form.
+
+    Used to analyse application forms (FR-35): a form built by JavaScript is invisible to the
+    static fetch, so a page without a `<form` tag goes to the browser fallback when one exists.
+
+    Args:
+        url: The page URL.
+        client: The HTTP client; one with sane timeouts is made if omitted.
+        browser: The fallback for JavaScript-built forms.
+        allow_local: Permit local hosts (tests and the offline demo only).
+
+    Returns:
+        The HTML.
+
+    Raises:
+        FetchError: If the URL is refused or unreachable, or the browser fails.
+    """
+    owned = client is None
+    http = client or httpx.Client(timeout=TIMEOUT_SECONDS)
+    try:
+        html, final_url = _get_html(http, url, allow_local=allow_local)
+    finally:
+        if owned:
+            http.close()
+    if browser is None or "<form" in _SCRIPTS.sub("", html).lower():
+        return html
+    return browser.render(final_url)

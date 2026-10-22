@@ -1,6 +1,22 @@
 {
   "components": {
     "schemas": {
+      "AnalyzeRequest": {
+        "description": "A form page to analyse.\n\nAttributes:\n    url: The page's http(s) URL.",
+        "properties": {
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "AnalyzeRequest",
+        "type": "object"
+      },
       "AnswerRequest": {
         "description": "An answer to a discovery question.\n\nAttributes:\n    answer: What the user says, in their own words.\n    conversation_id: Continue an existing conversation source, if any.",
         "properties": {
@@ -776,6 +792,65 @@
           "similarity_available"
         ],
         "title": "ExtractionView",
+        "type": "object"
+      },
+      "FieldView": {
+        "description": "One field of a form.\n\nAttributes:\n    key: A stable identifier within the form.\n    label: What the page calls it (`Field N` when it gives no label).\n    labelled: False when the label is a placeholder.\n    type: The inferred type.\n    required: Whether the page marks it required.\n    name: The `name` attribute, if any.\n    options: The choices of a select or radio group.\n    sensitive: True for a password field, which is never suggested or filled.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "labelled": {
+            "title": "Labelled",
+            "type": "boolean"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "sensitive": {
+            "title": "Sensitive",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "labelled",
+          "type",
+          "required",
+          "name",
+          "options",
+          "sensitive"
+        ],
+        "title": "FieldView",
         "type": "object"
       },
       "GapView": {
@@ -3115,6 +3190,52 @@
         "summary": "Get Evidence",
         "tags": [
           "knowledge"
+        ]
+      }
+    },
+    "/api/forms/analyze": {
+      "post": {
+        "description": "List the fields of the application form at a URL.\n\nArgs:\n    body: The page URL.\n    fetch: Fetches the page's HTML.\n\nReturns:\n    The fields in document order; empty if the page has no form.\n\nRaises:\n    HTTPException: 422 if the page cannot be fetched or is refused.",
+        "operationId": "analyze_api_forms_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FieldView"
+                  },
+                  "title": "Response Analyze Api Forms Analyze Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze",
+        "tags": [
+          "forms"
         ]
       }
     },
