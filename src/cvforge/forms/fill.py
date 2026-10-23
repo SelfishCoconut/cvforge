@@ -13,6 +13,7 @@ Playwright is imported lazily (optional extra `cvforge[browser]`).
 """
 
 from dataclasses import dataclass
+from html import escape
 from pathlib import Path
 from typing import Any, Final
 from urllib.parse import urljoin
@@ -46,6 +47,25 @@ def _same_field(live: dict[str, FormField], entry: dict[str, Any]) -> str | None
     if found.label != entry["label"] or found.type != entry["type"]:
         return "the page changed since the form was analysed"
     return None
+
+
+def _redirect_target(url: str, headers: dict[str, str], *, allow_local: bool) -> str | None:
+    """The checked absolute target of a redirect response, or None if it is not a redirect.
+
+    A `Location` the browser would read differently from `urljoin` (backslashes, control
+    characters) is refused, so the browser goes to exactly the URL that was screened.
+
+    Raises:
+        FetchError: If the redirect target is refused.
+    """
+    location = headers.get("location")
+    if location is None:
+        return None
+    if any(c == "\\" or ord(c) < 32 for c in location):
+        raise FetchError("a redirect target with a backslash or control character is refused")
+    target = urljoin(url, location)
+    check_url(target, allow_local=allow_local)
+    return target
 
 
 def _escape(text: str) -> str:
@@ -94,6 +114,41 @@ def _hold_open(page: Any, *, keep_open: bool, headless: bool) -> None:
         page.wait_for_event("close", timeout=0)
 
 
+def _screens(*, allow_local: bool) -> tuple[Any, Any]:
+    """Build the request and WebSocket handlers that screen what the page may reach."""
+
+    def screen(route: Any) -> None:
+        request = route.request
+        try:
+            check_url(request.url, allow_local=allow_local)
+            if not request.is_navigation_request():
+                route.continue_()
+                return
+            # Chromium never routes a redirect hop, so a navigation is fetched without following
+            # redirects. A redirect is answered with a page that navigates to the checked target
+            # instead, which makes the next hop a fresh, screened navigation.
+            response = route.fetch(max_redirects=0)
+            target = _redirect_target(request.url, dict(response.headers), allow_local=allow_local)
+        except FetchError:
+            route.abort()
+        else:
+            if target is None:
+                route.fulfill(response=response)
+            else:
+                refresh = f'<meta http-equiv="refresh" content="0;url={escape(target)}">'
+                route.fulfill(status=200, content_type="text/html", body=refresh)
+
+    def screen_socket(socket: Any) -> None:
+        try:
+            check_url(socket.url.replace("ws", "http", 1), allow_local=allow_local)
+        except FetchError:
+            socket.close()
+        else:
+            socket.connect_to_server()
+
+    return screen, screen_socket
+
+
 def fill_session(
     session: StoredSession,
     profile_dir: Path,
@@ -126,27 +181,7 @@ def fill_session(
             "`uv sync --extra browser && uv run playwright install chromium`"
         ) from exc
 
-    def screen(route: Any) -> None:
-        try:
-            check_url(route.request.url, allow_local=allow_local)
-            # Fetch without following redirects, so a hop is screened before it is requested.
-            response = route.fetch(max_redirects=0)
-            location = response.headers.get("location")
-            if location:
-                check_url(urljoin(route.request.url, location), allow_local=allow_local)
-        except FetchError:
-            route.abort()
-        else:
-            route.fulfill(response=response)
-
-    def screen_socket(socket: Any) -> None:
-        try:
-            check_url(socket.url.replace("ws", "http", 1), allow_local=allow_local)
-        except FetchError:
-            socket.close()
-        else:
-            socket.connect_to_server()
-
+    screen, screen_socket = _screens(allow_local=allow_local)
     profile_dir.mkdir(parents=True, exist_ok=True)
     try:
         with sync_playwright() as playwright:

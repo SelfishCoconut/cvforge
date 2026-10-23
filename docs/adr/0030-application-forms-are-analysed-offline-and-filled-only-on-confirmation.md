@@ -35,8 +35,11 @@ press Enter on a submit control (an AST test pins this).
 suggestions drawn from a chosen CV, `PUT`/`DELETE .../fields/{key}` confirm or withdraw a value,
 and `POST .../fill` opens the visible browser and returns when the window is closed. The path
 says `fills`, not `sessions`, because NFR-02's route-inventory test forbids session endpoints.
-The fill's browser screens requests and WebSockets like the job fetcher, and fetches each request
-without following redirects so a redirect hop is checked before it is requested; DNS rebinding inside
+The fill's browser screens requests and WebSockets like the job fetcher, and, because Chromium
+never routes a redirect hop, fetches each top-level navigation without following redirects and answers
+a redirect with a page that navigates to the checked target, so every hop is a fresh screened
+navigation (sub-resource redirects are not screened; `Location` values with backslashes or control
+characters are refused); DNS rebinding inside
 Chromium is a known, unmitigated limit shared with it.
 
 ## Consequences

@@ -37,9 +37,15 @@ HITS: list[str] = []
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         HITS.append(self.path)
-        if self.path == "/redirect":
+        hops = {
+            "/redirect": "/blocked/redirected",
+            "/hop1": "/hop2",
+            "/hop2": "/blocked/second",
+            "/backslash": "\\\\blocked/slash",
+        }
+        if self.path in hops:
             self.send_response(302)
-            self.send_header("Location", "/blocked/redirected")
+            self.send_header("Location", hops[self.path])
             self.end_headers()
             return
         body = {"/form": FORM, "/noname": NONAME, "/subresource": SUBRESOURCE}.get(self.path, "")
@@ -187,4 +193,13 @@ def test_a_redirect_to_a_refused_target_is_never_followed(
 ) -> None:
     with pytest.raises(FetchError):
         _run(form_url.replace("/form", "/redirect"), [], tmp_path)
+    assert not any(h.startswith("/blocked") for h in HITS)
+
+
+@pytest.mark.parametrize("path", ["/hop1", "/backslash"])
+def test_a_later_or_oddly_written_redirect_hop_is_never_followed(
+    form_url: str, refuse_blocked: None, tmp_path: Path, path: str
+) -> None:
+    with pytest.raises(FetchError):
+        _run(form_url.replace("/form", path), [], tmp_path)
     assert not any(h.startswith("/blocked") for h in HITS)
