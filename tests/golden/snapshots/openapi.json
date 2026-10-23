@@ -359,6 +359,20 @@
         "title": "Committed",
         "type": "object"
       },
+      "ConfirmRequest": {
+        "description": "The value the user approved for a field.\n\nAttributes:\n    value: The value to fill; the suggestion as is, or the user's edit.",
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "ConfirmRequest",
+        "type": "object"
+      },
       "CvEvidenceView": {
         "description": "The source span a fact comes from.\n\nAttributes:\n    source_id: The source.\n    source_kind: `conversation`, `document`, `web` or `manual`.\n    source_label: The source's label.\n    locator: Where in the source.\n    excerpt: The literal text.",
         "properties": {
@@ -852,6 +866,40 @@
         ],
         "title": "FieldView",
         "type": "object"
+      },
+      "FillResult": {
+        "description": "What a fill run did.\n\nAttributes:\n    filled: Keys of the fields written.\n    skipped: Confirmed fields that were not written, with the reason.",
+        "properties": {
+          "filled": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Filled",
+            "type": "array"
+          },
+          "skipped": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Skipped",
+            "type": "object"
+          }
+        },
+        "required": [
+          "filled",
+          "skipped"
+        ],
+        "title": "FillResult",
+        "type": "object"
+      },
+      "FillStatus": {
+        "description": "Where a form-fill session stands.",
+        "enum": [
+          "analyzed",
+          "filled"
+        ],
+        "title": "FillStatus",
+        "type": "string"
       },
       "GapView": {
         "description": "A requirement the knowledge base does not back.\n\nAttributes:\n    requirement_id: The requirement, linking back to the posting.\n    kind: The requirement's kind.\n    text: What the posting asks.\n    verdict: `undocumented` (plausible, unrecorded) or `gap`.\n    score: Closeness of the nearest plausible entity, if any.\n    rationale: Why.",
@@ -2029,6 +2077,163 @@
           "items"
         ],
         "title": "SectionView",
+        "type": "object"
+      },
+      "SessionFieldView": {
+        "description": "One field with its suggestion and confirmation state.\n\nAttributes:\n    key: The field's key within the form.\n    label: What the page calls it.\n    type: The control type.\n    required: Whether the page marks it required.\n    options: The choices of a select or radio group.\n    suggested: The value drawn from the CV, or None if no stored fact answers.\n    claim_ids: The CV claims the suggestion came from.\n    reason: Why there is, or is not, a suggestion.\n    confirmed: Whether the user approved a value to fill.\n    confirmed_value: The approved value.",
+        "properties": {
+          "claim_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Claim Ids",
+            "type": "array"
+          },
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "confirmed_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Value"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "suggested": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "type",
+          "required",
+          "options",
+          "suggested",
+          "claim_ids",
+          "reason",
+          "confirmed",
+          "confirmed_value"
+        ],
+        "title": "SessionFieldView",
+        "type": "object"
+      },
+      "SessionRequest": {
+        "description": "Which form to analyse and whose CV to draw suggestions from.\n\nAttributes:\n    url: The application form's page.\n    cv_id: The CV whose claims supply the suggested values.\n    application_id: The application this is for, if tracked.",
+        "properties": {
+          "application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Id"
+          },
+          "cv_id": {
+            "title": "Cv Id",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "cv_id"
+        ],
+        "title": "SessionRequest",
+        "type": "object"
+      },
+      "SessionView": {
+        "description": "A form-fill session.\n\nAttributes:\n    id: The session id.\n    application_id: The application, if any.\n    cv_id: The CV the suggestions came from.\n    url: The form's page.\n    status: `analyzed` or `filled`.\n    fields: The fields in page order.",
+        "properties": {
+          "application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Id"
+          },
+          "cv_id": {
+            "title": "Cv Id",
+            "type": "integer"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SessionFieldView"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FillStatus"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "application_id",
+          "cv_id",
+          "url",
+          "status",
+          "fields"
+        ],
+        "title": "SessionView",
         "type": "object"
       },
       "SettingsView": {
@@ -3234,6 +3439,246 @@
           }
         },
         "summary": "Analyze",
+        "tags": [
+          "forms"
+        ]
+      }
+    },
+    "/api/forms/fills": {
+      "post": {
+        "description": "Fetch a form, list its fields and suggest a value for each from the chosen CV.\n\nNothing is filled and nothing is confirmed yet.\n\nArgs:\n    body: The form URL and CV.\n    db: The knowledge-base engine.\n    fetcher: Fetches the page's HTML.\n\nReturns:\n    The stored session.\n\nRaises:\n    NotFoundError: If the CV does not exist (404).\n    HTTPException: 422 if the page cannot be fetched or holds no fillable form.",
+        "operationId": "start_session_api_forms_fills_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Session",
+        "tags": [
+          "forms"
+        ]
+      }
+    },
+    "/api/forms/fills/{fill_id}": {
+      "get": {
+        "description": "Read one session.\n\nArgs:\n    fill_id: A session id.\n    db: The knowledge-base engine.\n\nReturns:\n    The session.\n\nRaises:\n    NotFoundError: If there is no such session (404).",
+        "operationId": "read_session_api_forms_fills__fill_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fill_id",
+            "required": true,
+            "schema": {
+              "title": "Fill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Session",
+        "tags": [
+          "forms"
+        ]
+      }
+    },
+    "/api/forms/fills/{fill_id}/fields/{key}": {
+      "delete": {
+        "description": "Withdraw a confirmation; the field is then left untouched by the fill.\n\nArgs:\n    fill_id: A session id.\n    key: The field's key.\n    db: The knowledge-base engine.\n\nReturns:\n    The session after the change.\n\nRaises:\n    NotFoundError: If there is no such session (404).\n    HTTPException: 409 if the session was filled or has no such field.",
+        "operationId": "unconfirm_api_forms_fills__fill_id__fields__key__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fill_id",
+            "required": true,
+            "schema": {
+              "title": "Fill Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unconfirm",
+        "tags": [
+          "forms"
+        ]
+      },
+      "put": {
+        "description": "Approve the value to fill into one field.\n\nArgs:\n    fill_id: A session id.\n    key: The field's key.\n    body: The approved value.\n    db: The knowledge-base engine.\n\nReturns:\n    The session after the confirmation.\n\nRaises:\n    NotFoundError: If there is no such session (404).\n    HTTPException: 409 if the session was filled or the field cannot take the value.",
+        "operationId": "confirm_api_forms_fills__fill_id__fields__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fill_id",
+            "required": true,
+            "schema": {
+              "title": "Fill Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "forms"
+        ]
+      }
+    },
+    "/api/forms/fills/{fill_id}/fill": {
+      "post": {
+        "description": "Open the form in a visible browser and write the confirmed values; never submit.\n\nThe request returns when the window is closed, so the user can review the form and submit it\nthemself. A session can be filled once.\n\nArgs:\n    fill_id: A session id.\n    db: The knowledge-base engine.\n    filler: Runs the browser.\n\nReturns:\n    Which fields were written and which confirmed ones were skipped.\n\nRaises:\n    NotFoundError: If there is no such session (404).\n    HTTPException: 409 if it was already filled or nothing is confirmed; 422 if the page\n        cannot be opened.",
+        "operationId": "fill_api_forms_fills__fill_id__fill_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fill_id",
+            "required": true,
+            "schema": {
+              "title": "Fill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FillResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fill",
         "tags": [
           "forms"
         ]

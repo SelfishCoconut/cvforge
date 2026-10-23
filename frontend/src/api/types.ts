@@ -19,6 +19,9 @@ export type ProposalView = S["ProposalView"];
 export type RejectedView = S["RejectedView"];
 export type DocumentView = S["DocumentView"];
 export type ExtractionView = S["ExtractionView"];
+export type FormSession = S["SessionView"];
+export type FormFieldState = S["SessionFieldView"];
+export type FillResult = S["FillResult"];
 
 /** One line of the `/api/chat/messages/stream` NDJSON response. */
 export type ChatEvent =

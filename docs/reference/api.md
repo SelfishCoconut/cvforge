@@ -198,4 +198,10 @@ Generated from docstrings. Update the docstring, not this page.
 
 ::: cvforge.forms.analyze
 
+::: cvforge.forms.options
+
+::: cvforge.forms.store
+
+::: cvforge.forms.fill
+
 ::: cvforge.api.forms

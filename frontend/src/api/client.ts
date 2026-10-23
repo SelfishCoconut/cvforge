@@ -6,6 +6,8 @@ import type {
   EntityRecord,
   EvidenceRecord,
   ExtractionView,
+  FillResult,
+  FormSession,
   KnowledgeState,
   ProposalRecord,
   ProposalSummary,
@@ -117,6 +119,16 @@ export const api = {
   },
   extractDocument: (sourceId: number) =>
     post<ExtractionView>(`/api/documents/${sourceId}/extract`),
+  startFormFill: (url: string, cvId: number) =>
+    post<FormSession>("/api/forms/fills", { url, cv_id: cvId }),
+  confirmFormField: (fillId: number, key: string, value: string) =>
+    request<FormSession>(`/api/forms/fills/${fillId}/fields/${key}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    }),
+  withdrawFormField: (fillId: number, key: string) =>
+    request<FormSession>(`/api/forms/fills/${fillId}/fields/${key}`, { method: "DELETE" }),
+  fillForm: (fillId: number) => post<FillResult>(`/api/forms/fills/${fillId}/fill`),
   streamChat: (text: string, conversationId: number | null, signal?: AbortSignal) =>
     send("/api/chat/messages/stream", {
       method: "POST",

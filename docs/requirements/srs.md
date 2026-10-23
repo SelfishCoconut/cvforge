@@ -545,10 +545,10 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall offer per-field value options with a
   prefilled default drawn from the knowledge base and the selected CV.
 - **Acceptance criteria**:
-  - [ ] A field matching a known fact (e.g. years of experience) gets a default derived from stored data/the selected CV, not invented
-  - [ ] A field with no matching knowledge-base fact offers no fabricated default — it is left blank or flagged for manual entry
-  - [ ] Suggested options persist on `form_fill_session.fields_json` for review before fill
-  - [ ] Changing the selected CV changes prefilled defaults that depend on CV content
+  - [x] A field matching a known fact (e.g. years of experience) gets a default derived from stored data/the selected CV, not invented
+  - [x] A field with no matching knowledge-base fact offers no fabricated default — it is left blank or flagged for manual entry
+  - [x] Suggested options persist on `form_fill_session.fields_json` for review before fill
+  - [x] Changing the selected CV changes prefilled defaults that depend on CV content
 - **Traces to**: issue #40, tests `tests/unit/test_form_field_options.py`
 
 ### FR-37 — Confirm before fill, never auto-submit
@@ -558,11 +558,11 @@ Each requirement below is a subsection with six fields, in this order:
 - **Description**: The system shall fill form fields only after Álvaro confirms
   each value, and shall never submit the form automatically.
 - **Acceptance criteria**:
-  - [ ] The fill routine writes only to fields explicitly confirmed in the session; unconfirmed fields are left untouched
-  - [ ] A static/AST check finds no `forms/` code path invoking a submit action on a submit-typed element
-  - [ ] A fixture form's submit-button state is asserted unchanged after a fill run
-  - [ ] The Playwright session runs headed by default, so every fill is visible before Álvaro submits manually
-- **Traces to**: issue #41, tests `tests/integration/test_form_fill.py`
+  - [x] The fill routine writes only to fields explicitly confirmed in the session; unconfirmed fields are left untouched
+  - [x] A static/AST check finds no `forms/` code path invoking a submit action on a submit-typed element
+  - [x] A fixture form's submit-button state is asserted unchanged after a fill run
+  - [x] The Playwright session runs headed by default, so every fill is visible before Álvaro submits manually
+- **Traces to**: issue #41, tests `tests/integration/test_form_fill.py`, `tests/unit/test_form_confirmation.py`
 
 ## Providers and settings
 

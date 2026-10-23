@@ -1,6 +1,7 @@
 import { Link, Navigate, Route, Routes } from "react-router";
 import { ChatPage } from "../features/chat/ChatPage";
 import { DocumentsPage } from "../features/documents/DocumentsPage";
+import { FormsPage } from "../features/forms/FormsPage";
 import { EntityPage } from "../features/knowledge/EntityPage";
 import { KnowledgePage } from "../features/knowledge/KnowledgePage";
 import { ReviewPage } from "../features/review/ReviewPage";
@@ -14,6 +15,7 @@ export function AppRoutes() {
       <Route path="/" element={<Navigate to="/chat" replace />} />
       <Route path="/chat" element={<ChatPage />} />
       <Route path="/documents" element={<DocumentsPage />} />
+      <Route path="/forms" element={<FormsPage />} />
       <Route path="/review" element={<ReviewQueuePage />} />
       <Route path="/review/:id" element={<ReviewPage />} />
       <Route path="/knowledge" element={<KnowledgePage />} />

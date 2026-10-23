@@ -19,7 +19,7 @@ from cvforge.api.cvs import router as cvs_router
 from cvforge.api.discovery import router as discovery_router
 from cvforge.api.documents import router as documents_router
 from cvforge.api.errors import install_error_handlers
-from cvforge.api.forms import default_html_fetcher
+from cvforge.api.forms import default_html_fetcher, make_form_filler
 from cvforge.api.forms import router as forms_router
 from cvforge.api.health import router as health_router
 from cvforge.api.jobs import default_fetcher
@@ -115,6 +115,7 @@ def create_app(
     app.state.model_factory = build_model
     app.state.job_fetcher = default_fetcher
     app.state.form_html_fetcher = default_html_fetcher
+    app.state.form_filler = make_form_filler(settings.data_dir)
     app.state.search_provider = None
     install_security_middleware(app)
     install_error_handlers(app)

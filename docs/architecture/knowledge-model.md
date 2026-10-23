@@ -166,3 +166,7 @@ disposable — dropping it and re-running `reindex_missing` rebuilds it from the
 entities that already exist. It is written by `kb/embeddings.py`, also a
 registered writer, and rebuilt whenever the configured embedding dimension
 changes (ADR-0013).
+
+`form_fill_session` (`cvforge.forms.store`, ADR-0030) is the same kind of state again: the
+suggestions and confirmations of one form-fill run, not knowledge. It has foreign keys only to
+`application` and `cv`, and its registered writer is `forms/store.py`.
