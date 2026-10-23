@@ -73,7 +73,7 @@ def test_a_confirmation_the_field_cannot_take_is_refused(
 ) -> None:
     with pytest.raises(SessionError, match=message):
         confirm_field(kb, session, key, value)
-    assert not _fields(kb, session)[key]["confirmed"] if key != "f9" else True
+    assert not any(f["confirmed"] for f in _fields(kb, session).values())
 
 
 def test_a_filled_session_is_closed_to_changes(kb: sa.Engine, session: int) -> None:

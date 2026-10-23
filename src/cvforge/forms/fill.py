@@ -15,6 +15,7 @@ Playwright is imported lazily (optional extra `cvforge[browser]`).
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
+from urllib.parse import urljoin
 
 from cvforge.forms.analyze import FormField, analyze_form
 from cvforge.forms.store import StoredSession
@@ -87,6 +88,12 @@ def _fill_page(page: Any, session: StoredSession) -> FillReport:
     return FillReport(tuple(filled), tuple(skipped))
 
 
+def _hold_open(page: Any, *, keep_open: bool, headless: bool) -> None:
+    """Block until the user closes the window, so they can review and submit the form."""
+    if keep_open and not headless:
+        page.wait_for_event("close", timeout=0)
+
+
 def fill_session(
     session: StoredSession,
     profile_dir: Path,
@@ -122,10 +129,15 @@ def fill_session(
     def screen(route: Any) -> None:
         try:
             check_url(route.request.url, allow_local=allow_local)
+            # Fetch without following redirects, so a hop is screened before it is requested.
+            response = route.fetch(max_redirects=0)
+            location = response.headers.get("location")
+            if location:
+                check_url(urljoin(route.request.url, location), allow_local=allow_local)
         except FetchError:
             route.abort()
         else:
-            route.continue_()
+            route.fulfill(response=response)
 
     def screen_socket(socket: Any) -> None:
         try:
@@ -148,8 +160,7 @@ def fill_session(
                 page.goto(session.url, wait_until="networkidle", timeout=NAVIGATION_TIMEOUT_MS)
                 check_url(page.url, allow_local=allow_local)
                 report = _fill_page(page, session)
-                if keep_open and not headless:
-                    page.wait_for_event("close", timeout=0)
+                _hold_open(page, keep_open=keep_open, headless=headless)
                 return report
             finally:
                 context.close()

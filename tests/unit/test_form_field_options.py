@@ -91,6 +91,19 @@ def test_a_field_no_fact_answers_is_flagged_not_filled() -> None:
     assert file.value is None
 
 
+def test_a_radio_years_field_takes_the_matching_option() -> None:
+    cv = _cv(_period(1, "2020-01 to 2022-01"))
+    (s,) = suggest_values([_field("Years of experience", "radio", ("1", "2", "5"))], cv, TODAY)
+    assert s.value == "2"
+
+
+def test_a_reversed_period_gives_no_years() -> None:
+    (s,) = suggest_values(
+        [_field("Experience years")], _cv(_period(1, "2022-01 to 2021-01")), TODAY
+    )
+    assert s.value is None
+
+
 def test_a_password_is_never_suggested() -> None:
     (s,) = suggest_values([_field("Password", "password", sensitive=True)], _cv(), TODAY)
     assert s.value is None and "never suggested" in s.reason

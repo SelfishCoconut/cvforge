@@ -30,13 +30,19 @@ FORM = """<html><body>
 <input type=submit id=go value=Apply onclick="fetch('/clicked')">
 </form></body></html>"""
 NONAME = "<form><label>Solo <input type=radio value=a></label></form>"
+SUBRESOURCE = '<form><label for=y>Years</label><input id=y><img src="/blocked/pixel"></form>'
 HITS: list[str] = []
 
 
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         HITS.append(self.path)
-        body = {"/form": FORM, "/noname": NONAME}.get(self.path, "")
+        if self.path == "/redirect":
+            self.send_response(302)
+            self.send_header("Location", "/blocked/redirected")
+            self.end_headers()
+            return
+        body = {"/form": FORM, "/noname": NONAME, "/subresource": SUBRESOURCE}.get(self.path, "")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
@@ -152,3 +158,33 @@ def test_a_missing_playwright_says_how_to_install_it(
     monkeypatch.setitem(sys.modules, "playwright.sync_api", None)
     with pytest.raises(FetchError, match="playwright install"):
         _run("http://127.0.0.1:9/form", [], tmp_path)
+
+
+@pytest.fixture
+def refuse_blocked(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stand in for the host screen: refuse any URL under /blocked, allow the rest."""
+    from cvforge.web import fetch
+
+    real = fetch.check_url
+
+    def check(url: str, *, allow_local: bool = False) -> None:
+        if "/blocked" in url:
+            raise FetchError("refused")
+        real(url, allow_local=True)
+
+    monkeypatch.setattr("cvforge.forms.fill.check_url", check)
+
+
+def test_a_sub_resource_the_screen_refuses_is_never_requested(
+    form_url: str, refuse_blocked: None, tmp_path: Path
+) -> None:
+    _run(form_url.replace("/form", "/subresource"), [], tmp_path)
+    assert not any(h.startswith("/blocked") for h in HITS)
+
+
+def test_a_redirect_to_a_refused_target_is_never_followed(
+    form_url: str, refuse_blocked: None, tmp_path: Path
+) -> None:
+    with pytest.raises(FetchError):
+        _run(form_url.replace("/form", "/redirect"), [], tmp_path)
+    assert not any(h.startswith("/blocked") for h in HITS)
