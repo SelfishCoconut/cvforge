@@ -26,6 +26,7 @@ from cvforge.kb.vocab import (
     Classification,
     CvStatus,
     EntityKind,
+    FillStatus,
     GenerationMode,
     KnowledgeState,
     MatchVerdict,
@@ -510,4 +511,20 @@ learning_step = sa.Table(
     sa.UniqueConstraint("plan_id", "position"),
     sa.CheckConstraint("length(trim(title)) > 0", name="step_title_nonblank"),
     _in("kind", values(StepKind), "step_kind"),
+)
+
+# --- form-fill sessions (M8, FR-36, FR-37). Suggestions and confirmations, not knowledge. ----
+# Written by `forms/store.py`, a registered writer (ADR-0030). `fields_json` holds the analysed
+# fields with their suggested option, the value the user confirmed, and whether it is confirmed.
+form_fill_session = sa.Table(
+    "form_fill_session",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("application_id", sa.Integer, sa.ForeignKey("application.id")),
+    sa.Column("cv_id", sa.Integer, sa.ForeignKey("cv.id"), nullable=False),
+    sa.Column("url", sa.String, nullable=False),
+    sa.Column("fields_json", sa.Text, nullable=False),
+    sa.Column("status", sa.String, nullable=False),
+    sa.Column("created_at", sa.DateTime, nullable=False),
+    _in("status", values(FillStatus), "status"),
 )
