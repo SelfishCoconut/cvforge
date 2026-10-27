@@ -199,7 +199,9 @@ def unconfirm_field(engine: sa.Engine, session_id: int, key: str) -> None:
 
 
 def mark_filled(engine: sa.Engine, session_id: int) -> None:
-    """Record that the fill ran, so the session cannot be filled twice.
+    """Claim the session for filling, so it cannot be filled twice.
+
+    Call it before the browser opens; the check and the update share one write transaction.
 
     Args:
         engine: The knowledge-base engine.
@@ -214,4 +216,19 @@ def mark_filled(engine: sa.Engine, session_id: int) -> None:
             sa.update(schema.form_fill_session)
             .where(schema.form_fill_session.c.id == session_id)
             .values(status=FillStatus.FILLED.value)
+        )
+
+
+def release_fill(engine: sa.Engine, session_id: int) -> None:
+    """Give back a claim whose fill never started, so the user can retry.
+
+    Args:
+        engine: The knowledge-base engine.
+        session_id: The session.
+    """
+    with write_transaction(engine) as conn:
+        conn.execute(
+            sa.update(schema.form_fill_session)
+            .where(schema.form_fill_session.c.id == session_id)
+            .values(status=FillStatus.ANALYZED.value)
         )

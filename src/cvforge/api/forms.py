@@ -27,6 +27,7 @@ from cvforge.forms.store import (
     create_session,
     get_session,
     mark_filled,
+    release_fill,
     unconfirm_field,
 )
 from cvforge.kb import apply
@@ -368,7 +369,8 @@ def fill(fill_id: int, db: Engine, filler: Filler) -> FillResult:
     """Open the form in a visible browser and write the confirmed values; never submit.
 
     The request returns when the window is closed, so the user can review the form and submit it
-    themself. A session can be filled once.
+    themself. A session can be filled once: it is claimed before the browser opens, so a retried
+    or concurrent request is refused, and a crash cannot leave it fillable again.
 
     Args:
         fill_id: A session id.
@@ -389,8 +391,12 @@ def fill(fill_id: int, db: Engine, filler: Filler) -> FillResult:
     if not any(f["confirmed"] for f in session.fields):
         raise HTTPException(409, "confirm at least one field before filling")
     try:
+        mark_filled(db, fill_id)
+    except SessionError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    try:
         report = filler(session)
     except FetchError as exc:
+        release_fill(db, fill_id)
         raise HTTPException(422, str(exc)) from exc
-    mark_filled(db, fill_id)
     return FillResult(filled=list(report.filled), skipped=dict(report.skipped))
