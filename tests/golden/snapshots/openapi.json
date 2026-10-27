@@ -3643,7 +3643,7 @@
     },
     "/api/forms/fills/{fill_id}/fill": {
       "post": {
-        "description": "Open the form in a visible browser and write the confirmed values; never submit.\n\nThe request returns when the window is closed, so the user can review the form and submit it\nthemself. A session can be filled once.\n\nArgs:\n    fill_id: A session id.\n    db: The knowledge-base engine.\n    filler: Runs the browser.\n\nReturns:\n    Which fields were written and which confirmed ones were skipped.\n\nRaises:\n    NotFoundError: If there is no such session (404).\n    HTTPException: 409 if it was already filled or nothing is confirmed; 422 if the page\n        cannot be opened.",
+        "description": "Open the form in a visible browser and write the confirmed values; never submit.\n\nThe request returns when the window is closed, so the user can review the form and submit it\nthemself. A session can be filled once: it is claimed before the browser opens, so a retried\nor concurrent request is refused, and a crash cannot leave it fillable again.\n\nArgs:\n    fill_id: A session id.\n    db: The knowledge-base engine.\n    filler: Runs the browser.\n\nReturns:\n    Which fields were written and which confirmed ones were skipped.\n\nRaises:\n    NotFoundError: If there is no such session (404).\n    HTTPException: 409 if it was already filled or nothing is confirmed; 422 if the page\n        cannot be opened.",
         "operationId": "fill_api_forms_fills__fill_id__fill_post",
         "parameters": [
           {

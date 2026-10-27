@@ -111,3 +111,18 @@ def test_a_failed_fill_leaves_the_session_fillable(forms: TestClient) -> None:
     forms.app.state.form_filler = broken  # type: ignore[attr-defined]
     assert forms.post(f"/api/forms/fills/{sid}/fill").status_code == 422
     assert forms.get(f"/api/forms/fills/{sid}").json()["status"] == "analyzed"
+
+
+def test_the_session_is_claimed_before_the_browser_opens(forms: TestClient) -> None:
+    sid = _start(forms)["id"]
+    forms.put(f"/api/forms/fills/{sid}/fields/f2", json={"value": "teal"})
+    fill = f"/api/forms/fills/{sid}/fill"
+    during: list[int] = []
+
+    def retried(session: StoredSession) -> FillReport:
+        during.append(forms.post(fill).status_code)
+        return FillReport(("f2",), ())
+
+    forms.app.state.form_filler = retried  # type: ignore[attr-defined]
+    assert forms.post(fill).status_code == 200
+    assert during == [409]

@@ -746,7 +746,8 @@ export interface paths {
          * @description Open the form in a visible browser and write the confirmed values; never submit.
          *
          *     The request returns when the window is closed, so the user can review the form and submit it
-         *     themself. A session can be filled once.
+         *     themself. A session can be filled once: it is claimed before the browser opens, so a retried
+         *     or concurrent request is refused, and a crash cannot leave it fillable again.
          *
          *     Args:
          *         fill_id: A session id.
