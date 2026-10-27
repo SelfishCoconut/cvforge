@@ -25,31 +25,31 @@ dependencies = [
 
 [project.optional-dependencies]
 browser = [
-    "playwright>=1.64.0",
+    "playwright>=1.64.1",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.16.10",
+    "ruff>=0.17.2",
     "mypy>=2.4.0",
     "pytest>=8.3",
     "pytest-cov>=6.0",
-    "pre-commit>=4.0",
+    "pre-commit>=4.7.0",
     # Mechanical quality signals consumed by sanity.yml and the codebase-sanity agent.
     "radon>=6.0",
     "xenon>=0.9",
     "vulture>=2.13",
-    "pylint>=4.1.1",
+    "pylint>=4.1.3",
     # Documentation site. MkDocs 2.0 removes the plugin system (search and mkdocstrings
     # stop working), so cap it until a deliberate migration with an ADR (see #57).
     "mkdocs>=1.6,<2",
-    "mkdocs-material>=9.5",
-    "mkdocstrings[python]>=1.0.6",
-    "playwright>=1.64.0",
+    "mkdocs-material>=9.8.0",
+    "mkdocstrings[python]>=1.0.8",
+    "playwright>=1.64.1",
 ]
 
 [build-system]
-requires = ["uv_build>=0.12.22,<1"]
+requires = ["uv_build>=0.13.5,<1"]
 build-backend = "uv_build"
 
 # ---------------------------------------------------------------- ruff
